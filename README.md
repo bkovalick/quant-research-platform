@@ -1,2 +1,2 @@
 # gurobi-examples
-Experimentation repo using gourbis' Api (free only). Blends object oriented coding style while building out optimization problems within Finance and other personal areas of interest.
+Application that leverages GurobiPy API to blend optimization experiments with sound object oriented and system design techniques.
