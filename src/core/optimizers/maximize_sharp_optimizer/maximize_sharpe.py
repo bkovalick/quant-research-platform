@@ -1,8 +1,8 @@
 
-import gurobipy as gp
+# import gurobipy as gp
 import numpy as np
 
-from .ioptimizer import IOptimizer
+from core.optimizers import IOptimizer
 from .decision_variables_max_sharpe import MaximizeSharpeDecisionVariables
 from data.rebalance_problem import RebalanceProblem
 
