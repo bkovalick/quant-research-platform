@@ -1,8 +1,10 @@
 import pandas as pd
 import numpy as np
+import mosek
 
 import config as cfg
 from data import rebalance_problem
+from core.optimizers.maximize_sharp_optimizer.maximize_sharpe import MaximizeSharpeOptimizer
 
 
 if __name__ == '__main__':
@@ -16,3 +18,6 @@ if __name__ == '__main__':
     rebal_problem["covMatrix"] = np.cov(rebal_problem["mu"], rowvar = False)
     rebal_problem["riskFreeRate"] = 0.03
     print(rebal_problem["covMatrix"])
+
+
+    MaximizeSharpeOptimizer().optimize(rebalance_problem.RebalanceProblem(rebal_problem))
