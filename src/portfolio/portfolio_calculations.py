@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 
 
-class DataProcessor:
-    """Handles data transformation and calculations for portfolio data."""
+class PortfolioCalculations:
+    """Calculates portfolio statistics and extracts configuration parameters."""
     
     @staticmethod
     def calculate_returns(price_data: pd.DataFrame) -> pd.DataFrame:

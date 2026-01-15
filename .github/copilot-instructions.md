@@ -32,9 +32,9 @@ This is an experimentation repository for financial optimization problems using 
   - No external calls or transformations—use `RebalanceProblemBuilder` to construct
 - **RebalanceProblemBuilder**: [src/portfolio/rebalance_problem_builder.py](src/portfolio/rebalance_problem_builder.py)
   - Orchestrates the data pipeline: fetch market data → transform → calculate statistics → build RebalanceProblem
-  - Separates concerns: fetching (MarketDataGateway) + transformation (DataProcessor) + encapsulation (RebalanceProblem)
-- **DataProcessor**: [src/portfolio/data_processor.py](src/portfolio/data_processor.py)
-  - Static utility methods for data transformations (returns, mean, covariance, parameter extraction)
+  - Separates concerns: fetching (MarketDataGateway) + calculations (PortfolioCalculations) + encapsulation (RebalanceProblem)
+- **PortfolioCalculations**: [src/portfolio/portfolio_calculations.py](src/portfolio/portfolio_calculations.py)
+  - Static utility methods for portfolio statistics (returns, mean, covariance) and parameter extraction
 
 ## Key Technologies & Dependencies
 - **mosek (Fusion API)** - Commercial optimization solver
@@ -132,7 +132,7 @@ src/
 └── portfolio/
     ├── rebalance_problem.py         # Pure data container
     ├── rebalance_problem_builder.py # Orchestrates data pipeline
-    └── data_processor.py            # Transformation utilities
+    └── portfolio_calculations.py    # Portfolio statistics utilities
 ```
 
 ## Critical Notes for AI Agents

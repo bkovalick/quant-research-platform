@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from core.optimizers.maximize_sharp_optimizer.maximize_sharpe import MaximizeSharpeOptimizer
+from core.optimizers.optimizer_factory import OptimizerFactory
 from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
 
 
@@ -12,7 +12,10 @@ if __name__ == '__main__':
             {"ticker": "MSFT", "target_weight": 0.2, "initial_holdings": 1500}
         ],
         "risk_free_rate": 0.03,
-        "cash_allocation": 0.0
+        "cash_allocation": 0.0,
+        "start_date": "2022-01-01",
+        "end_date": "2026-01-13",
+        "program_type": "maximize_sharpe"
     }
     
     # Build the rebalance problem using the builder
@@ -22,3 +25,6 @@ if __name__ == '__main__':
     print(f"Portfolio constituents: {rebalance_problem.n_constituents}")
     print(f"Tickers: {rebalance_problem.tickers}")
     print(f"Risk-free rate: {rebalance_problem.risk_free_rate}")
+
+    optimizer = OptimizerFactory.create_optimizer(config["program_type"])
+    optimizer.optimize(rebalance_problem)

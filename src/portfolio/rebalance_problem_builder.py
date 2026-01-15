@@ -2,9 +2,8 @@ import pandas as pd
 import numpy as np
 
 from infrastructure.market_data.marketdatagateway import MarketDataGateway
-from portfolio.data_processor import DataProcessor
+from portfolio.portfolio_calculations import PortfolioCalculations
 from portfolio.rebalance_problem import RebalanceProblem
-
 
 class RebalanceProblemBuilder:
     """Orchestrates the pipeline to build a RebalanceProblem from input configuration."""
@@ -21,7 +20,7 @@ class RebalanceProblemBuilder:
         """
         self.config = config
         self.market_data_gateway = MarketDataGateway()
-        self.data_processor = DataProcessor()
+        self.portfolio_calculations = PortfolioCalculations()
     
     def build(self) -> RebalanceProblem:
         """
@@ -31,24 +30,25 @@ class RebalanceProblemBuilder:
             RebalanceProblem instance with all data prepared and calculations done
         """
         # Extract tickers from configuration
-        tickers = self.data_processor.extract_tickers(
+        tickers = self.portfolio_calculations.extract_tickers(
             self.config["rebalance_sub_parameters"]
         )
         
         # Fetch market data
-        price_data = self.market_data_gateway.get_price_data(tickers)
-        price_df = pd.DataFrame(price_data)
-        
+        start_date = self.config["start_date"]
+        end_date = self.config["end_date"]
+        price_df = self.market_data_gateway.get_price_data(tickers, start_date, end_date)
+
         # Transform data
-        returns_data = self.data_processor.calculate_returns(price_df)
-        mean_returns = self.data_processor.calculate_mean_returns(returns_data)
-        covariance_matrix = self.data_processor.calculate_covariance_matrix(returns_data)
+        returns_data = self.portfolio_calculations.calculate_returns(price_df)
+        mean_returns = self.portfolio_calculations.calculate_mean_returns(returns_data)
+        covariance_matrix = self.portfolio_calculations.calculate_covariance_matrix(returns_data)
         
         # Extract other parameters
-        target_weights = self.data_processor.extract_target_weights(
+        target_weights = self.portfolio_calculations.extract_target_weights(
             self.config["rebalance_sub_parameters"]
         )
-        initial_holdings = self.data_processor.extract_initial_holdings(
+        initial_holdings = self.portfolio_calculations.extract_initial_holdings(
             self.config["rebalance_sub_parameters"]
         )
         
