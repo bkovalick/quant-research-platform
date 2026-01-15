@@ -1,4 +1,4 @@
-# import gurobipy as gp
+from mosek.fusion import *
 
 class MaximizeSharpeDecisionVariables:
     def __init__(self, N):

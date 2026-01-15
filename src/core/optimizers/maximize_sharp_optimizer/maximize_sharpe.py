@@ -3,8 +3,8 @@ from mosek.fusion import *
 import numpy as np
 
 from core.optimizers.ioptimizer import IOptimizer
-from .decision_variables_max_sharpe import MaximizeSharpeDecisionVariables
-from data.rebalance_problem import RebalanceProblem
+from core.optimizers.maximize_sharp_optimizer.decision_variables_max_sharpe import MaximizeSharpeDecisionVariables
+from infrastructure.portfolio_data.rebalance_problem import RebalanceProblem
 
 class MaximizeSharpeOptimizer(IOptimizer):
     def __init__(self):
@@ -40,4 +40,13 @@ class MaximizeSharpeOptimizer(IOptimizer):
             # print(f"Max Sharpe Ratio: {sharpe_ratio}")
 
 
-# Method 2: Manual Convex Reformulation using gurobipy If you need more control over the model (e.g., adding specific custom constraints like L1 norm constraints), you can manually implement the convex reformulation using the core gurobipy API. The original Sharpe ratio objective function is non-convex:\(\max _{x}\frac{\mu ^{T}x-r_{f}}{\sqrt{x^{T}\Sigma x}}\quad \text{s.t.}\quad \sum x_{i}=1,x\ge 0\)It can be reformulated as a convex quadratic program (QP) by introducing a variable change \(y=\frac{x}{\mu ^{T}x-r_{f}}\) (assuming \(\mu ^{T}x>r_{f}\)):\(\min _{y}y^{T}\Sigma y\quad \text{s.t.}\quad (\mu -r_{f})^{T}y=1,y\ge 0\)After solving for \(y\), the optimal weights \(x\) are recovered by \(x_{i}=\frac{y_{i}}{\sum _{j}y_{j}}\). Here is a general outline of the manual implementation using gurobipy: 
+""" 
+    Method 2: Manual Convex Reformulation using gurobipy If you need more control over the model 
+    (e.g., adding specific custom constraints like L1 norm constraints), you can manually implement 
+    the convex reformulation using the core gurobipy API. The original Sharpe ratio objective function 
+    is non-convex:\(\max _{x}\frac{\mu ^{T}x-r_{f}}{\sqrt{x^{T}\Sigma x}}\quad \text{s.t.}\quad \sum x_{i}=1,x\ge 0\) 
+    It can be reformulated as a convex quadratic program (QP) by introducing a variable change \(y=\frac{x}{\mu ^{T}x-r_{f}}\) 
+    (assuming \(\mu ^{T}x>r_{f}\)):\(\min _{y}y^{T}\Sigma y\quad \text{s.t.}\quad (\mu -r_{f})^{T}y=1,y\ge 0\)
+    After solving for \(y\), the optimal weights \(x\) are recovered by \(x_{i}=\frac{y_{i}}{\sum _{j}y_{j}}\). 
+    Here is a general outline of the manual implementation using gurobipy: 
+"""
