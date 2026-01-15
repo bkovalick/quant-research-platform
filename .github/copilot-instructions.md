@@ -26,14 +26,14 @@ This is an experimentation repository for financial optimization problems using 
   - Incomplete - placeholder for efficient frontier generation
 
 ### Data Structures
-- **RebalanceProblem**: [src/infrastructure/portfolio_data/rebalance_problem.py](src/infrastructure/portfolio_data/rebalance_problem.py)
+- **RebalanceProblem**: [src/portfolio/rebalance_problem.py](src/portfolio/rebalance_problem.py)
   - Pure data container with prepared portfolio inputs
   - Properties: `tickers`, `mean_vector`, `covariance_matrix`, `risk_free_rate`, `target_weights`, `initial_holdings`, etc.
   - No external calls or transformations—use `RebalanceProblemBuilder` to construct
-- **RebalanceProblemBuilder**: [src/infrastructure/portfolio_data/rebalance_problem_builder.py](src/infrastructure/portfolio_data/rebalance_problem_builder.py)
+- **RebalanceProblemBuilder**: [src/portfolio/rebalance_problem_builder.py](src/portfolio/rebalance_problem_builder.py)
   - Orchestrates the data pipeline: fetch market data → transform → calculate statistics → build RebalanceProblem
   - Separates concerns: fetching (MarketDataGateway) + transformation (DataProcessor) + encapsulation (RebalanceProblem)
-- **DataProcessor**: [src/infrastructure/portfolio_data/data_processor.py](src/infrastructure/portfolio_data/data_processor.py)
+- **DataProcessor**: [src/portfolio/data_processor.py](src/portfolio/data_processor.py)
   - Static utility methods for data transformations (returns, mean, covariance, parameter extraction)
 
 ## Key Technologies & Dependencies
@@ -57,8 +57,8 @@ This is an experimentation repository for financial optimization problems using 
 
 ### Import Pattern
 - Optimizers: `from core.optimizers.maximize_sharp_optimizer.maximize_sharpe import MaximizeSharpeOptimizer`
-- Data construction: `from infrastructure.portfolio_data.rebalance_problem_builder import RebalanceProblemBuilder`
-- Data model: `from infrastructure.portfolio_data.rebalance_problem import RebalanceProblem`
+- Data construction: `from portfolio.rebalance_problem_builder import RebalanceProblemBuilder`
+- Data model: `from portfolio.rebalance_problem import RebalanceProblem`
 - Use absolute imports from `src/` root level
 
 ## Important Patterns & Conventions
@@ -126,13 +126,13 @@ src/
 │       │   └── decision_variables_max_sharpe.py
 │       └── mean_variance_optimizer/
 │           └── mean_variance_optimizer.py  # Placeholder for efficient frontier
-└── infrastructure/
-    └── portfolio_data/
-        ├── rebalance_problem.py     # Pure data container
-        ├── rebalance_problem_builder.py  # Orchestrates data pipeline
-        ├── data_processor.py        # Transformation utilities
-        └── market_data/
-            └── marketdatagateway.py # Fetches market data via yfinance
+├── infrastructure/
+│   └── market_data/
+│       └── marketdatagateway.py     # Fetches market data via yfinance
+└── portfolio/
+    ├── rebalance_problem.py         # Pure data container
+    ├── rebalance_problem_builder.py # Orchestrates data pipeline
+    └── data_processor.py            # Transformation utilities
 ```
 
 ## Critical Notes for AI Agents

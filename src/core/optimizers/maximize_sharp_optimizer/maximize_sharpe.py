@@ -4,7 +4,7 @@ import numpy as np
 
 from core.optimizers.ioptimizer import IOptimizer
 from core.optimizers.maximize_sharp_optimizer.decision_variables_max_sharpe import MaximizeSharpeDecisionVariables
-from infrastructure.portfolio_data.rebalance_problem import RebalanceProblem
+from portfolio.rebalance_problem import RebalanceProblem
 
 class MaximizeSharpeOptimizer(IOptimizer):
     def __init__(self):

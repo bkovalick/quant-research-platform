@@ -1,9 +1,7 @@
 import pandas as pd
 import numpy as np
-import mosek
-
 from core.optimizers.maximize_sharp_optimizer.maximize_sharpe import MaximizeSharpeOptimizer
-from infrastructure.portfolio_data.rebalance_problem_builder import RebalanceProblemBuilder
+from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
 
 
 if __name__ == '__main__':
@@ -24,6 +22,3 @@ if __name__ == '__main__':
     print(f"Portfolio constituents: {rebalance_problem.n_constituents}")
     print(f"Tickers: {rebalance_problem.tickers}")
     print(f"Risk-free rate: {rebalance_problem.risk_free_rate}")
-    
-    # Pass to optimizer
-    # MaximizeSharpeOptimizer().optimize(rebalance_problem)

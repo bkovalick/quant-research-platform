@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 
 from infrastructure.market_data.marketdatagateway import MarketDataGateway
-from infrastructure.portfolio_data.data_processor import DataProcessor
-from infrastructure.portfolio_data.rebalance_problem import RebalanceProblem
+from portfolio.data_processor import DataProcessor
+from portfolio.rebalance_problem import RebalanceProblem
 
 
 class RebalanceProblemBuilder:

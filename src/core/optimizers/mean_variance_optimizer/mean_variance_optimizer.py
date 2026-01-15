@@ -2,7 +2,7 @@ from mosek.fusion import *
 import numpy as np
 
 from core.optimizers.ioptimizer import IOptimizer
-from infrastructure.portfolio_data.rebalance_problem import RebalanceProblem
+from portfolio.rebalance_problem import RebalanceProblem
 
 class MeanVarianceOptrimizer(IOptimizer):
     def __init__(self):
