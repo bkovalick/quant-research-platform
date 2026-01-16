@@ -60,9 +60,6 @@ class BacktestingEngine(BacktestingEngineInterface):
         first_rebal = rebalance_problem.first_rebal
         lookback_window = rebalance_problem.lookback_window
         date_indices = list(self.asset_prices.index)
-        n_dates = len(date_indices)
-        
-        last_date_idx = None
         prev_weights = self.portfolio_weights.iloc[0].values.copy()
         
         for i, date_idx in enumerate(date_indices):
@@ -70,7 +67,6 @@ class BacktestingEngine(BacktestingEngineInterface):
             
             # Skip early rows before lookback window
             if i < first_rebal:
-                last_date_idx = date_idx
                 continue
 
             # Compute drift returns/weights from previous period
@@ -98,8 +94,6 @@ class BacktestingEngine(BacktestingEngineInterface):
             self.portfolio_turnover.loc[date_idx] = (
                 np.sum(np.abs(self.portfolio_weights.loc[date_idx].values - prev_weights)) / 2
             )
-            
-            last_date_idx = date_idx
 
         performance_metrics_df = self._calculate_performance_metrics(
             self.portfolio_returns, self.portfolio_weights, self.portfolio_turnover

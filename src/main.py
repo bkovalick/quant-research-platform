@@ -18,7 +18,7 @@ if __name__ == '__main__':
         "end_date": "2026-01-13",
         "program_type": "maximize_sharpe",
         "trading_frequency": "w",
-        "lookback_window": 0,
+        "lookback_window": 252,
         "first_rebal": 0
     }
     
