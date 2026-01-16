@@ -43,12 +43,12 @@ class BacktestingEngineInterface(abc.ABC):
 class BacktestingEngine(BacktestingEngineInterface):
     """Concrete implementation of a backtesting engine."""
     # Constants for annualization
-    ANNUAL_TRADING_DAYS = 252
     WEEKS_PER_YEAR = 52
     
     def __init__(self, portfolio: PortfolioInterface):
         self.portfolio = portfolio
-    
+        self.annual_trading_days = { "d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
+        
     def run_backtest(self, rebalance_problem):
         self._setup_rebalancing_data(rebalance_problem)
         self._setup_variables(rebalance_problem)
@@ -96,7 +96,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             )
 
         performance_metrics_df = self._calculate_performance_metrics(
-            self.portfolio_returns, self.portfolio_weights, self.portfolio_turnover
+            rebalance_problem, self.portfolio_returns, self.portfolio_weights, self.portfolio_turnover
         )
         print(f"Backtest duration: {time.time() - start_time} seconds")
         return performance_metrics_df
@@ -133,7 +133,8 @@ class BacktestingEngine(BacktestingEngineInterface):
         curr_weights = rebalanced_portfolio.portfolio_weights
         return curr_weights
     
-    def _calculate_performance_metrics(self, portfolio_returns: pd.Series, portfolio_weights, portfolio_turnover):
+    def _calculate_performance_metrics(self, rebalance_problem, portfolio_returns: pd.Series, \
+                                       portfolio_weights, portfolio_turnover):
         """Calculate performance metrics for the portfolio."""
         wealth_factors = (1 + portfolio_returns).cumprod()
         cumulative_returns = wealth_factors - 1
@@ -141,10 +142,10 @@ class BacktestingEngine(BacktestingEngineInterface):
         # Annualize return: compound final return over time horizon
         num_periods = cumulative_returns.shape[0]
         years = num_periods / self.WEEKS_PER_YEAR
-        annualized_return = cumulative_returns.iloc[-1] ** (1 / years) - 1
+        annualized_return = cumulative_returns.iloc[-1] ** (1 / years)
         
         # Annualize volatility
-        annualized_volatility = portfolio_returns.std() * np.sqrt(self.ANNUAL_TRADING_DAYS)
+        annualized_volatility = portfolio_returns.std() * np.sqrt(self.annual_trading_days[rebalance_problem.trading_frequency])
         
         # Calculate Sharpe ratio safely (avoid division by zero)
         sharpe_ratio = (
