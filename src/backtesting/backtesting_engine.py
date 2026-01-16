@@ -21,7 +21,8 @@ class FixedWeightPortfolio:
         """Return the fixed weights of the portfolio."""
         return RebalanceSubSolution(
             total_trades = np.array([0.0] * len(rebalance_problem.tickers)), 
-            portfolio_weights = rebalance_problem.initial_weights)
+            portfolio_weights = [ holding / rebalance_problem.total_portfolio_value \
+                                 for holding in rebalance_problem.initial_holdings])
     
 class MaxSharpePortfolio:
     """A portfolio optimized to maximize the Sharpe ratio."""
@@ -40,43 +41,69 @@ class BacktestingEngineInterface(abc.ABC):
         pass
 
 class BacktestingEngine(BacktestingEngineInterface):
+    """Concrete implementation of a backtesting engine."""
+    # Constants for annualization
+    ANNUAL_TRADING_DAYS = 252
+    WEEKS_PER_YEAR = 52
+    
     def __init__(self, portfolio: PortfolioInterface):
         self.portfolio = portfolio
-
-    """Concrete implementation of a backtesting engine."""
+    
     def run_backtest(self, rebalance_problem):
-        # create a fixedweight portfolio as an optimizer -> good benchmark
-        self._setup_variables(rebalance_problem)
         self._setup_rebalancing_data(rebalance_problem)
+        self._setup_variables(rebalance_problem)
 
         print("Running backtest...")
         start_time = time.time()
+        
+        # Cache frequently accessed attributes to reduce lookups
+        first_rebal = rebalance_problem.first_rebal
+        lookback_window = rebalance_problem.lookback_window
+        date_indices = list(self.asset_prices.index)
+        n_dates = len(date_indices)
+        
         last_date_idx = None
-        for i, date_idx in enumerate(self.asset_prices.index):
+        prev_weights = self.portfolio_weights.iloc[0].values.copy()
+        
+        for i, date_idx in enumerate(date_indices):
             print(f"Backtesting date: {date_idx}")
             
-            # Skip first row and rows with insufficient lookback window
-            if i < rebalance_problem.first_rebal: # starting_week, we can choose to not start on t = 0
+            # Skip early rows before lookback window
+            if i < first_rebal:
                 last_date_idx = date_idx
                 continue
 
-            # compute drift returns/weights
-            if i > rebalance_problem.first_rebal:            
-                self.portfolio_weights.loc[date_idx], self.portfolio_returns.loc[date_idx] = \
-                    self._calculate_drifted_weights(self.portfolio_weights.loc[last_date_idx], \
-                                                    self.asset_returns.loc[date_idx])
-
-            # check if it's a rebalancing date
-            rebalance_problem.initial_weights = np.array(self.portfolio_weights.loc[date_idx])
-            prev_weights = rebalance_problem.initial_weights.copy()
-            rebalanced_portfolio = self.portfolio.get_rebalance_solution(rebalance_problem)
-            self.portfolio_weights.loc[date_idx] = rebalanced_portfolio.portfolio_weights
-            self.portfolio_turnover.loc[date_idx] = np.sum(np.abs(self.portfolio_weights.loc[date_idx] - prev_weights)) / 2
+            # Compute drift returns/weights from previous period
+            if i > first_rebal:            
+                curr_weights, curr_return = self._calculate_drifted_weights(
+                    prev_weights, self.asset_returns.loc[date_idx].values
+                )
+                self.portfolio_weights.loc[date_idx] = curr_weights
+                self.portfolio_returns.loc[date_idx] = curr_return
+                prev_weights = curr_weights
+            
+            # Rebalance: hold weights during lookback period, then optimize
+            if i < lookback_window and i > 0:
+                # During lookback window, use previous weights
+                self.portfolio_weights.loc[date_idx] = prev_weights
+            else:
+                # After lookback window, run optimization
+                rebalance_problem.initial_weights = prev_weights
+                optimized_weights = self._calculate_rebalance_weights(
+                    rebalance_problem, self.asset_prices.loc[:date_idx]
+                )
+                self.portfolio_weights.loc[date_idx] = optimized_weights
+            
+            # Calculate turnover: sum of absolute weight changes divided by 2
+            self.portfolio_turnover.loc[date_idx] = (
+                np.sum(np.abs(self.portfolio_weights.loc[date_idx].values - prev_weights)) / 2
+            )
             
             last_date_idx = date_idx
 
-        performance_metrics_df = self._calculate_performance_metrics(self.portfolio_returns, \
-                                                                     self.portfolio_weights, self.portfolio_turnover)
+        performance_metrics_df = self._calculate_performance_metrics(
+            self.portfolio_returns, self.portfolio_weights, self.portfolio_turnover
+        )
         print(f"Backtest duration: {time.time() - start_time} seconds")
         return performance_metrics_df
 
@@ -105,23 +132,39 @@ class BacktestingEngine(BacktestingEngineInterface):
         curr_weights = curr_weights / sum(curr_weights)
         return curr_weights, curr_returns
 
-    def _calculate_rebalance_weights(self):
-        """Calculate rebalance weights considering cash allocation."""
-        return []
+    def _calculate_rebalance_weights(self, rebalance_problem, model_data):
+        """Calculate rebalance weights"""
+        rebalance_problem.price_data = model_data
+        rebalanced_portfolio = self.portfolio.get_rebalance_solution(rebalance_problem)
+        curr_weights = rebalanced_portfolio.portfolio_weights
+        return curr_weights
     
     def _calculate_performance_metrics(self, portfolio_returns: pd.Series, portfolio_weights, portfolio_turnover):
         """Calculate performance metrics for the portfolio."""
         wealth_factors = (1 + portfolio_returns).cumprod()
         cumulative_returns = wealth_factors - 1
-        asset_returns = cumulative_returns.iloc[-1]  ** (1/(cumulative_returns.shape[0]/52)) - 1
-        asset_volatilities = portfolio_returns.std() * np.sqrt(252)
+        
+        # Annualize return: compound final return over time horizon
+        num_periods = cumulative_returns.shape[0]
+        years = num_periods / self.WEEKS_PER_YEAR
+        annualized_return = cumulative_returns.iloc[-1] ** (1 / years) - 1
+        
+        # Annualize volatility
+        annualized_volatility = portfolio_returns.std() * np.sqrt(self.ANNUAL_TRADING_DAYS)
+        
+        # Calculate Sharpe ratio safely (avoid division by zero)
+        sharpe_ratio = (
+            annualized_return / annualized_volatility 
+            if annualized_volatility != 0 else 0.0
+        )
+        
         performance_metrics = {
             "portfolio_weights": portfolio_weights,
             "portfolio_wealth_factors": wealth_factors,
             "cumulative_returns": cumulative_returns,
-            "return": asset_returns,
-            "volatility": asset_volatilities,
-            "sharpe_ratio": asset_returns / asset_volatilities,
+            "return": annualized_return,
+            "volatility": annualized_volatility,
+            "sharpe_ratio": sharpe_ratio,
             "max_drawdown": self._calculate_max_drawdown(cumulative_returns),
             "turnover": portfolio_turnover
         }

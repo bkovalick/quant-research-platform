@@ -18,7 +18,7 @@ if __name__ == '__main__':
         "end_date": "2026-01-13",
         "program_type": "maximize_sharpe",
         "trading_frequency": "w",
-        "lookback_window": 252,
+        "lookback_window": 0,
         "first_rebal": 0
     }
     
@@ -39,3 +39,5 @@ if __name__ == '__main__':
     backtestingEngine = BacktestingEngine(portfolio)
     rebal_port = backtestingEngine.run_backtest(rebalance_problem)
     print(rebal_port)
+
+    
