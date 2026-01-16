@@ -1,5 +1,5 @@
 import abc
-from core.optimizers.maximize_sharp_optimizer.maximize_sharpe import MaximizeSharpeOptimizer
+from core.optimizers.maximize_sharpe_optimizer.maximize_sharpe import MaximizeSharpeOptimizer
 from core.optimizers.mean_variance_optimizer.mean_variance_optimizer import MeanVarianceOptrimizer
 
 class IOptimizerFactory(abc.ABC):
@@ -12,7 +12,8 @@ class OptimizerFactory(IOptimizerFactory):
 
     _optimizers = {
         "maximize_sharpe": MaximizeSharpeOptimizer,
-        "mean_variance": MeanVarianceOptrimizer
+        "mean_variance": MeanVarianceOptrimizer,
+        "fixed_weights": None
     }
 
     """Concrete implementation of an optimizer factory."""

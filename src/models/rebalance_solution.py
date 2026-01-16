@@ -4,7 +4,7 @@ import pandas as pd
 from typing import Union
 from mosek.fusion import *
 
-from core.optimizers.maximize_sharp_optimizer.decision_variables_max_sharpe import MaximizeSharpeDecisionVariables
+from core.optimizers.maximize_sharpe_optimizer.decision_variables_max_sharpe import MaximizeSharpeDecisionVariables
 
 class RebalanceSolution:
     """
@@ -12,14 +12,17 @@ class RebalanceSolution:
     """
     def __init__(self, 
                  model,
-                 decision_variables: MaximizeSharpeDecisionVariables):
+                 decision_variables,
+                 rebalance_problem):
         self.model = model
         self.decision_variables = decision_variables
+        self.rebalance_problem = rebalance_problem
+        self.rebalance_solution = self.get_rebalance_solution()
 
     def get_rebalance_solution(self) -> 'RebalanceSubSolution':
         return RebalanceSubSolution(
             total_trades=self.decision_variables.total_trades.level(),
-            target_weights=self.decision_variables.x.level()
+            portfolio_weights=self.decision_variables.portfolio_weights.level()
         )
 
 @dataclass
@@ -29,4 +32,4 @@ class RebalanceSubSolution:
     """
 
     total_trades: Union[np.ndarray, pd.Series]
-    target_weights: Union[np.ndarray, pd.Series]
+    portfolio_weights: Union[np.ndarray, pd.Series]

@@ -41,6 +41,7 @@ class RebalanceProblemBuilder:
 
         # Transform data
         returns_data = self.portfolio_calculations.calculate_returns(price_df)
+        cumulative_returns = (1 + returns_data).cumprod() - 1
         mean_returns = self.portfolio_calculations.calculate_mean_returns(returns_data)
         covariance_matrix = self.portfolio_calculations.calculate_covariance_matrix(returns_data)
         
@@ -51,6 +52,7 @@ class RebalanceProblemBuilder:
         initial_holdings = self.portfolio_calculations.extract_initial_holdings(
             self.config["rebalance_sub_parameters"]
         )
+        initial_weights = [ holding / sum(initial_holdings) for holding in initial_holdings ]
         
         # Calculate total portfolio value
         total_portfolio_value = sum(initial_holdings) + self.config.get("cash_allocation", 0.0)
@@ -60,13 +62,18 @@ class RebalanceProblemBuilder:
             "tickers": tickers,
             "price_data": price_df,
             "returns_data": returns_data,
+            "cumulative_returns": cumulative_returns,
             "mean_vector": mean_returns,
             "covariance_matrix": covariance_matrix,
             "risk_free_rate": self.config["risk_free_rate"],
             "target_weights": target_weights,
             "initial_holdings": initial_holdings,
+            "initial_weights": initial_weights,
             "total_portfolio_value": total_portfolio_value,
             "cash_allocation": self.config.get("cash_allocation", 0.0),
+            "trading_frequency": self.config.get("trading_frequency", "d"),
+            "lookback_window": self.config.get("lookback_window", 252),
+            "first_rebal": self.config.get("first_rebal", 0)
         }
         
         return RebalanceProblem(prepared_data)

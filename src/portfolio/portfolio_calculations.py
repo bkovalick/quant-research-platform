@@ -16,7 +16,7 @@ class PortfolioCalculations:
         Returns:
             DataFrame with percentage returns
         """
-        return price_data.pct_change().iloc[1:] * 100
+        return price_data.pct_change().iloc[1:]
     
     @staticmethod
     def calculate_mean_returns(returns_data: pd.DataFrame) -> np.ndarray:

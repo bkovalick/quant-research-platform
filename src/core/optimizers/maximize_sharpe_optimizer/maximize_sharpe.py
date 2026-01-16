@@ -3,8 +3,9 @@ from mosek.fusion import *
 import numpy as np
 
 from core.optimizers.ioptimizer import IOptimizer
-from core.optimizers.maximize_sharp_optimizer.decision_variables_max_sharpe import MaximizeSharpeDecisionVariables
+from core.optimizers.maximize_sharpe_optimizer.decision_variables_max_sharpe import MaximizeSharpeDecisionVariables
 from portfolio.rebalance_problem import RebalanceProblem
+from models.rebalance_solution import RebalanceSolution
 
 class MaximizeSharpeOptimizer(IOptimizer):
     def __init__(self):
@@ -12,10 +13,11 @@ class MaximizeSharpeOptimizer(IOptimizer):
 
     def optimize(self, rebalance_problem: RebalanceProblem):
         with Model("maximize_sharpe") as M:
-            n = rebalance_problem.n_constituents
-            mu = rebalance_problem.get_return_series
-            rf = rebalance_problem.get_risk_free_rate
-            covMatrix = rebalance_problem.get_covariance_matrix
+            decision_variables = MaximizeSharpeDecisionVariables(rebalance_problem)
+            self._set_constraints(M, decision_variables, rebalance_problem)
+            self._set_objective(M, decision_variables, rebalance_problem)
+            M.solve()
+            return self._retrieve_solution(decision_variables, rebalance_problem)
 
             # # Decision variables
             # y = M.variable("y", n, Domain.greaterThan(0.0))
@@ -39,7 +41,26 @@ class MaximizeSharpeOptimizer(IOptimizer):
             # sharpe_ratio = (np.dot(mu, x_optimal) - rf) / np.sqrt(x_optimal @ covMatrix @ x_optimal)
             # print(f"Max Sharpe Ratio: {sharpe_ratio}")
 
+    def _set_constraints(self, 
+                         m, 
+                         dv: MaximizeSharpeDecisionVariables, 
+                         rebalance_problem: RebalanceProblem):
+        n = rebalance_problem.n_constituents
+        mu = rebalance_problem.get_return_series
+        rf = rebalance_problem.get_risk_free_rate
+        covMatrix = rebalance_problem.get_covariance_matrix
 
+    def _set_objective(self, 
+                       m, 
+                       dv: MaximizeSharpeDecisionVariables, 
+                       rebalance_problem: RebalanceProblem):
+        pass
+
+    def _retrieve_solution(self, 
+                           m,
+                           dv: MaximizeSharpeDecisionVariables, 
+                           rebalance_problem: RebalanceProblem):
+        return RebalanceSolution(m, dv,rebalance_problem) 
 """ 
     Method 2: Manual Convex Reformulation using gurobipy If you need more control over the model 
     (e.g., adding specific custom constraints like L1 norm constraints), you can manually implement 
