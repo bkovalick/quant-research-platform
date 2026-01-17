@@ -3,8 +3,8 @@ import numpy as np
 from core.optimizers.optimizer_factory import OptimizerFactory
 from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
 from backtesting.backtesting_engine import BacktestingEngine, FixedWeightPortfolio, MaxSharpePortfolio, MeanVariancePortfolio
+from backtesting.portfolio import Portfolio
 
-"""Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
     config = {
         "rebalance_sub_parameters": [
@@ -22,31 +22,21 @@ if __name__ == '__main__':
         "lookback_window": 52,
         "first_rebal": 0
     }
-    
+
     fwp_config = config.copy()
     fwp_config["program_type"] = "fixed_weights"
-
     mvc_config = config.copy()
     mvc_config["program_type"] = "mean_variance"
 
-    # Build the rebalance problem using the builder
     builder = RebalanceProblemBuilder(config)
     try:
         rebalance_problem = builder.build()
     except ValueError as e:
         print(f"Error building rebalance problem: {e}")
         exit(1)
-    
-    # Create optimizer and backtesting engine
-    # optimizer = OptimizerFactory.create_optimizer(config["program_type"])
-    # portfolio = MaxSharpePortfolio(optimizer=optimizer)
-    optimizer = OptimizerFactory.create_optimizer(mvc_config["program_type"])
-    portfolio = MeanVariancePortfolio(optimizer=optimizer)
 
-    # optimizer = OptimizerFactory.create_optimizer(fwp_config["program_type"])
-    # portfolio = FixedWeightPortfolio(optimizer=optimizer)
+    optimizer = OptimizerFactory.create_optimizer(config["program_type"])
+    portfolio = Portfolio(optimizer=optimizer)
     backtestingEngine = BacktestingEngine(portfolio)
     rebal_port = backtestingEngine.run_backtest(rebalance_problem)
     print(rebal_port)
-
-    
