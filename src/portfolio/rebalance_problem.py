@@ -80,22 +80,27 @@ class RebalanceProblem:
     def target_weights(self) -> list:
         return self._data.get("target_weights")
 
-    @property
-    def initial_holdings(self) -> list:
-        return self._data.get("initial_holdings")
+    # @property
+    # def initial_holdings(self) -> list:
+    #     return self._data.get("initial_holdings")
 
     @property
     def initial_weights(self) -> list:
         return self._data.get("initial_weights")
 
-    @initial_weights.setter
-    def initial_weights(self, weights):
-        """Set the initial portfolio weights."""
-        self._data["initial_weights"] = weights
-
     @property
-    def total_portfolio_value(self) -> float:
-        return self._data.get("total_portfolio_value")
+    def rebalanced_weights(self) -> list:
+        """Get the initial portfolio weights."""
+        return self._data.get("rebalanced_weights")
+    
+    @rebalanced_weights.setter
+    def rebalanced_weights(self, weights):
+        """Set the initial portfolio weights."""
+        self._data["rebalanced_weights"] = weights
+
+    # @property
+    # def total_portfolio_value(self) -> float:
+    #     return self._data.get("total_portfolio_value")
 
     @property
     def cash_allocation(self) -> float:

@@ -49,13 +49,13 @@ class RebalanceProblemBuilder:
         target_weights = self.portfolio_calculations.extract_target_weights(
             self.config["rebalance_sub_parameters"]
         )
-        initial_holdings = self.portfolio_calculations.extract_initial_holdings(
+        initial_weights = self.portfolio_calculations.extract_initial_weights(
             self.config["rebalance_sub_parameters"]
         )
-        initial_weights = [ holding / sum(initial_holdings) for holding in initial_holdings ]
+        # initial_weights = [ holding / sum(initial_holdings) for holding in initial_holdings ]
         
         # Calculate total portfolio value
-        total_portfolio_value = sum(initial_holdings) + self.config.get("cash_allocation", 0.0)
+        # total_portfolio_value = sum(initial_holdings) + self.config.get("cash_allocation", 0.0)
         
         # Create prepared data dict
         prepared_data = {
@@ -67,9 +67,9 @@ class RebalanceProblemBuilder:
             "covariance_matrix": covariance_matrix,
             "risk_free_rate": self.config["risk_free_rate"],
             "target_weights": target_weights,
-            "initial_holdings": initial_holdings,
+            # "initial_holdings": initial_holdings,
             "initial_weights": initial_weights,
-            "total_portfolio_value": total_portfolio_value,
+            # "total_portfolio_value": total_portfolio_value,
             "cash_allocation": self.config.get("cash_allocation", 0.0),
             "risk_tolerance": self.config.get("risk_tolerance", 0.0),
             "trading_frequency": self.config.get("trading_frequency", "d"),

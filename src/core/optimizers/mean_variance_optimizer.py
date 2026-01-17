@@ -39,14 +39,13 @@ class MeanVarianceOptimizer(IOptimizer):
 
         optimal_weights = result.x
         total_trades = optimal_weights - initial_weights
-
-        # Wrap in RebalanceSolution-compatible object
+        
         return RebalanceSolution(
-            model="Scipy",  # No MOSEK model
-            decision_variables=type('DV', (), {
-                'portfolio_weights': type('W', (), {'level': lambda self=optimal_weights: optimal_weights})(),
-                'total_trades': type('T', (), {'level': lambda self=total_trades: total_trades})()
-            })(),
+            model="Scipy",
+            decision_variables={
+                'portfolio_weights': type('W', (), {'level': lambda self=optimal_weights: optimal_weights})().level(),
+                'total_trades': type('T', (), {'level': lambda self=total_trades: total_trades})().level()
+            },
             rebalance_problem=rebalance_problem
         )
 

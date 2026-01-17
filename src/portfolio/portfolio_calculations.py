@@ -71,7 +71,7 @@ class PortfolioCalculations:
         return [item["target_weight"] for item in rebalance_params]
     
     @staticmethod
-    def extract_initial_holdings(rebalance_params: list) -> list:
+    def extract_initial_weights(rebalance_params: list) -> list:
         """
         Extract initial holdings from rebalance sub-parameters.
         
@@ -81,4 +81,4 @@ class PortfolioCalculations:
         Returns:
             List of initial holdings
         """
-        return [item["initial_holdings"] for item in rebalance_params]
+        return [item["initial_weights"] for item in rebalance_params]

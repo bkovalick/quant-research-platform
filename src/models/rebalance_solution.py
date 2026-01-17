@@ -15,12 +15,12 @@ class RebalanceSolution:
         self.model = model
         self.decision_variables = decision_variables
         self.rebalance_problem = rebalance_problem
-        self.rebalance_solution = self.get_rebalance_solution()
+        self.rebalance_sub_solution = self.get_rebalance_sub_solution()
 
-    def get_rebalance_solution(self) -> 'RebalanceSubSolution':
+    def get_rebalance_sub_solution(self) -> 'RebalanceSubSolution':
         return RebalanceSubSolution(
-            total_trades=self.decision_variables.total_trades.level(),
-            portfolio_weights=self.decision_variables.portfolio_weights.level()
+            total_trades=self.decision_variables['total_trades'],
+            portfolio_weights=self.decision_variables['portfolio_weights']
         )
 
 @dataclass
