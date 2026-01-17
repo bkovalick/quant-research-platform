@@ -11,7 +11,7 @@ class PortfolioInterface(abc.ABC):
     def get_rebalance_solution(self, rebalance_problem):
         pass
 
-class FixedWeightPortfolio:
+class FixedWeightPortfolio(PortfolioInterface):
     """A simple fixed-weight portfolio for benchmarking purposes."""
     def __init__(self, 
                  optimizer = None):
@@ -24,7 +24,7 @@ class FixedWeightPortfolio:
             portfolio_weights = [ holding / rebalance_problem.total_portfolio_value \
                                  for holding in rebalance_problem.initial_holdings])
     
-class MaxSharpePortfolio:
+class MaxSharpePortfolio(PortfolioInterface):
     """A portfolio optimized to maximize the Sharpe ratio."""
     def __init__(self, 
                  optimizer = None):
@@ -34,6 +34,17 @@ class MaxSharpePortfolio:
         """Optimize the portfolio to maximize the Sharpe ratio."""
         return self.optimizer.optimize(rebalance_problem)
     
+class MeanVariancePortfolio(PortfolioInterface):
+    """A portfolio optimized to maximize the return given a risk/variance constraint."""
+    def __init__(self, 
+                 optimizer = None):
+        self.optimizer = optimizer
+
+    def get_rebalance_solution(self, rebalance_problem):
+        """Return the optimized portfolio"""
+        self.rebalanced_portfolio = self.optimizer.optimize(rebalance_problem)    
+        return self.rebalanced_portfolio.rebalance_solution
+
 class BacktestingEngineInterface(abc.ABC):
     """Interface for backtesting engines."""
     @abc.abstractmethod
@@ -49,6 +60,18 @@ class BacktestingEngine(BacktestingEngineInterface):
         self.portfolio = portfolio
         self.annual_trading_days = { "d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
         
+    def _is_rebalance_date(self, date_idx, rebalance_frequency):
+        if rebalance_frequency == 'w':
+            return True  # every week
+        elif rebalance_frequency == 'm':
+            return date_idx.is_month_start or date_idx.is_month_end
+        elif rebalance_frequency == 'q':
+            return date_idx.is_quarter_start or date_idx.is_quarter_end
+        elif rebalance_frequency == 'y':
+            return date_idx.is_year_start or date_idx.is_year_end
+        else:
+            raise ValueError(f"Unsupported rebalance frequency: {rebalance_frequency}")
+
     def run_backtest(self, rebalance_problem):
         self._setup_rebalancing_data(rebalance_problem)
         self._setup_variables(rebalance_problem)
@@ -61,6 +84,7 @@ class BacktestingEngine(BacktestingEngineInterface):
         lookback_window = rebalance_problem.lookback_window
         date_indices = list(self.asset_prices.index)
         prev_weights = self.portfolio_weights.iloc[0].values.copy()
+        rebalance_frequency = getattr(rebalance_problem, 'rebalance_frequency', 'w')
         
         for i, date_idx in enumerate(date_indices):
             print(f"Backtesting date: {date_idx}")
@@ -78,29 +102,29 @@ class BacktestingEngine(BacktestingEngineInterface):
                 self.portfolio_returns.loc[date_idx] = curr_return
                 prev_weights = curr_weights
             
-            # Rebalance: hold weights during lookback period, then optimize
-            if i < lookback_window and i > 0:
-                # During lookback window, use previous weights
-                self.portfolio_weights.loc[date_idx] = prev_weights
-            else:
-                # After lookback window, run optimization
-                rebalance_problem.initial_weights = prev_weights
-                optimized_weights = self._calculate_rebalance_weights(
-                    rebalance_problem, self.asset_prices.loc[:date_idx]
-                )
-                self.portfolio_weights.loc[date_idx] = optimized_weights
+            # Only rebalance if this is a rebalance date
+            if not self._is_rebalance_date(date_idx, rebalance_frequency):
+                continue
             
-            # Calculate turnover: sum of absolute weight changes divided by 2
+            # Every row is a rebalance date (data is already resampled)
+            rebalance_problem.initial_weights = prev_weights
+            optimized_weights = self._calculate_rebalance_weights(
+                i, lookback_window, rebalance_problem, self.asset_prices.loc[:date_idx]
+            )
+            self.portfolio_weights.loc[date_idx] = optimized_weights
+            
             self.portfolio_turnover.loc[date_idx] = (
                 np.sum(np.abs(self.portfolio_weights.loc[date_idx].values - prev_weights)) / 2
             )
+
+            prev_weights = optimized_weights
 
         performance_metrics_df = self._calculate_performance_metrics(
             rebalance_problem, self.portfolio_returns, self.portfolio_weights, self.portfolio_turnover
         )
         print(f"Backtest duration: {time.time() - start_time} seconds")
         return performance_metrics_df
-
+    
     def _setup_variables(self, rebalance_problem):
         """Setup necessary variables for backtesting."""
         self.asset_prices = rebalance_problem.price_data
@@ -126,11 +150,14 @@ class BacktestingEngine(BacktestingEngineInterface):
         curr_weights = curr_weights / sum(curr_weights)
         return curr_weights, curr_returns
 
-    def _calculate_rebalance_weights(self, rebalance_problem, model_data):
+    def _calculate_rebalance_weights(self, i, lookback_window, rebalance_problem, model_data):
         """Calculate rebalance weights"""
+        if i < lookback_window:
+            return rebalance_problem.initial_weights
+        
         rebalance_problem.price_data = model_data
-        rebalanced_portfolio = self.portfolio.get_rebalance_solution(rebalance_problem)
-        curr_weights = rebalanced_portfolio.portfolio_weights
+        rebalance_solution = self.portfolio.get_rebalance_solution(rebalance_problem)
+        curr_weights = rebalance_solution.portfolio_weights
         return curr_weights
     
     def _calculate_performance_metrics(self, rebalance_problem, portfolio_returns: pd.Series, \
@@ -161,11 +188,11 @@ class BacktestingEngine(BacktestingEngineInterface):
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
             "max_drawdown": self._calculate_max_drawdown(cumulative_returns),
-            "turnover": portfolio_turnover
+            "turnover": portfolio_turnover.mean() * self.WEEKS_PER_YEAR
         }
         return performance_metrics
     
     def _calculate_max_drawdown(self, cumulative_returns):
         running_max = cumulative_returns.cummax()
         drawdown = (cumulative_returns - running_max) / running_max
-        return drawdown.min()    
+        return drawdown.min()
