@@ -2,6 +2,7 @@ import abc
 import numpy as np
 import pandas as pd
 import time
+import matplotlib.pyplot as plt
 
 from portfolio.portfolio import PortfolioInterface
 
@@ -111,6 +112,7 @@ class BacktestingEngine(BacktestingEngineInterface):
         """Calculate performance metrics for the portfolio."""
         wealth_factors = (1 + portfolio_returns).cumprod()
         cumulative_returns = wealth_factors - 1
+
         # Annualize return: compound final return over time horizon (CAGR)
         num_periods = cumulative_returns.shape[0]
         years = num_periods / self.WEEKS_PER_YEAR
@@ -137,6 +139,23 @@ class BacktestingEngine(BacktestingEngineInterface):
             "max_drawdown": abs(self._calculate_max_drawdown(cumulative_returns)),
             "turnover": portfolio_turnover.mean() * self.WEEKS_PER_YEAR
         }
+
+        # Plot cumulative returns
+        returns = portfolio_returns.dropna(axis = 0)
+        if isinstance(returns, pd.Series):
+            if returns.name is None:
+                returns.name = 'portfolio'      
+            returns = returns.to_frame()        
+        ax = wealth_factors.plot(figsize = (10,4))
+        ax.set_title('Cumulative Return',  fontsize = 16)
+        ax.tick_params(axis='x', labelsize = 12)
+        ax.tick_params(axis='y', labelsize = 12)
+        # Fix legend: build labels as list of strings, using scalar sharpe_ratio for all columns
+        if np.isscalar(sharpe_ratio):
+            labels = [f"{col} - Sharpe: {sharpe_ratio:.2f}" for col in returns.columns]
+        else:
+            labels = [f"{col} - Sharpe: {sharpe_ratio.get(col, 0):.2f}" for col in returns.columns]
+        plt.legend(labels, fontsize=12.5)
         return performance_metrics
     
     def _calculate_max_drawdown(self, cumulative_returns):
