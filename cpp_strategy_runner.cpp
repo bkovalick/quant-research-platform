@@ -6,6 +6,7 @@
 #include <iostream>
 
 namespace py = pybind11;
+// using namespace pybind11::literals; // Not needed if not using _a
 
 // Worker function to run a single strategy
 void run_strategy_worker(const py::object& run_strategy, py::dict config, std::vector<py::object>& results, int idx) {
@@ -20,11 +21,10 @@ int main() {
     py::object run_strategy = strategy_runner.attr("run_strategy");
 
     // Example: list of configs (replace with your actual configs)
-    std::vector<py::dict> configs = {
-        py::dict("program_type"_a="fixed_weights"),
-        py::dict("program_type"_a="maximize_sharpe"),
-        py::dict("program_type"_a="mean_variance")
-    };
+    std::vector<py::dict> configs(3);
+    configs[0]["program_type"] = "fixed_weights";
+    configs[1]["program_type"] = "maximize_sharpe";
+    configs[2]["program_type"] = "mean_variance";
     std::vector<py::object> results(configs.size());
     std::vector<std::thread> threads;
 
