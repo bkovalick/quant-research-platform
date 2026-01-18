@@ -1,6 +1,6 @@
 # portfolio-optimizer
 
-Application that leverages MOSEK's API to blend optimization experiments with sound object oriented and system design techniques.
+Application that leverages Scipy to blend optimization experiments with sound object oriented and system design techniques.
 
 ## System Overview
 This repository is a modular toolkit for portfolio optimization and backtesting. It supports multiple strategies (fixed weights, mean-variance, Sharpe maximization) and is designed for extensibility and experimentation.
