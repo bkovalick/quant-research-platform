@@ -40,6 +40,15 @@ class BacktestingEngine(BacktestingEngineInterface):
         print("Running backtest...")
         start_time = time.time()
 
+        self._run_backtest_loop(rebalance_problem)
+
+        performance_metrics = self._calculate_performance_metrics(
+            rebalance_problem, self.portfolio.returns, self.portfolio.weights, self.portfolio.turnover
+        )
+        print(f"Backtest duration: {time.time() - start_time} seconds")
+        return performance_metrics
+
+    def _run_backtest_loop(self, rebalance_problem):
         first_rebal = rebalance_problem.first_rebal
         lookback_window = rebalance_problem.lookback_window
         date_indices = list(self.asset_prices.index)
@@ -71,12 +80,6 @@ class BacktestingEngine(BacktestingEngineInterface):
                 np.sum(np.abs(self.portfolio.weights.loc[date_idx].values - prev_weights)) / 2
             )
             prev_weights = optimized_weights
-
-        performance_metrics = self._calculate_performance_metrics(
-            rebalance_problem, self.portfolio.returns, self.portfolio.weights, self.portfolio.turnover
-        )
-        print(f"Backtest duration: {time.time() - start_time} seconds")
-        return performance_metrics
     
     def _setup_rebalancing_data(self, rebalance_problem):
         """Setup market data frequency based on rebalance problem settings."""
@@ -123,8 +126,10 @@ class BacktestingEngine(BacktestingEngineInterface):
         )
         
         performance_metrics = {
-            "portfolio_weights": portfolio_weights,
             "portfolio_wealth_factors": wealth_factors,
+            "portfolio_weights": portfolio_weights,
+            "portfolio_returns": portfolio_returns,
+            "portfolio_turnover": portfolio_turnover,
             "cumulative_returns": cumulative_returns,
             "return": annualized_return,
             "volatility": annualized_volatility,
