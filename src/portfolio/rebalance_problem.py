@@ -28,6 +28,18 @@ class RebalanceProblem:
     @property
     def price_data(self) -> pd.DataFrame:
         return self._data.get("price_data")
+    
+    @property
+    def program_type(self) -> str:
+        return self._data.get("program_type", "fixed_weights")
+    
+    @property
+    def start_date(self) -> str:
+        return self._data.get("start_date")
+    
+    @property
+    def end_date(self) -> str:
+        return self._data.get("end_date")    
 
     @price_data.setter
     def price_data(self, df: pd.DataFrame):

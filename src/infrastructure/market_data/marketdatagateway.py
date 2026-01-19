@@ -14,7 +14,6 @@ class MarketEnvironment:
     def __init__(self, gateway=None, market_params = None):
         self.gateway = gateway or MarketDataGateway()
         self.market_params = market_params
-        # self._market_data= None
         self._market_data = self.gateway.get_price_data(
             self.market_params["tickers"], self.market_params["start_date"], self.market_params["end_date"]
         )

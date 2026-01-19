@@ -173,9 +173,9 @@ class BacktestingEngine(BacktestingEngineInterface):
         except Exception:
             start_date = 'unknown_start'
             end_date = 'unknown_end'
-        filename = f"cumulative_return_{program_type}_{start_date}_to_{end_date}.png"
+        filename = f"backtest_results/cumulative_return_{program_type}_{start_date}_to_{end_date}.png"
         plt.savefig(filename, bbox_inches='tight')
-        plt.close()        
+        plt.close()
     
     def _calculate_max_drawdown(self, cumulative_returns):
         """Calculate maximum drawdown from cumulative returns."""

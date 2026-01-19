@@ -36,15 +36,18 @@ class Portfolio(PortfolioInterface):
         return self.optimizer.optimize(rebalance_problem)
     
     @property
-    def current_weights(self):
+    def rebalanced_weights(self):
+        """Get the current portfolio weights."""
         return self.weights
     
     @property
     def current_returns(self):
+        """Get the current portfolio returns."""
         return self.returns
     
     @property
     def current_turnover(self):
+        """Get the current portfolio turnover."""
         return self.turnover
     
     
