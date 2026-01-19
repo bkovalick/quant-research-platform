@@ -4,11 +4,23 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+    
         {
-            "name": "Python Debugger: Current File",
+            "name": "Python Debugger: Launch strategy runner",
             "type": "debugpy",
             "request": "launch",
             "program": "src/main.py",
+            // "program": "src/infrastructure/market_data/marketdatagateway.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Run Cpp Strategy Runner (MSVC)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Debug/cpp_strategy_runner.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal"
         }
     ]

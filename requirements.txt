@@ -1,3 +1,6 @@
+# NOTE: pybind11 is required for C++ integration (install via pip or your system package manager),
+# but is not needed as a Python pip dependency for this requirements.txt.
+# All Python dependencies for the portfolio optimizer and backtesting system are listed below.
 appdirs==1.4.4
 appnope==0.1.4
 asttokens==2.4.1

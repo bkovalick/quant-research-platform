@@ -28,6 +28,18 @@ class RebalanceProblem:
     @property
     def price_data(self) -> pd.DataFrame:
         return self._data.get("price_data")
+    
+    @property
+    def program_type(self) -> str:
+        return self._data.get("program_type", "fixed_weights")
+    
+    @property
+    def start_date(self) -> str:
+        return self._data.get("start_date")
+    
+    @property
+    def end_date(self) -> str:
+        return self._data.get("end_date")    
 
     @price_data.setter
     def price_data(self, df: pd.DataFrame):
@@ -81,21 +93,18 @@ class RebalanceProblem:
         return self._data.get("target_weights")
 
     @property
-    def initial_holdings(self) -> list:
-        return self._data.get("initial_holdings")
-
-    @property
     def initial_weights(self) -> list:
         return self._data.get("initial_weights")
 
-    @initial_weights.setter
-    def initial_weights(self, weights):
-        """Set the initial portfolio weights."""
-        self._data["initial_weights"] = weights
-
     @property
-    def total_portfolio_value(self) -> float:
-        return self._data.get("total_portfolio_value")
+    def rebalanced_weights(self) -> list:
+        """Get the initial portfolio weights."""
+        return self._data.get("rebalanced_weights")
+    
+    @rebalanced_weights.setter
+    def rebalanced_weights(self, weights):
+        """Set the initial portfolio weights."""
+        self._data["rebalanced_weights"] = weights
 
     @property
     def cash_allocation(self) -> float:
@@ -116,3 +125,7 @@ class RebalanceProblem:
     @property
     def risk_tolerance(self) -> int:
         return self._data.get("risk_tolerance", 0)
+    
+    @property
+    def model_constraints(self) -> dict:
+        return self._data.get("model_constraints", {})
