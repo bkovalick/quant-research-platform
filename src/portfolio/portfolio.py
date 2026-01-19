@@ -28,11 +28,23 @@ class Portfolio(PortfolioInterface):
 
     def get_rebalance_solution(self, rebalance_problem):
         if isinstance(self.optimizer, FixedWeightOptimizer):
-            # Always return the initial_weights for a fixed-weight portfolio
             decision_variables = {
                 'total_trades': np.array([0.0] * len(rebalance_problem.tickers)),
                 'portfolio_weights': rebalance_problem.initial_weights  }
             return RebalanceSolution(model=None, decision_variables=decision_variables, rebalance_problem=rebalance_problem)
 
         return self.optimizer.optimize(rebalance_problem)
+    
+    @property
+    def current_weights(self):
+        return self.weights
+    
+    @property
+    def current_returns(self):
+        return self.returns
+    
+    @property
+    def current_turnover(self):
+        return self.turnover
+    
     

@@ -9,7 +9,8 @@
             "name": "Python Debugger: Launch strategy runner",
             "type": "debugpy",
             "request": "launch",
-            "program": "src/main.py",
+            // "program": "src/main.py",
+            "program": "src/infrastructure/market_data/marketdatagateway.py",
             "console": "integratedTerminal"
         },
         {

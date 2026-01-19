@@ -21,6 +21,7 @@ class BacktestingEngine(BacktestingEngineInterface):
         self.annual_trading_days = { "d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
         
     def _is_rebalance_date(self, date_idx, rebalance_frequency):
+        """Determine if the current date is a rebalance date based on frequency."""
         if rebalance_frequency == 'w':
             return True  # every week
         elif rebalance_frequency == 'm':
@@ -33,6 +34,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             raise ValueError(f"Unsupported rebalance frequency: {rebalance_frequency}")
 
     def run_backtest(self, rebalance_problem):
+        """Run backtest on the given rebalance problem."""
         self._setup_rebalancing_data(rebalance_problem)
         self.portfolio.initialize(rebalance_problem)
         self.asset_prices = rebalance_problem.price_data
@@ -50,6 +52,7 @@ class BacktestingEngine(BacktestingEngineInterface):
         return performance_metrics
 
     def _run_backtest_loop(self, rebalance_problem):
+        """Main backtesting loop over all dates."""
         first_rebal = rebalance_problem.first_rebal
         lookback_window = rebalance_problem.lookback_window
         date_indices = list(self.asset_prices.index)
@@ -139,8 +142,12 @@ class BacktestingEngine(BacktestingEngineInterface):
             "max_drawdown": abs(self._calculate_max_drawdown(cumulative_returns)),
             "turnover": portfolio_turnover.mean() * self.WEEKS_PER_YEAR
         }
-
-        # Plot cumulative returns
+        self._save_performance_plot(portfolio_returns, wealth_factors, sharpe_ratio, rebalance_problem)
+        return performance_metrics
+    
+    def _save_performance_plot(self, portfolio_returns, wealth_factors, sharpe_ratio, rebalance_problem):
+        """Generate and save performance plot with descriptive filename."""
+        # Plot cumulative returns and save with descriptive filename
         returns = portfolio_returns.dropna(axis = 0)
         if isinstance(returns, pd.Series):
             if returns.name is None:
@@ -156,9 +163,22 @@ class BacktestingEngine(BacktestingEngineInterface):
         else:
             labels = [f"{col} - Sharpe: {sharpe_ratio.get(col, 0):.2f}" for col in returns.columns]
         plt.legend(labels, fontsize=12.5)
-        return performance_metrics
+
+        # Build descriptive filename
+        program_type = getattr(rebalance_problem, 'program_type', 'unknown')
+        # Try to get start/end dates from wealth_factors index
+        try:
+            start_date = str(wealth_factors.index[0])[:10]
+            end_date = str(wealth_factors.index[-1])[:10]
+        except Exception:
+            start_date = 'unknown_start'
+            end_date = 'unknown_end'
+        filename = f"cumulative_return_{program_type}_{start_date}_to_{end_date}.png"
+        plt.savefig(filename, bbox_inches='tight')
+        plt.close()        
     
     def _calculate_max_drawdown(self, cumulative_returns):
+        """Calculate maximum drawdown from cumulative returns."""
         running_max = cumulative_returns.cummax()
         drawdown = (cumulative_returns - running_max) / running_max
         return drawdown.min()  # negative value; abs() taken in reporting

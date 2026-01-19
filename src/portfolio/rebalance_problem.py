@@ -80,10 +80,6 @@ class RebalanceProblem:
     def target_weights(self) -> list:
         return self._data.get("target_weights")
 
-    # @property
-    # def initial_holdings(self) -> list:
-    #     return self._data.get("initial_holdings")
-
     @property
     def initial_weights(self) -> list:
         return self._data.get("initial_weights")
@@ -97,10 +93,6 @@ class RebalanceProblem:
     def rebalanced_weights(self, weights):
         """Set the initial portfolio weights."""
         self._data["rebalanced_weights"] = weights
-
-    # @property
-    # def total_portfolio_value(self) -> float:
-    #     return self._data.get("total_portfolio_value")
 
     @property
     def cash_allocation(self) -> float:
@@ -121,3 +113,7 @@ class RebalanceProblem:
     @property
     def risk_tolerance(self) -> int:
         return self._data.get("risk_tolerance", 0)
+    
+    @property
+    def model_constraints(self) -> dict:
+        return self._data.get("model_constraints", {})
