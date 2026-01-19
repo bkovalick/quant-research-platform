@@ -130,6 +130,12 @@ class BacktestingEngine(BacktestingEngineInterface):
             if annualized_volatility != 0 else 0.0
         )
         
+        # Only compute max drawdown after lookback period
+        lookback_window = getattr(rebalance_problem, 'lookback_window', 0)
+        if lookback_window > 0:
+            drawdown_returns = cumulative_returns.iloc[lookback_window:]
+        else:
+            drawdown_returns = cumulative_returns
         performance_metrics = {
             "portfolio_wealth_factors": wealth_factors,
             "portfolio_weights": portfolio_weights,
@@ -139,11 +145,17 @@ class BacktestingEngine(BacktestingEngineInterface):
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
-            "max_drawdown": abs(self._calculate_max_drawdown(cumulative_returns)),
+            "max_drawdown": abs(self._calculate_max_drawdown(drawdown_returns)),
             "turnover": portfolio_turnover.mean() * self.WEEKS_PER_YEAR
         }
         self._save_performance_plot(portfolio_returns, wealth_factors, sharpe_ratio, rebalance_problem)
         return performance_metrics
+    
+    def _calculate_max_drawdown(self, cumulative_returns):
+        """Calculate maximum drawdown from cumulative returns."""
+        running_max = cumulative_returns.cummax()
+        drawdown = (cumulative_returns - running_max) / running_max
+        return drawdown.min()  # negative value; abs() taken in reporting    
     
     def _save_performance_plot(self, portfolio_returns, wealth_factors, sharpe_ratio, rebalance_problem):
         """Generate and save performance plot with descriptive filename."""
@@ -176,9 +188,3 @@ class BacktestingEngine(BacktestingEngineInterface):
         filename = f"backtest_results/cumulative_return_{program_type}_{start_date}_to_{end_date}.png"
         plt.savefig(filename, bbox_inches='tight')
         plt.close()
-    
-    def _calculate_max_drawdown(self, cumulative_returns):
-        """Calculate maximum drawdown from cumulative returns."""
-        running_max = cumulative_returns.cummax()
-        drawdown = (cumulative_returns - running_max) / running_max
-        return drawdown.min()  # negative value; abs() taken in reporting

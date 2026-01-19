@@ -16,7 +16,7 @@ if __name__ == '__main__':
         ],
         "risk_free_rate": 0.03,
         "cash_allocation": 0.0,
-        "risk_tolerance": 0.07,
+        "risk_tolerance": 0.10,
         "start_date": "2005-01-01",
         "end_date": "2026-01-15",
         "program_type": "maximize_sharpe",
