@@ -14,15 +14,14 @@ class MarketEnvironment:
     def __init__(self, gateway=None, market_params = None):
         self.gateway = gateway or MarketDataGateway()
         self.market_params = market_params
+        tickers = [t for t in self.market_params["tickers"] if t.upper() != "CASH"]
         self._market_data = self.gateway.get_price_data(
-            self.market_params["tickers"], self.market_params["start_date"], self.market_params["end_date"]
+            tickers, self.market_params["start_date"], self.market_params["end_date"]
         )
+        self._market_data["CASH"] = 1.0
+        self._market_data = self._market_data[self.market_params["tickers"]]
         self._normalized_prices = None
     
-    def fetch_market_data(self, tickers, start_date, end_date):
-        self._market_data = self.gateway.get_price_data(tickers, start_date, end_date)
-        self._market_data["CASH"] = 1.0
-
     @property
     def normalized_prices(self) -> pd.DataFrame:
         """ Normalize prices to start at 1 """
@@ -32,31 +31,15 @@ class MarketEnvironment:
         normalized = normalized.asfreq(
             self.market_params["trading_frequency"], method='ffill'
         )
+        re_normalized = normalized / normalized.iloc[0]
+        re_normalized = re_normalized.dropna(axis=0)
+        return re_normalized
 
-        normalized = normalized.dropna(axis = 0)        
-        return normalized
-    
     @normalized_prices.setter
     def normalized_prices(self, df: pd.DataFrame):
         self._normalized_prices = df
-        
-    @property
-    def returns_data(self) -> pd.DataFrame:
-        """ Calculate returns from price data """
-        return self.normalized_prices.pct_change().iloc[1:]
-    
-    @property
-    def covariance_matrix(self) -> np.ndarray:
-        """ Calculate covariance matrix from returns data """
-        return np.cov(self.returns_data, rowvar = False)
-    
-    @property
-    def mean_returns(self) -> np.ndarray:
-        """ Calculate mean returns from returns data """
-        return np.array(self.returns_data.mean())
     
 if __name__ == "__main__":
-    # from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
     market_params = {
         "tickers": ["AAPL", "MSFT", "GOOGL"],
         "start_date": "2020-01-01",
