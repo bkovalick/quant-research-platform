@@ -7,5 +7,5 @@ class StrategyInterface(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def calculate_rebalanced_weights(self, rebalance_idx, lookback_prices):
+    def calculate_rebalanced_weights(self, rebalance_idx, lookback_prices, current_weights):
         pass

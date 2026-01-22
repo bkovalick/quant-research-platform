@@ -3,9 +3,9 @@ import numpy as np
 from core.strategies.istrategy import StrategyInterface
 from infrastructure.market_data.marketdatagateway import MarketEnvironment
 from signals.signals import Signals
-from optimizers.mean_variance_optimizer import MeanVarianceOptimizer
+from optimizers.optimizer import Optimizer
 
-class MeanVarianceStrategy(StrategyInterface):
+class MVOptimizationStrategy(StrategyInterface):
     def __init__(self, rebalance_problem, optimizer=None):
         self.rebalance_problem = rebalance_problem
         self.market_params = {
@@ -14,7 +14,7 @@ class MeanVarianceStrategy(StrategyInterface):
             "end_date": rebalance_problem.end_date, 
             "trading_frequency": rebalance_problem.trading_frequency}
         self.market_env = MarketEnvironment(market_params=self.market_params)
-        self.optimizer = optimizer or MeanVarianceOptimizer()
+        self.optimizer = optimizer or Optimizer()
         self.signals = Signals(self.market_env)
         self.rebalance_solution = None
         self.rebalance_solutions = []
@@ -26,13 +26,14 @@ class MeanVarianceStrategy(StrategyInterface):
         curr_weights = curr_weights / sum(curr_weights)
         return curr_weights, curr_returns
     
-    def calculate_rebalanced_weights(self, rebalance_idx, lookback_prices):
+    def calculate_rebalanced_weights(self, rebalance_idx, lookback_prices, current_weights):
         """Calculate rebalance weights"""
         if rebalance_idx < self.rebalance_problem.lookback_window:
             return self.rebalance_problem.initial_weights
         
         self.market_env.normalized_prices = self._apply_windsoring(lookback_prices)
-        self.rebalance_solution = self.optimizer.optimize(self.rebalance_problem)
+        self.rebalance_solution = self.optimizer.optimize(self.rebalance_problem, 
+                                                          self.signals, current_weights)
         self.rebalance_solutions.append(self.rebalance_solution)
         return self.rebalance_solution.decision_variables['portfolio_weights']
     

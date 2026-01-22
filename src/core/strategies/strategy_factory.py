@@ -1,8 +1,5 @@
 import abc
-from optimizers.maximize_sharpe_optimizer import MaximizeSharpeOptimizer
-from optimizers.mean_variance_optimizer import MeanVarianceOptimizer
-from core.optimizers.ioptimizer import IOptimizer
-from strategies.mean_variance_strategy import MeanVarianceStrategy
+from strategies.mv_optimization_strategy import MVOptimizationStrategy
 from strategies.fixed_weight_strategy import FixedWeightStrategy
 
 class IStrategyFactory(abc.ABC):
@@ -14,7 +11,7 @@ class IStrategyFactory(abc.ABC):
 class StrategyFactory(IStrategyFactory):
 
     _strategies = {
-        "mean_variance": MeanVarianceStrategy,
+        "mv_optimizer": MVOptimizationStrategy,
         "fixed_weights": FixedWeightStrategy
     }
 

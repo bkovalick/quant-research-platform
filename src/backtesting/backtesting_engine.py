@@ -38,15 +38,12 @@ class BacktestingEngine(BacktestingEngineInterface):
 
     def run_backtest(self, rebalance_problem):
         """Run backtest on the given rebalance problem."""
-        self._setup_rebalancing_data(rebalance_problem)
-        self.portfolio.initialize(rebalance_problem)
         self.asset_prices = self.strategy.market_env.normalized_prices.copy()
-        self.asset_returns = self.asset_prices.pct_change().fillna(0)
+        self.asset_returns = self.asset_prices.pct_change().fillna(0)        
+        self.portfolio.initialize(rebalance_problem, self.asset_prices)
 
         print("Running backtest...")
         start_time = time.time()
-
-        # self._run_backtest_loop(rebalance_problem)
         self._run_backtest_loop_new()
 
         performance_metrics = self._calculate_performance_metrics(
@@ -80,7 +77,7 @@ class BacktestingEngine(BacktestingEngineInterface):
 
             self.rebalance_problem.rebalanced_weights = prev_weights
             optimized_weights = self.strategy.calculate_rebalanced_weights(
-                curr_step, self.asset_prices.loc[:curr_date]
+                curr_step, self.asset_prices.loc[:curr_date], prev_weights
             )
             self.portfolio.weights.loc[curr_date] = optimized_weights
             self.portfolio.turnover.loc[curr_date] = (
@@ -121,31 +118,6 @@ class BacktestingEngine(BacktestingEngineInterface):
                 np.sum(np.abs(self.portfolio.weights.loc[date_idx].values - prev_weights)) / 2
             )
             prev_weights = optimized_weights
-    
-    def _setup_rebalancing_data(self, rebalance_problem):
-        """Setup market data frequency based on rebalance problem settings."""
-        rebalance_problem.price_data = rebalance_problem.price_data.asfreq(
-            rebalance_problem.trading_frequency, method='ffill'
-        )
-
-        rebalance_problem.price_data = rebalance_problem.price_data.dropna(axis = 0)
-
-    def _calculate_drifted_weights(self, prev_weights, prev_asset_returns):
-        """Calculate drifted weights based on previous weights and returns."""
-        curr_returns = np.sum(prev_weights * prev_asset_returns)
-        curr_weights = prev_weights * (1 + prev_asset_returns) / (1 + np.sum(prev_weights * prev_asset_returns))  
-        curr_weights = curr_weights / sum(curr_weights)
-        return curr_weights, curr_returns
-
-    def _calculate_rebalance_weights(self, i, lookback_window, rebalance_problem, model_data):
-        """Calculate rebalance weights"""
-        if i < lookback_window:
-            return rebalance_problem.initial_weights
-        
-        rebalance_problem.price_data = model_data
-        rebalance_solution = self.portfolio.get_rebalance_solution(rebalance_problem)
-        curr_weights = rebalance_solution.rebalance_sub_solution.portfolio_weights
-        return curr_weights
     
     def _calculate_performance_metrics(self, rebalance_problem, portfolio_returns: pd.Series, \
                                        portfolio_weights, portfolio_turnover):
