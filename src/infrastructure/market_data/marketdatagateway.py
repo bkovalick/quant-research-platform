@@ -32,28 +32,13 @@ class MarketEnvironment:
         normalized = normalized.asfreq(
             self.market_params["trading_frequency"], method='ffill'
         )
+        re_normalized = normalized / normalized.iloc[0]
+        re_normalized = re_normalized.dropna(axis=0)
+        return re_normalized
 
-        normalized = normalized.dropna(axis = 0)        
-        return normalized
-    
     @normalized_prices.setter
     def normalized_prices(self, df: pd.DataFrame):
         self._normalized_prices = df
-        
-    @property
-    def returns_data(self) -> pd.DataFrame:
-        """ Calculate returns from price data """
-        return self.normalized_prices.pct_change().iloc[1:]
-    
-    @property
-    def covariance_matrix(self) -> np.ndarray:
-        """ Calculate covariance matrix from returns data """
-        return np.cov(self.returns_data, rowvar = False)
-    
-    @property
-    def mean_returns(self) -> np.ndarray:
-        """ Calculate mean returns from returns data """
-        return np.array(self.returns_data.mean())
     
 if __name__ == "__main__":
     # from portfolio.rebalance_problem_builder import RebalanceProblemBuilder

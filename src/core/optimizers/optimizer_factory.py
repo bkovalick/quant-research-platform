@@ -1,6 +1,6 @@
 import abc
-from core.optimizers.maximize_sharpe_optimizer import MaximizeSharpeOptimizer
-from core.optimizers.mean_variance_optimizer import MeanVarianceOptimizer
+from optimizers.maximize_sharpe_optimizer import MaximizeSharpeOptimizer
+from optimizers.mean_variance_optimizer import MeanVarianceOptimizer
 from core.optimizers.ioptimizer import IOptimizer
 
 class IOptimizerFactory(abc.ABC):

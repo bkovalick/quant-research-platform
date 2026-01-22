@@ -77,6 +77,9 @@ class RebalanceProblemBuilder:
             "lookback_window": self.config.get("lookback_window", 252),
             "first_rebal": self.config.get("first_rebal", 0),
             "model_constraints": self.config.get("model_constraints", {}),
+            "apply_windsoring": self.config.get("apply_windsoring", True),
+            "windsor_percentiles": self.config.get("windsor_percentiles", {"lower": 0.05, "upper": 0.95}),
+            "trading_buffer": self.config.get("trading_buffer", 0.0)
         }
 
         return RebalanceProblem(prepared_data)

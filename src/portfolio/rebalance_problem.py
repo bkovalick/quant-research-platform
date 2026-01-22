@@ -2,8 +2,9 @@ import pandas as pd
 import numpy as np
 
 from portfolio.portfolio_calculations import PortfolioCalculations
+from signals.signals import Signals
 
-class RebalanceProblem:
+class RebalanceProblem:    
     """
     Pure data container for a prepared rebalance problem.
 
@@ -17,6 +18,15 @@ class RebalanceProblem:
     def __init__(self, prepared_data: dict):
         self._data = dict(prepared_data)
 
+    @property
+    def signals(self):
+        class DummyMarketEnv:
+            @property
+            def normalized_prices(self):
+                return self_outer.price_data
+        self_outer = self
+        return Signals(DummyMarketEnv())
+    
     @property
     def n_constituents(self) -> int:
         return len(self.tickers)
@@ -129,3 +139,15 @@ class RebalanceProblem:
     @property
     def model_constraints(self) -> dict:
         return self._data.get("model_constraints", {})
+    
+    @property
+    def apply_windsoring(self) -> bool:
+        return self._data.get("apply_windsoring", True)
+    
+    @property
+    def windsor_percentiles(self) -> dict:
+        return self._data.get("windsor_percentiles", {"lower": 0.05, "upper": 0.95})
+
+    @property
+    def trading_buffer(self) -> float:
+        return self._data.get("trading_buffer", 0.0)
