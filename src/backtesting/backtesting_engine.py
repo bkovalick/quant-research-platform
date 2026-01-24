@@ -46,11 +46,11 @@ class BacktestingEngine(BacktestingEngineInterface):
         start_time = time.time()
         self._run_backtest_loop_new()
 
-        performance_metrics = self._calculate_performance_metrics(
-            rebalance_problem, self.portfolio.returns, self.portfolio.weights, self.portfolio.turnover
-        )
+        # performance_metrics = self._calculate_performance_metrics(
+            # rebalance_problem, self.portfolio.returns, self.portfolio.weights, self.portfolio.turnover
+        # )
         print(f"Backtest duration: {time.time() - start_time} seconds")
-        return performance_metrics
+        # return performance_metrics
     
     def _run_backtest_loop_new(self):
         """Main backtesting loop over all dates."""

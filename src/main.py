@@ -23,7 +23,7 @@ if __name__ == '__main__':
         "end_date": "2026-01-15",
         "program_type": "mv_optimizer",
         "trading_frequency": "w",
-        "lookback_window": 52 * 5,
+        "lookback_window": 52 * 5, 
         "first_rebal": 0,
         "apply_windsoring": True,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
@@ -34,7 +34,7 @@ if __name__ == '__main__':
 
     strategies = [
         ("Fixed Weights", "fixed_weights"),
-        # ("MVOptimization", "mv_optimizer")
+        ("MVOptimization", "mv_optimizer")
     ]
 
     def run_strategy(label, strategy_type, config):
@@ -50,50 +50,24 @@ if __name__ == '__main__':
         strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
         portfolio = Portfolio()
         backtestingEngine = BacktestingEngine(portfolio, strategy)
-        metrics = backtestingEngine.run_backtest(rebalance_problem)
-        return metrics, label, strategy_type
+        backtestingEngine.run_backtest(rebalance_problem)
+        return backtestingEngine.portfolio, rebalance_problem, label
 
     summary_rows = []
     combined_rows = []
+    combined_metrics = []
     for label, strategy_type in strategies:
-        metrics, label, strategy_type = run_strategy(label, strategy_type, config)
-        if metrics is None:
+        portfolio, rebalance_problem, label = run_strategy(label, strategy_type, config)
+        if portfolio is None:
             continue
-        # Flatten scalar metrics and add label
-        row = {"strategy": label}
-        for k, v in metrics.items():
-            if isinstance(v, (pd.Series, pd.DataFrame)):
-                continue  # skip for now, will handle below
-            row[k] = v
-        summary_rows.append(row)
 
-        # Expand weights into separate columns and reorder columns
-        if "portfolio_weights" in metrics:
-            weights_df = pd.DataFrame(metrics["portfolio_weights"].values, columns=metrics["portfolio_weights"].columns)
-            weights_df.insert(0, "Date", metrics["portfolio_wealth_factors"].index)
-            weights_df["WealthFactor"] = metrics["portfolio_wealth_factors"].values
-            weights_df["PortfolioReturns"] = metrics["portfolio_returns"].values
-            weights_df["PortfolioTurnover"] = metrics["portfolio_turnover"].values
-            weights_df["Strategy"] = label
-            df = weights_df
-            combined_rows.append(df)
+        metric = ReportingSystem.calculate_performance_metrics(rebalance_problem, portfolio)
+        combined_metrics.append((metric, label))
 
-    # Summary table of scalar metrics
-    summary_df = pd.DataFrame(summary_rows)
-    print("\nSummary Table (Scalars):")
-    print(summary_df)
-
-    # Condensed DataFrame of all time series metrics
-    if combined_rows:
-        all_metrics_df = pd.concat(combined_rows, axis=0, ignore_index=True)
-        print("\nAll Time Series Metrics (Condensed):")
-        print(all_metrics_df.head())
-    else:
-        print("No time series metrics to display.")
-
+    summary_df, all_metrics_df = ReportingSystem.aggregate_performance_metrics(combined_metrics)
     ReportingSystem.generate_report(f"backtest_results/backtest_report_{config['start_date']}_{config['end_date']}.xlsx", {
         "summary": summary_df,
-        "time_series": all_metrics_df if combined_rows else None
+        "time_series": all_metrics_df if len(all_metrics_df) > 0 else None
     })
 
     print("Backtesting complete.")

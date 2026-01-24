@@ -6,6 +6,8 @@ from signals.signals import Signals
 from optimizers.optimizer import Optimizer
 
 class MVOptimizationStrategy(StrategyInterface):
+    freq_map = {"d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
+
     def __init__(self, rebalance_problem, optimizer=None):
         self.rebalance_problem = rebalance_problem
         self.market_params = {
@@ -15,7 +17,8 @@ class MVOptimizationStrategy(StrategyInterface):
             "trading_frequency": rebalance_problem.trading_frequency}
         self.market_env = MarketEnvironment(market_params=self.market_params)
         self.optimizer = optimizer or Optimizer()
-        self.signals = Signals(self.market_env)
+        self.signals = Signals(self.market_env, 
+                               ann_factor=self.freq_map.get(rebalance_problem.trading_frequency, 252))
         self.rebalance_solution = None
         self.rebalance_solutions = []
 
