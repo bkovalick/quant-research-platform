@@ -1,9 +1,9 @@
-import openpyxl
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import yfinance as yf
 
 from portfolio.portfolio import Portfolio
 
@@ -13,9 +13,7 @@ class ReportingSystem:
 
     @classmethod
     def generate_report(cls, filename: str, results: dict):
-        # with Workbook() as wb:
         wb = Workbook()
-        # Remove default sheet created with new workbook
         default_sheet = wb.active
         wb.remove(default_sheet)
         if "summary" in results:
@@ -110,7 +108,8 @@ class ReportingSystem:
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
             "max_drawdown": abs(cls._calculate_max_drawdown(drawdown_returns)),
-            "turnover": portfolio_turnover.mean() * cls.WEEKS_PER_YEAR
+            "turnover": portfolio_turnover.mean() * cls.WEEKS_PER_YEAR,
+            "alpha": cls.get_alpha(portfolio_returns, rebalance_problem)
         }
         cls._save_performance_plot(portfolio_returns, wealth_factors, sharpe_ratio, rebalance_problem)
         return performance_metrics
@@ -154,3 +153,26 @@ class ReportingSystem:
         filename = f"backtest_results/cumulative_return_{program_type}_{start_date}_to_{end_date}.png"
         plt.savefig(filename, bbox_inches='tight')
         plt.close()
+
+    @classmethod
+    def get_alpha(cls, portfolio_returns, rebalance_problem):
+        annual_trading_days = { "d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
+        annualization_factor = annual_trading_days.get(rebalance_problem.trading_frequency, 252)
+        """Benchmark function to fetch data for given rebalance problem."""
+        benchmark = yf.download("^GSPC", \
+                        start=rebalance_problem.start_date, end=rebalance_problem.end_date)
+        benchmark= benchmark.asfreq(
+                rebalance_problem.trading_frequency, method='ffill'
+        )
+        benchmark_returns = benchmark["Close"].pct_change().fillna(0)
+
+        if(len(benchmark_returns) != len(portfolio_returns)):
+            return
+
+        aligned = pd.concat([portfolio_returns, benchmark_returns], axis=1, join='inner')
+        aligned.columns = ['portfolio', 'benchmark']
+
+        portfolio_annualized = (1 + aligned['portfolio']).prod() ** (annualization_factor/len(aligned)) - 1
+        benchmark_annualized = (1 + aligned['benchmark']).prod() ** (annualization_factor/len(aligned)) - 1
+        alpha = portfolio_annualized - benchmark_annualized
+        return alpha

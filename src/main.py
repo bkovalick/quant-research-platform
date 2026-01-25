@@ -1,12 +1,10 @@
-import pandas as pd
-import numpy as np
-
 from core.strategies.strategy_factory import StrategyFactory
 from core.optimizers.optimizer_factory import OptimizerFactory
 from portfolio.portfolio import Portfolio
 from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
 from backtesting.backtesting_engine import BacktestingEngine
 from reporting.reporting_module import ReportingSystem
+
 
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
