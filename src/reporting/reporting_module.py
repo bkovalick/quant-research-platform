@@ -72,7 +72,7 @@ class ReportingSystem:
             if "portfolio_weights" in metrics:
                 weights_df = pd.DataFrame(metrics["portfolio_weights"].values, columns=metrics["portfolio_weights"].columns)
                 weights_df.insert(0, "Date", metrics["portfolio_wealth_factors"].index)
-                weights_df["Strategy"] = label
+                weights_df.insert(1, "Strategy", label)
                 weights_df["WealthFactor"] = metrics["portfolio_wealth_factors"].values
                 weights_df["PortfolioReturns"] = metrics["portfolio_returns"].values
                 weights_df["PortfolioTurnover"] = metrics["portfolio_turnover"].values
@@ -216,9 +216,11 @@ class ReportingSystem:
         """Benchmark function to fetch data for given rebalance problem."""
         benchmark = yf.download("^GSPC", \
                         start=rebalance_problem.start_date, end=rebalance_problem.end_date)
-        benchmark= benchmark.asfreq(
-                rebalance_problem.trading_frequency, method='ffill'
-        )
+        freq = rebalance_problem.trading_frequency
+        # Map deprecated 'w' to 'W' for pandas compatibility
+        if freq == 'w':
+            freq = 'W'
+        benchmark = benchmark.asfreq(freq, method='ffill')
         benchmark_returns = benchmark["Close"].pct_change().fillna(0)
 
         if(len(benchmark_returns) != len(portfolio_returns)):
