@@ -60,10 +60,10 @@ class Optimizer(IOptimizer):
 	def _setup_turnover_constraints(self, rebalance_problem: RebalanceProblem, current_weights: np.ndarray = None) -> list: 
 		"""Setup turnover constraints based on trading buffer."""
 		constraints = []
-		if getattr(rebalance_problem, 'trading_buffer') is not None:
+		if getattr(rebalance_problem, 'turnover_limit') is not None:
 			constraints.append({
 				'type': 'ineq',
-				'fun': lambda x: rebalance_problem.trading_buffer - np.abs(x - current_weights)
+				'fun': lambda x: rebalance_problem.turnover_limit - np.sum(np.abs(x - current_weights))
 			})
 		return constraints
 

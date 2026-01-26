@@ -36,7 +36,7 @@ class RebalanceProblemBuilder:
             "model_constraints": self.config.get("model_constraints", {}),
             "apply_windsoring": self.config.get("apply_windsoring", True),
             "windsor_percentiles": self.config.get("windsor_percentiles", {"lower": 0.05, "upper": 0.95}),
-            "trading_buffer": self.config.get("trading_buffer", 0.0),
+            "turnover_limit": self.config.get("turnover_limit", 0.0),
             "apply_max_return_objective": self.config.get("apply_max_return_objective", False),
             "apply_sharpe_objective": self.config.get("apply_sharpe_objective", False)
         }

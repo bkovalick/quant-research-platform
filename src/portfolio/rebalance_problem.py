@@ -96,8 +96,8 @@ class RebalanceProblem:
         return self._data.get("windsor_percentiles", {"lower": 0.05, "upper": 0.95})
 
     @property
-    def trading_buffer(self) -> float:
-        return self._data.get("trading_buffer", 0.0)
+    def turnover_limit(self) -> float:
+        return self._data.get("turnover_limit", 0.0)
     
     @property
     def apply_max_return_objective(self) -> bool:
