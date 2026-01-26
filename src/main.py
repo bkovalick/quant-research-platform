@@ -84,8 +84,7 @@ if __name__ == '__main__':
     folder_name = "backtest_results/" + date.today().isoformat()
     path = Path(folder_name)
     path.mkdir(parents=True, exist_ok=True)
-    ReportingSystem.generate_report(f"{folder_name}/backtest_report_\
-                                    {config['start_date']}_{config['end_date']}.xlsx", {
+    ReportingSystem.generate_report(f"{folder_name}/backtest_report_{config['start_date']}_{config['end_date']}.xlsx", {
         "summary": summary_df,
         "time_series": portfolio_metrics_df if len(portfolio_metrics_df) > 0 else None,
         "rolling_time_series": rolling_metrics_df if len(rolling_metrics_df) > 0 else None
