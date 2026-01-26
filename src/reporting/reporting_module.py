@@ -98,10 +98,18 @@ class ReportingSystem:
             drawdown_returns = cumulative_returns.iloc[lookback_window:]
         else:
             drawdown_returns = cumulative_returns
+
         performance_metrics = {
             "portfolio_wealth_factors": wealth_factors,
             "portfolio_weights": portfolio_weights,
             "portfolio_returns": portfolio_returns,
+            "rolling_returns": cls._calculate_rolling_returns(portfolio_returns, lookback_window, 
+                                                             rebalance_problem.trading_frequency),
+            "rolling_volatility": cls._calculate_rolling_volatility(portfolio_returns, lookback_window, 
+                                                                   rebalance_problem.trading_frequency),
+            "rolling_sharpe_ratio": cls._calculate_rolling_sharpe_ratio(portfolio_returns, lookback_window, 
+                                                                       rebalance_problem.trading_frequency),
+            "rolling_drawdown": cls._calculate_rolling_drawdown(drawdown_returns, lookback_window),
             "portfolio_turnover": portfolio_turnover,
             "cumulative_returns": cumulative_returns,
             "return": annualized_return,
@@ -119,7 +127,37 @@ class ReportingSystem:
         """Calculate maximum drawdown from cumulative returns."""
         running_max = cumulative_returns.cummax()
         drawdown = (cumulative_returns - running_max) / running_max
-        return drawdown.min()  # negative value; abs() taken in reporting    
+        return drawdown.min()
+    
+    @classmethod
+    def _calculate_rolling_drawdown(cls, cumulative: pd.Series, window: int):
+        """Calculate rolling drawdown series over a specified window."""
+        return cumulative.rolling(window).apply(cls._calculate_max_drawdown, raw=False)
+
+    @classmethod 
+    def _calculate_rolling_returns(cls, returns: pd.Series, window: int, trading_frequency: str):
+        """Calculate rolling return over a specified window."""
+        annualization_factor = cls.ANNUAL_TRADING_DAYS.get(trading_frequency, 252)
+        rolling_return = (1 + returns).rolling(window=window).apply(np.prod, raw=True) - 1
+        rolling_return = (1 + rolling_return) ** (annualization_factor / window) - 1
+        return rolling_return
+
+    @classmethod
+    def _calculate_rolling_volatility(cls, returns: pd.Series, window: int, trading_frequency: str):
+        """Calculate rolling volatility over a specified window."""
+        annualization_factor = cls.ANNUAL_TRADING_DAYS.get(trading_frequency, 252)
+        rolling_std = returns.rolling(window=window).std()
+        rolling_volatility = rolling_std * np.sqrt(annualization_factor)
+        return rolling_volatility
+
+    @classmethod
+    def _calculate_rolling_sharpe_ratio(cls, returns: pd.Series, window: int, trading_frequency: str):
+        """Calculate rolling Sharpe ratio over a specified window."""
+        annualization_factor = cls.ANNUAL_TRADING_DAYS.get(trading_frequency, 252)
+        rolling_mean = returns.rolling(window=window).mean()
+        rolling_std = returns.rolling(window=window).std()
+        rolling_sharpe = (rolling_mean / rolling_std) * np.sqrt(annualization_factor)
+        return rolling_sharpe
     
     @classmethod
     def _save_performance_plot(cls, portfolio_returns, wealth_factors, sharpe_ratio, rebalance_problem):

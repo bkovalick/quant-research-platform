@@ -4,7 +4,7 @@ from portfolio.portfolio import Portfolio
 from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
 from backtesting.backtesting_engine import BacktestingEngine
 from reporting.reporting_module import ReportingSystem
-
+from multiprocessing import Pool
 
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
@@ -30,10 +30,20 @@ if __name__ == '__main__':
         "apply_sharpe_objective": False
     }
 
+    constraints = {
+        "apply_windsoring": True,
+        "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
+        "trading_buffer": 0.075,        
+    }
+
     strategies = [
         ("Fixed Weights", "fixed_weights"),
         ("MVOptimization", "mv_optimizer")
     ]
+
+    lookback_years = [ 3, 5, 7, 10, 15, 20, 25, 30 ]
+    lookback_windows = [52 * years for years in lookback_years]
+    trading_frequencies = [ "d", "w", "m", "q", "y" ]
 
     def run_strategy(label, strategy_type, config):
         strat_config = config.copy()
@@ -51,8 +61,6 @@ if __name__ == '__main__':
         backtestingEngine.run_backtest(rebalance_problem)
         return backtestingEngine.portfolio, rebalance_problem, label
 
-    summary_rows = []
-    combined_rows = []
     combined_metrics = []
     for label, strategy_type in strategies:
         portfolio, rebalance_problem, label = run_strategy(label, strategy_type, config)
@@ -69,3 +77,25 @@ if __name__ == '__main__':
     })
 
     print("Backtesting complete.")
+
+
+    # with Pool(processes=len(strategies)) as pool:
+    #     results = [
+    #         pool.apply_async(run_strategy, args=(label, strategy_type, config))
+    #         for label, strategy_type in strategies
+    #     ]
+    #     for res in results:
+    #         portfolio, rebalance_problem, label = res.get()
+    #         if portfolio is None:
+    #             continue
+
+    #         metric = ReportingSystem.calculate_performance_metrics(rebalance_problem, portfolio)
+    #         combined_metrics.append((metric, label))
+
+    # summary_df, all_metrics_df = ReportingSystem.aggregate_performance_metrics(combined_metrics)
+    # ReportingSystem.generate_report(f"backtest_results/backtest_report_{config['start_date']}_{config['end_date']}.xlsx", {
+    #     "summary": summary_df,
+    #     "time_series": all_metrics_df if len(all_metrics_df) > 0 else None
+    # })
+
+    # print("Backtesting complete.")

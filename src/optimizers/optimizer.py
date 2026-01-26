@@ -7,6 +7,7 @@ from models.rebalance_solution import RebalanceSolution
 from signals.signals import Signals
 
 class Optimizer(IOptimizer):
+	"""Optimizer using SciPy's minimize function with SLSQP method."""
 	def __init__(self):
 		super().__init__()
 
