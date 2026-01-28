@@ -38,6 +38,8 @@ class RebalanceProblemBuilder:
             "risk_free_rate": self.config["risk_free_rate"],
             "optimizer_type": self.config.get("optimizer_type"),
             "strategy_type": self.config.get("strategy_type"),
+            "apply_max_return_objective": self.config.get("apply_max_return_objective", False),
+            "apply_sharpe_objective": self.config.get("apply_sharpe_objective", False),
             "start_date": self.config["start_date"],
             "end_date": self.config["end_date"],
             "target_weights": target_weights,
@@ -47,12 +49,12 @@ class RebalanceProblemBuilder:
             "trading_frequency": trading_frequency,
             "lookback_window": self.get_lookback_window_mapping()[trading_frequency][lookback_window],
             "first_rebal": self.config.get("first_rebal", 0),
-            "model_constraints": self.config.get("model_constraints", {}),
-            "apply_windsoring": self.config.get("apply_windsoring", True),
-            "windsor_percentiles": self.config.get("windsor_percentiles", {"lower": 0.05, "upper": 0.95}),
-            "turnover_limit": self.config.get("turnover_limit", 0.0),
-            "apply_max_return_objective": self.config.get("apply_max_return_objective", False),
-            "apply_sharpe_objective": self.config.get("apply_sharpe_objective", False)
+            "apply_windsoring": self.config["constraints"].get("apply_windsoring", True),
+            "windsor_percentiles": self.config["constraints"].get("windsor_percentiles", \
+                                                                  {"lower": 0.05, "upper": 0.95}),
+            "turnover_limit": self.config["constraints"].get("turnover_limit", None),
+            "max_position_size": self.config["constraints"].get("max_position_size", None),
+            "max_number_of_positions": self.config["constraints"].get("max_number_of_positions", None)
         }
 
         return RebalanceProblem(prepared_data)

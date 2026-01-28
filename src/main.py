@@ -28,7 +28,8 @@ if __name__ == '__main__':
         return backtestingEngine.portfolio, rebalance_problem
 
     combined_metrics = []
-    strategies = ["fwp_strategy", "mv_strategy"]
+    # strategies = ["fwp_strategy", "mv_strategy"]
+    strategies = ["mv_strategy"]
     for strategy_type in strategies:
         with open(f"src/config/{strategy_type}.json", 'r') as f:
             config = json.load(f)

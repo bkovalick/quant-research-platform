@@ -35,8 +35,16 @@ class RebalanceProblem:
     
     @property
     def strategy_type(self) -> str:
-        return self._data.get("strategy_type", "fwp_strategy")    
+        return self._data.get("strategy_type", "fwp_strategy")
     
+    @property
+    def apply_max_return_objective(self) -> bool:
+        return self._data.get("apply_max_return_objective", False)
+    
+    @property
+    def apply_sharpe_objective(self) -> bool:
+        return self._data.get("apply_sharpe_objective", False)    
+
     @property
     def start_date(self) -> str:
         return self._data.get("start_date")
@@ -88,10 +96,6 @@ class RebalanceProblem:
         return self._data.get("risk_tolerance", 0)
     
     @property
-    def model_constraints(self) -> dict:
-        return self._data.get("model_constraints", {})
-    
-    @property
     def apply_windsoring(self) -> bool:
         return self._data.get("apply_windsoring", True)
     
@@ -104,10 +108,9 @@ class RebalanceProblem:
         return self._data.get("turnover_limit", 0.0)
     
     @property
-    def apply_max_return_objective(self) -> bool:
-        return self._data.get("apply_max_return_objective", False)
-    
+    def max_position_size(self) -> float:
+        return self._data.get("max_position_size", None) 
+
     @property
-    def apply_sharpe_objective(self) -> bool:
-        return self._data.get("apply_sharpe_objective", False)
-    
+    def max_number_of_positions(self) -> int:
+        return self._data.get("max_number_of_positions", None)
