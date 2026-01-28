@@ -1,0 +1,24 @@
+{
+    "strategy_type": "fwp_strategy",
+    "optimizer_type": "fwp_optimizer",
+    "rebalance_sub_parameters": [
+        {"ticker": "AAPL", "target_weights": 0.222, "initial_weights": 0.222},
+        {"ticker": "GOOGL", "target_weights": 0.444, "initial_weights": 0.444},
+        {"ticker": "MSFT", "target_weights": 0.333, "initial_weights": 0.333}
+    ],
+    "risk_free_rate": 0.03,
+    "cash_allocation": 0.0,
+    "risk_tolerance": 0.10,
+    "start_date": "2005-01-01",
+    "end_date": "2026-01-15",
+    "trading_frequency": "w",
+    "lookback_window": "1y", 
+    "first_rebal": 0,
+    "constraints": {
+        "apply_windsoring": true,
+        "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
+        "turnover_limit": 0.2,
+        "max_position_size": 0.08,
+        "max_positions": 50
+    }         
+}

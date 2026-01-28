@@ -30,8 +30,12 @@ class RebalanceProblem:
         return self._data.get("tickers", [])
     
     @property
-    def program_type(self) -> str:
-        return self._data.get("program_type", "fixed_weights")
+    def optimizer_type(self) -> str:
+        return self._data.get("optimizer_type", "fwp_optimizer")
+    
+    @property
+    def strategy_type(self) -> str:
+        return self._data.get("strategy_type", "fwp_strategy")    
     
     @property
     def start_date(self) -> str:

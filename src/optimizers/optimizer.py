@@ -1,5 +1,7 @@
+from dataclasses import dataclass
 import numpy as np
 from scipy.optimize import minimize
+from collections import defaultdict
 
 from core.optimizers.ioptimizer import IOptimizer
 from portfolio.rebalance_problem import RebalanceProblem
@@ -18,7 +20,10 @@ class Optimizer(IOptimizer):
 		"""Optimize portfolio weights for the given rebalance problem."""
 		if current_weights is None:
 			current_weights = np.array(rebalance_problem.initial_weights)
-		constraints, bounds = self._setup_constraints(rebalance_problem, current_weights)
+
+		n_assets = len(rebalance_problem.tickers)
+		bounds = [(0, 1) for _ in range(n_assets)]
+		constraints = self._setup_constraints(rebalance_problem, current_weights)
 		objective = self._set_objective(rebalance_problem, signals)
 	
 		result = minimize(
@@ -46,26 +51,41 @@ class Optimizer(IOptimizer):
 
 	def _setup_constraints(self, rebalance_problem: RebalanceProblem, current_weights: np.ndarray = None) -> list:
 		"""Setup constraints for the optimization problem."""
-		portfolio_constraints, bounds = self._setup_portfolio_constraints(rebalance_problem)
+		portfolio_constraints = self._setup_portfolio_constraints(rebalance_problem)
 		turnover_constraints = self._setup_turnover_constraints(rebalance_problem, current_weights)
-		return portfolio_constraints + turnover_constraints, bounds
+		asset_class_constraints = self._setup_asset_class_size_constraints(rebalance_problem)
+		sector_size_constraints = self._setup_sector_size_constraints(rebalance_problem)
+		position_size_constraints = self._setup_position_size_constraints(rebalance_problem)
+		return portfolio_constraints + turnover_constraints + \
+			asset_class_constraints + sector_size_constraints + position_size_constraints
 	
 	def _setup_portfolio_constraints(self, rebalance_problem: RebalanceProblem) -> list: 
 		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
-		n_assets = len(rebalance_problem.tickers)
 		constraints = [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]
-		bounds = [(0, 1) for _ in range(n_assets)]
-		return constraints, bounds
+		return constraints
 	
-	def _setup_turnover_constraints(self, rebalance_problem: RebalanceProblem, current_weights: np.ndarray = None) -> list: 
+	def _setup_turnover_constraints(self, rebalance_problem: RebalanceProblem, 
+								 current_weights: np.ndarray = None) -> list: 
 		"""Setup turnover constraints based on trading buffer."""
 		constraints = []
-		if getattr(rebalance_problem, 'turnover_limit') is not None:
+		if getattr(rebalance_problem, 'turnover_limit') is not None and current_weights is not None:
 			constraints.append({
 				'type': 'ineq',
 				'fun': lambda x: rebalance_problem.turnover_limit - np.sum(np.abs(x - current_weights))
 			})
 		return constraints
+
+	def _setup_asset_class_size_constraints(self, rebalance_problem: RebalanceProblem) -> list:
+		"""Setup asset class size constraints (max position size, max number of positions)."""
+		return []
+
+	def _setup_sector_size_constraints(self, rebalance_problem: RebalanceProblem) -> list:
+		"""Setup sector size constraints (max position size, max number of positions)."""
+		return []
+
+	def _setup_position_size_constraints(self, rebalance_problem: RebalanceProblem) -> list:
+		"""Setup position size constraints (max position size, max number of positions)."""
+		return []
 
 	def _set_objective(self, rebalance_problem: RebalanceProblem, signals: Signals = None) -> callable:
 		"""Set the objective function based on rebalance problem settings."""
@@ -102,3 +122,24 @@ class Optimizer(IOptimizer):
 			rebalance_problem._data['risk_tolerance'] = risk_tolerance
 			solution = self.optimize(rebalance_problem)
 			yield risk_tolerance, solution.decision_variables['portfolio_weights']
+
+@dataclass
+class AssetInfo:
+	asset_class: str
+	sector: str
+	ticker: str
+
+class AssetSpecificConstraints:
+	"""Handles asset-specific constraints for the optimizer."""
+
+	def __init__(self, rebalance_problem: RebalanceProblem):
+		self.rebalance_problem = rebalance_problem
+		self.tickers = rebalance_problem.tickers
+
+	def get_hierarchy(self):
+		"""Get asset class and sector hierarchy for the tickers."""	
+		hierarchy = defaultdict(lambda: defaultdict(list))
+		for ticker in self.tickers:
+			asset_info = self.rebalance_problem.get_asset_info(ticker)
+			hierarchy[asset_info.asset_class][asset_info.sector].append(ticker)
+		return dict(hierarchy)
