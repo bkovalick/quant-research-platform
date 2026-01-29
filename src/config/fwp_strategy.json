@@ -2,9 +2,10 @@
     "strategy_type": "fwp_strategy",
     "optimizer_type": "fwp_optimizer",
     "rebalance_sub_parameters": [
-        {"ticker": "AAPL", "target_weights": 0.222, "initial_weights": 0.222},
-        {"ticker": "GOOGL", "target_weights": 0.444, "initial_weights": 0.444},
-        {"ticker": "MSFT", "target_weights": 0.333, "initial_weights": 0.333}
+        {"ticker": "AAPL", "initial_weights": 0.25},
+        {"ticker": "GOOGL", "initial_weights": 0.25},
+        {"ticker": "MSFT", "initial_weights": 0.25},
+        {"ticker": "NVDA", "initial_weights": 0.25}
     ],
     "risk_free_rate": 0.03,
     "cash_allocation": 0.0,

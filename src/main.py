@@ -1,14 +1,16 @@
-from zipfile import Path
 from core.strategies.strategy_factory import StrategyFactory
 from core.optimizers.optimizer_factory import OptimizerFactory
 from portfolio.portfolio import Portfolio
 from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
 from backtesting.backtesting_engine import BacktestingEngine
 from reporting.reporting_module import ReportingSystem
+
 from multiprocessing import Pool
+from zipfile import Path
 from datetime import date
 from pathlib import Path
 import json
+from itertools import product
 
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
@@ -28,17 +30,23 @@ if __name__ == '__main__':
         return backtestingEngine.portfolio, rebalance_problem
 
     combined_metrics = []
-    # strategies = ["fwp_strategy", "mv_strategy"]
-    strategies = ["mv_strategy"]
-    for strategy_type in strategies:
+    
+    # strategies = ["mv_strategy"]
+    strategies = ["fwp_strategy", "mv_strategy"]
+    # turnover_limits = [None, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    turnover_limits = [None]
+    for strategy_type, turnover_limit in product(strategies, turnover_limits):
         with open(f"src/config/{strategy_type}.json", 'r') as f:
             config = json.load(f)
+        # config['constraints']['turnover_limit'] = turnover_limit
 
         portfolio, rebalance_problem = run_strategy(config)
         if portfolio is None:
             continue
 
         metric = ReportingSystem.calculate_performance_metrics(rebalance_problem, portfolio)
+        if turnover_limit is not None:
+            strategy_type += f"_turnover_{turnover_limit}"
         combined_metrics.append((metric, strategy_type))
 
     summary_df, portfolio_metrics_df, rolling_metrics_df = \

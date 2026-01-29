@@ -2,9 +2,10 @@
     "strategy_type": "mv_strategy",
     "optimizer_type": "mv_optimizer",
     "rebalance_sub_parameters": [
-        {"ticker": "AAPL", "target_weights": 0.222, "initial_weights": 0.222},
-        {"ticker": "GOOGL", "target_weights": 0.444, "initial_weights": 0.444},
-        {"ticker": "MSFT", "target_weights": 0.333, "initial_weights": 0.333}
+        {"ticker": "AAPL", "initial_weights": 0.25},
+        {"ticker": "GOOGL", "initial_weights": 0.25},
+        {"ticker": "MSFT", "initial_weights": 0.25},
+        {"ticker": "NVDA", "initial_weights": 0.25}
     ],
     "risk_free_rate": 0.03,
     "cash_allocation": 0.0,
@@ -21,6 +22,24 @@
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
         "turnover_limit": 0.9,
         "max_position_size": 0.50,
-        "max_positions": 50
+        "max_positions": 50,
+        "asset_class_constraints": { 
+            "Equity": [0.75, 0.95], 
+            "Fixed Income": [0.025, 0.25], 
+            "Cash": [0.0, 0.025] 
+        },
+        "sector_constraints": {
+            "Technology": [0.25, 0.45], 
+            "Communication Services": [0.10, 0.20],
+            "Financial Services": [0.10, 0.20],
+            "Consumer Discretionary": [0.10, 0.15], 
+            "Consumer Staples": [0.075, 0.15],
+            "Healthcare": [0.10, 0.15],
+            "Materials": [0.0, 0.05],
+            "Energy": [0.0, 0.04],
+            "Real Estate": [0.0, 0.025],
+            "Utilities": [0.0, 0.02],
+            "Industrials": [0.0, 0.02]
+        }
     }        
 }

@@ -58,10 +58,6 @@ class RebalanceProblem:
         return self._data.get("risk_free_rate")
 
     @property
-    def target_weights(self) -> list:
-        return self._data.get("target_weights")
-
-    @property
     def initial_weights(self) -> list:
         return self._data.get("initial_weights")
 
@@ -114,3 +110,11 @@ class RebalanceProblem:
     @property
     def max_number_of_positions(self) -> int:
         return self._data.get("max_number_of_positions", None)
+    
+    @property
+    def asset_class_constraints(self) -> int:
+        return self._data.get("asset_class_constraints", None)
+    
+    @property
+    def sector_constraints(self) -> int:
+        return self._data.get("sector_constraints", None)

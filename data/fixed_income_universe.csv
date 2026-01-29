@@ -1,0 +1,38 @@
+ticker,asset_class,sector
+AGG,Fixed Income,US Aggregate
+BND,Fixed Income,US Aggregate
+LQD,Fixed Income,US Corporate
+HYG,Fixed Income,US High Yield
+TLT,Fixed Income,US Treasury Long
+IEF,Fixed Income,US Treasury Intermediate
+SHY,Fixed Income,US Treasury Short
+TIP,Fixed Income,US Treasury Inflation Protected
+MUB,Fixed Income,US Municipal
+EMB,Fixed Income,Emerging Markets
+VWOB,Fixed Income,Emerging Markets
+BNDX,Fixed Income,Global ex-US
+IGIB,Fixed Income,US Corporate Intermediate
+SPSB,Fixed Income,US Corporate Short
+SJNK,Fixed Income,US High Yield Short
+BSV,Fixed Income,US Short-Term
+VCIT,Fixed Income,US Corporate Intermediate
+VCSH,Fixed Income,US Corporate Short
+GOVT,Fixed Income,US Treasury
+SPAB,Fixed Income,US Aggregate
+SCHO,Fixed Income,US Treasury Short
+SCHR,Fixed Income,US Treasury Intermediate
+SCHZ,Fixed Income,US Aggregate
+MBB,Fixed Income,US MBS
+MBG,Fixed Income,US MBS
+VMBS,Fixed Income,US MBS
+PFF,Fixed Income,US Preferred
+ICSH,Fixed Income,Ultra Short-Term
+NEAR,Fixed Income,Ultra Short-Term
+JPST,Fixed Income,Ultra Short-Term
+SRLN,Fixed Income,US Bank Loans
+HYLB,Fixed Income,US High Yield
+ANGL,Fixed Income,Fallen Angels
+FLOT,Fixed Income,Floating Rate
+FLRN,Fixed Income,Floating Rate
+STIP,Fixed Income,US Treasury Inflation Protected
+VTIP,Fixed Income,US Treasury Inflation Protected

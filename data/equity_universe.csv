@@ -1,0 +1,509 @@
+ticker,asset_class,sector
+# US Large/Mid Cap
+MMM,Equity,Industrials
+AOS,Equity,Industrials
+ABMD,Equity,Health Care
+ACN,Equity,Information Technology
+ATVI,Equity,Communication Services
+ADM,Equity,Consumer Staples
+AFL,Equity,Financials
+A,Equity,Health Care
+APD,Equity,Materials
+AKAM,Equity,Information Technology
+ALK,Equity,Industrials
+ALB,Equity,Materials
+ARE,Equity,Real Estate
+ALGN,Equity,Health Care
+ALLE,Equity,Industrials
+LNT,Equity,Utilities
+ALL,Equity,Financials
+GOOGL,Equity,Communication Services
+GOOG,Equity,Communication Services
+MOH,Equity,Health Care
+AMCR,Equity,Materials
+AEE,Equity,Utilities
+AAL,Equity,Industrials
+AEP,Equity,Utilities
+AXP,Equity,Financials
+AIG,Equity,Financials
+AMT,Equity,Real Estate
+AWK,Equity,Utilities
+AMP,Equity,Financials
+ABC,Equity,Health Care
+AME,Equity,Industrials
+AMGN,Equity,Health Care
+APH,Equity,Information Technology
+ADI,Equity,Information Technology
+ANSS,Equity,Information Technology
+ANTM,Equity,Health Care
+AON,Equity,Financials
+AOS,Equity,Industrials
+APA,Equity,Energy
+AAPL,Equity,Information Technology
+AMAT,Equity,Information Technology
+APTV,Equity,Consumer Discretionary
+ADM,Equity,Consumer Staples
+ANET,Equity,Information Technology
+AJG,Equity,Financials
+AIZ,Equity,Financials
+T,Equity,Communication Services
+ATO,Equity,Utilities
+ADSK,Equity,Information Technology
+ADP,Equity,Information Technology
+AZO,Equity,Consumer Discretionary
+AVB,Equity,Real Estate
+AVY,Equity,Materials
+BKR,Equity,Energy
+BALL,Equity,Materials
+BAC,Equity,Financials
+BK,Equity,Financials
+BAX,Equity,Health Care
+BDX,Equity,Health Care
+BRK.B,Equity,Financials
+BBY,Equity,Consumer Discretionary
+BIO,Equity,Health Care
+TECH,Equity,Health Care
+BIIB,Equity,Health Care
+BLK,Equity,Financials
+BA,Equity,Industrials
+BKNG,Equity,Consumer Discretionary
+BWA,Equity,Consumer Discretionary
+BXP,Equity,Real Estate
+BSX,Equity,Health Care
+BMY,Equity,Health Care
+AVGO,Equity,Information Technology
+BR,Equity,Information Technology
+BRO,Equity,Financials
+BF.B,Equity,Consumer Staples
+CHRW,Equity,Industrials
+COG,Equity,Energy
+CDNS,Equity,Information Technology
+CPB,Equity,Consumer Staples
+COF,Equity,Financials
+CAH,Equity,Health Care
+KMX,Equity,Consumer Discretionary
+CCL,Equity,Consumer Discretionary
+CARR,Equity,Industrials
+CTLT,Equity,Health Care
+CAT,Equity,Industrials
+CBOE,Equity,Financials
+CBRE,Equity,Real Estate
+CDW,Equity,Information Technology
+CE,Equity,Materials
+CNC,Equity,Health Care
+CNP,Equity,Utilities
+CTL,Equity,Communication Services
+CERN,Equity,Health Care
+CF,Equity,Materials
+CRL,Equity,Health Care
+SCHW,Equity,Financials
+CHTR,Equity,Communication Services
+CVX,Equity,Energy
+CMG,Equity,Consumer Discretionary
+CB,Equity,Financials
+CHD,Equity,Consumer Staples
+CI,Equity,Health Care
+CINF,Equity,Financials
+CTAS,Equity,Industrials
+CSCO,Equity,Information Technology
+C,Equity,Financials
+CFG,Equity,Financials
+CTXS,Equity,Information Technology
+CLX,Equity,Consumer Staples
+CME,Equity,Financials
+CMS,Equity,Utilities
+KO,Equity,Consumer Staples
+CTSH,Equity,Information Technology
+CL,Equity,Consumer Staples
+CMCSA,Equity,Communication Services
+CMA,Equity,Financials
+CAG,Equity,Consumer Staples
+COP,Equity,Energy
+ED,Equity,Utilities
+STZ,Equity,Consumer Staples
+CPRT,Equity,Industrials
+GLW,Equity,Information Technology
+COST,Equity,Consumer Staples
+COTY,Equity,Consumer Staples
+CCI,Equity,Real Estate
+CSX,Equity,Industrials
+CMI,Equity,Industrials
+CVS,Equity,Health Care
+DHI,Equity,Consumer Discretionary
+DHR,Equity,Health Care
+DRI,Equity,Consumer Discretionary
+DVA,Equity,Health Care
+DE,Equity,Industrials
+DAL,Equity,Industrials
+XRAY,Equity,Health Care
+DVN,Equity,Energy
+DXCM,Equity,Health Care
+FANG,Equity,Energy
+DLR,Equity,Real Estate
+DFS,Equity,Financials
+DISCA,Equity,Communication Services
+DISCK,Equity,Communication Services
+DISH,Equity,Communication Services
+DG,Equity,Consumer Staples
+DLTR,Equity,Consumer Staples
+D,Equity,Utilities
+DPZ,Equity,Consumer Discretionary
+DOV,Equity,Industrials
+DOW,Equity,Materials
+DTE,Equity,Utilities
+DUK,Equity,Utilities
+DRE,Equity,Real Estate
+DD,Equity,Materials
+DXC,Equity,Information Technology
+EMN,Equity,Materials
+ETN,Equity,Industrials
+EBAY,Equity,Consumer Discretionary
+ECL,Equity,Materials
+EIX,Equity,Utilities
+EW,Equity,Health Care
+EA,Equity,Communication Services
+EMR,Equity,Industrials
+ENPH,Equity,Information Technology
+ETR,Equity,Utilities
+EOG,Equity,Energy
+EFX,Equity,Industrials
+EQIX,Equity,Real Estate
+EQR,Equity,Real Estate
+ESS,Equity,Real Estate
+EL,Equity,Consumer Staples
+ETSY,Equity,Consumer Discretionary
+RE,Equity,Financials
+EVRG,Equity,Utilities
+ES,Equity,Utilities
+EXC,Equity,Utilities
+EXPE,Equity,Consumer Discretionary
+EXPD,Equity,Industrials
+EXR,Equity,Real Estate
+XOM,Equity,Energy
+FFIV,Equity,Information Technology
+FB,Equity,Communication Services
+FAST,Equity,Industrials
+FRT,Equity,Real Estate
+FDX,Equity,Industrials
+FIS,Equity,Information Technology
+FITB,Equity,Financials
+FE,Equity,Utilities
+FRC,Equity,Financials
+FISV,Equity,Information Technology
+FLT,Equity,Information Technology
+FMC,Equity,Materials
+F,Equity,Consumer Discretionary
+FTNT,Equity,Information Technology
+FTV,Equity,Industrials
+FBHS,Equity,Industrials
+FOXA,Equity,Communication Services
+FOX,Equity,Communication Services
+BEN,Equity,Financials
+FCX,Equity,Materials
+GPS,Equity,Consumer Discretionary
+GRMN,Equity,Consumer Discretionary
+IT,Equity,Information Technology
+GD,Equity,Industrials
+GE,Equity,Industrials
+GIS,Equity,Consumer Staples
+GM,Equity,Consumer Discretionary
+GPC,Equity,Consumer Discretionary
+GILD,Equity,Health Care
+GL,Equity,Financials
+GPN,Equity,Information Technology
+GS,Equity,Financials
+GWW,Equity,Industrials
+HAL,Equity,Energy
+HBI,Equity,Consumer Discretionary
+HOG,Equity,Consumer Discretionary
+HIG,Equity,Financials
+HAS,Equity,Consumer Discretionary
+HCA,Equity,Health Care
+PEAK,Equity,Real Estate
+HSIC,Equity,Health Care
+HSY,Equity,Consumer Staples
+HES,Equity,Energy
+HPE,Equity,Information Technology
+HLT,Equity,Consumer Discretionary
+HOLX,Equity,Health Care
+HD,Equity,Consumer Discretionary
+HON,Equity,Industrials
+HRL,Equity,Consumer Staples
+HST,Equity,Real Estate
+HWM,Equity,Industrials
+HPQ,Equity,Information Technology
+HUM,Equity,Health Care
+HBAN,Equity,Financials
+HII,Equity,Industrials
+IEX,Equity,Industrials
+IDXX,Equity,Health Care
+INFO,Equity,Industrials
+ITW,Equity,Industrials
+ILMN,Equity,Health Care
+INCY,Equity,Health Care
+IR,Equity,Industrials
+INTC,Equity,Information Technology
+ICE,Equity,Financials
+IBM,Equity,Information Technology
+IP,Equity,Materials
+IPG,Equity,Communication Services
+IFF,Equity,Materials
+INTU,Equity,Information Technology
+ISRG,Equity,Health Care
+IVZ,Equity,Financials
+IQV,Equity,Health Care
+IRM,Equity,Real Estate
+JBHT,Equity,Industrials
+J,Equity,Industrials
+SJM,Equity,Consumer Staples
+JNJ,Equity,Health Care
+JCI,Equity,Industrials
+JPM,Equity,Financials
+JNPR,Equity,Information Technology
+KSU,Equity,Industrials
+K,Equity,Consumer Staples
+KEY,Equity,Financials
+KEYS,Equity,Information Technology
+KMB,Equity,Consumer Staples
+KIM,Equity,Real Estate
+KMI,Equity,Energy
+KLAC,Equity,Information Technology
+KHC,Equity,Consumer Staples
+KR,Equity,Consumer Staples
+LB,Equity,Consumer Discretionary
+LHX,Equity,Industrials
+LH,Equity,Health Care
+LRCX,Equity,Information Technology
+LW,Equity,Consumer Staples
+LVS,Equity,Consumer Discretionary
+LEG,Equity,Consumer Discretionary
+LDOS,Equity,Information Technology
+LEN,Equity,Consumer Discretionary
+LLY,Equity,Health Care
+LNC,Equity,Financials
+LIN,Equity,Materials
+LYV,Equity,Communication Services
+LKQ,Equity,Consumer Discretionary
+LMT,Equity,Industrials
+L,Equity,Financials
+LOW,Equity,Consumer Discretionary
+LUMN,Equity,Communication Services
+LYB,Equity,Materials
+MTB,Equity,Financials
+MRO,Equity,Energy
+MPC,Equity,Energy
+MKTX,Equity,Financials
+MAR,Equity,Consumer Discretionary
+MMC,Equity,Financials
+MLM,Equity,Materials
+MAS,Equity,Industrials
+MA,Equity,Information Technology
+MKC,Equity,Consumer Staples
+MCD,Equity,Consumer Discretionary
+MCK,Equity,Health Care
+MDT,Equity,Health Care
+MRK,Equity,Health Care
+MET,Equity,Financials
+MTD,Equity,Health Care
+MGM,Equity,Consumer Discretionary
+MCHP,Equity,Information Technology
+MU,Equity,Information Technology
+MSFT,Equity,Information Technology
+MAA,Equity,Real Estate
+MHK,Equity,Consumer Discretionary
+TAP,Equity,Consumer Staples
+MDLZ,Equity,Consumer Staples
+MNST,Equity,Consumer Staples
+MCO,Equity,Financials
+MS,Equity,Financials
+MSI,Equity,Information Technology
+MSCI,Equity,Financials
+MYL,Equity,Health Care
+NDAQ,Equity,Financials
+NOV,Equity,Energy
+NTAP,Equity,Information Technology
+NFLX,Equity,Communication Services
+NWL,Equity,Consumer Discretionary
+NEM,Equity,Materials
+NWSA,Equity,Communication Services
+NWS,Equity,Communication Services
+NEE,Equity,Utilities
+NLSN,Equity,Industrials
+NKE,Equity,Consumer Discretionary
+NI,Equity,Utilities
+NBL,Equity,Energy
+JWN,Equity,Consumer Discretionary
+NSC,Equity,Industrials
+NTRS,Equity,Financials
+NOC,Equity,Industrials
+NLOK,Equity,Information Technology
+NCLH,Equity,Consumer Discretionary
+NRG,Equity,Utilities
+NUE,Equity,Materials
+NVDA,Equity,Information Technology
+NVR,Equity,Consumer Discretionary
+ORLY,Equity,Consumer Discretionary
+OXY,Equity,Energy
+ODFL,Equity,Industrials
+OMC,Equity,Communication Services
+OKE,Equity,Energy
+ORCL,Equity,Information Technology
+OGN,Equity,Health Care
+PCAR,Equity,Industrials
+PKG,Equity,Materials
+PH,Equity,Industrials
+PAYX,Equity,Information Technology
+PAYC,Equity,Information Technology
+PYPL,Equity,Information Technology
+PNR,Equity,Industrials
+PBCT,Equity,Financials
+PEP,Equity,Consumer Staples
+PKI,Equity,Health Care
+PRGO,Equity,Health Care
+PFE,Equity,Health Care
+PM,Equity,Consumer Staples
+PSX,Equity,Energy
+PNW,Equity,Utilities
+PXD,Equity,Energy
+PNC,Equity,Financials
+PPG,Equity,Materials
+PPL,Equity,Utilities
+PFG,Equity,Financials
+PG,Equity,Consumer Staples
+PGR,Equity,Financials
+PLD,Equity,Real Estate
+PRU,Equity,Financials
+PEG,Equity,Utilities
+PSA,Equity,Real Estate
+PHM,Equity,Consumer Discretionary
+PVH,Equity,Consumer Discretionary
+QRVO,Equity,Information Technology
+PWR,Equity,Industrials
+QCOM,Equity,Information Technology
+DGX,Equity,Health Care
+RL,Equity,Consumer Discretionary
+RJF,Equity,Financials
+RTX,Equity,Industrials
+O,Equity,Real Estate
+REG,Equity,Real Estate
+REGN,Equity,Health Care
+RF,Equity,Financials
+RSG,Equity,Industrials
+RMD,Equity,Health Care
+RHI,Equity,Industrials
+ROK,Equity,Industrials
+ROL,Equity,Industrials
+ROP,Equity,Information Technology
+ROST,Equity,Consumer Discretionary
+RCL,Equity,Consumer Discretionary
+SPGI,Equity,Financials
+SLB,Equity,Energy
+STX,Equity,Information Technology
+SEE,Equity,Materials
+SRE,Equity,Utilities
+NOW,Equity,Information Technology
+SHW,Equity,Materials
+SPG,Equity,Real Estate
+SWKS,Equity,Information Technology
+SLG,Equity,Real Estate
+SNA,Equity,Industrials
+SO,Equity,Utilities
+LUV,Equity,Industrials
+SWK,Equity,Industrials
+SBUX,Equity,Consumer Discretionary
+STT,Equity,Financials
+STE,Equity,Health Care
+SYK,Equity,Health Care
+SIVB,Equity,Financials
+SYF,Equity,Financials
+SNPS,Equity,Information Technology
+SYY,Equity,Consumer Staples
+TMUS,Equity,Communication Services
+TROW,Equity,Financials
+TTWO,Equity,Communication Services
+TPR,Equity,Consumer Discretionary
+TRIP,Equity,Communication Services
+TFC,Equity,Financials
+TWTR,Equity,Communication Services
+TSCO,Equity,Consumer Discretionary
+TT,Equity,Industrials
+TDG,Equity,Industrials
+TEL,Equity,Information Technology
+FTI,Equity,Energy
+TXT,Equity,Industrials
+COO,Equity,Health Care
+TSLA,Equity,Consumer Discretionary
+TSN,Equity,Consumer Staples
+TTD,Equity,Communication Services
+TYL,Equity,Information Technology
+TSCO,Equity,Consumer Discretionary
+UA,Equity,Consumer Discretionary
+UAA,Equity,Consumer Discretionary
+UNP,Equity,Industrials
+UAL,Equity,Industrials
+UPS,Equity,Industrials
+URI,Equity,Industrials
+UNH,Equity,Health Care
+UHS,Equity,Health Care
+VLO,Equity,Energy
+VTR,Equity,Real Estate
+VRSN,Equity,Information Technology
+VRSK,Equity,Industrials
+VZ,Equity,Communication Services
+VRTX,Equity,Health Care
+VFC,Equity,Consumer Discretionary
+VTRS,Equity,Health Care
+VICI,Equity,Real Estate
+V,Equity,Information Technology
+VMC,Equity,Materials
+WAB,Equity,Industrials
+WBA,Equity,Consumer Staples
+WMT,Equity,Consumer Staples
+WAT,Equity,Health Care
+WEC,Equity,Utilities
+WFC,Equity,Financials
+WELL,Equity,Real Estate
+WST,Equity,Health Care
+WDC,Equity,Information Technology
+WRK,Equity,Materials
+WY,Equity,Real Estate
+WHR,Equity,Consumer Discretionary
+WMB,Equity,Energy
+WLTW,Equity,Financials
+WYNN,Equity,Consumer Discretionary
+XEL,Equity,Utilities
+XRX,Equity,Information Technology
+XLNX,Equity,Information Technology
+XYL,Equity,Industrials
+YUM,Equity,Consumer Discretionary
+ZBRA,Equity,Information Technology
+ZBH,Equity,Health Care
+ZION,Equity,Financials
+ZTS,Equity,Health Care
+# Developed Markets (non-US)
+NESN,Equity,Consumer Staples
+NOVN,Equity,Health Care
+UBS,Equity,Financials
+RY,Equity,Financials
+TD,Equity,Financials
+BNS,Equity,Financials
+BHP,Equity,Materials
+RIO,Equity,Materials
+SIEGY,Equity,Industrials
+ALIZY,Equity,Financials
+SAP,Equity,Information Technology
+BNPQY,Equity,Financials
+TOT,Equity,Energy
+ORAN,Equity,Communication Services
+# Emerging Markets
+VALE,Equity,Materials
+ITUB,Equity,Financials
+INFY,Equity,Information Technology
+TSM,Equity,Information Technology
+HDB,Equity,Financials
+SNP,Equity,Energy
+PTR,Equity,Energy
+BIDU,Equity,Communication Services
+MELI,Equity,Consumer Discretionary
+NPSNY,Equity,Communication Services
+MTN,Equity,Communication Services

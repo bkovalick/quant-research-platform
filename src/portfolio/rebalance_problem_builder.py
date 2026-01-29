@@ -24,12 +24,8 @@ class RebalanceProblemBuilder:
         tickers = [item["ticker"] for item in self.config["rebalance_sub_parameters"]]
         cash_allocation = self.config.get("cash_allocation", 0.0)
         tickers_with_cash = tickers + ["CASH"]
-        target_weights = [ item["target_weights"] 
-                           for item in self.config["rebalance_sub_parameters"] ] + [cash_allocation]
-
         initial_weights = [ item["initial_weights"] 
                            for item in self.config["rebalance_sub_parameters"] ] + [cash_allocation]
-        
         lookback_window = self.config.get("lookback_window", "1y")
         trading_frequency = self.config.get("trading_frequency", "d")
         
@@ -42,7 +38,6 @@ class RebalanceProblemBuilder:
             "apply_sharpe_objective": self.config.get("apply_sharpe_objective", False),
             "start_date": self.config["start_date"],
             "end_date": self.config["end_date"],
-            "target_weights": target_weights,
             "initial_weights": initial_weights,
             "cash_allocation": cash_allocation,
             "risk_tolerance": self.config.get("risk_tolerance", 0.0),
@@ -54,7 +49,9 @@ class RebalanceProblemBuilder:
                                                                   {"lower": 0.05, "upper": 0.95}),
             "turnover_limit": self.config["constraints"].get("turnover_limit", None),
             "max_position_size": self.config["constraints"].get("max_position_size", None),
-            "max_number_of_positions": self.config["constraints"].get("max_number_of_positions", None)
+            "max_number_of_positions": self.config["constraints"].get("max_number_of_positions", None),
+            "asset_class_constraints": self.config["constraints"].get("asset_class_constraints", None),
+            "sector_constraints": self.config["constraints"].get("sector_constraints", None)
         }
 
         return RebalanceProblem(prepared_data)

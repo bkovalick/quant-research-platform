@@ -9,14 +9,12 @@ from portfolio.portfolio import Portfolio
 
 def align_series_to_dataframe(df, series, col_name):
     """
-    Add a (possibly shorter) series to a DataFrame, aligning valid values at the end.
-    NaNs will be at the top if the series is shorter than the DataFrame.
+        Add a (possibly shorter) series to a DataFrame, aligning valid values at the end.
+        NaNs will be at the top if the series is shorter than the DataFrame.
     """
     n = len(df) - len(series)
-    # Shift the series down so its last value aligns with the last row of df
     nan_part = pd.Series([np.nan]*n, index=df.index[:n])
     aligned = pd.concat([nan_part, series])
-    # If index mismatch, reindex to df
     aligned = aligned.reindex(df.index)
     return aligned
 
@@ -60,15 +58,13 @@ class ReportingSystem:
         portfolio_dfs = []
         rolling_dfs = []
         for metrics, label in all_metrics:
-            # Flatten scalar metrics and add label
             row = {"strategy": label}
             for k, v in metrics.items():
                 if isinstance(v, (pd.Series, pd.DataFrame)):
-                    continue  # skip for now, will handle below
+                    continue 
                 row[k] = v
             summary_rows.append(row)
 
-            # Expand weights into separate columns and reorder columns
             if "portfolio_weights" in metrics:
                 weights_df = pd.DataFrame(metrics["portfolio_weights"].values, columns=metrics["portfolio_weights"].columns)
                 weights_df.insert(0, "Date", metrics["portfolio_wealth_factors"].index)
@@ -90,10 +86,7 @@ class ReportingSystem:
                 })
                 rolling_dfs.append(rolling_df)
 
-        # Summary table of scalar metrics
         summary_df = pd.DataFrame(summary_rows)
-
-        # Condensed DataFrame of all time series metrics
         if portfolio_dfs:
             portfolio_metrics_df = pd.concat(portfolio_dfs, axis=0, ignore_index=True)
         else:
@@ -114,22 +107,16 @@ class ReportingSystem:
         portfolio_turnover = portfolio.turnover
         wealth_factors = (1 + portfolio_returns).cumprod()
         cumulative_returns = wealth_factors - 1
-
-        # Annualize return: compound final return over time horizon (CAGR)
         num_periods = cumulative_returns.shape[0]
         years = num_periods / cls.WEEKS_PER_YEAR
         annualized_return = wealth_factors.iloc[-1] ** (1 / years) - 1
-        
-        # Annualize volatility
         annualized_volatility = portfolio_returns.std() * np.sqrt(cls.ANNUAL_TRADING_DAYS[rebalance_problem.trading_frequency])
-        
-        # Calculate Sharpe ratio safely (avoid division by zero)
+
         sharpe_ratio = (
             annualized_return / annualized_volatility 
             if annualized_volatility != 0 else 0.0
         )
-        
-        # Only compute max drawdown after lookback period
+
         lookback_window = getattr(rebalance_problem, 'lookback_window', 0)
         if lookback_window > 0:
             drawdown_returns = cumulative_returns.iloc[lookback_window:]
@@ -162,7 +149,6 @@ class ReportingSystem:
             "turnover": portfolio_turnover.mean() * cls.WEEKS_PER_YEAR,
             "alpha": cls.get_alpha(portfolio_returns, rebalance_problem)
         }
-        cls._save_performance_plot(portfolio_returns, wealth_factors, sharpe_ratio, rebalance_problem)
         return performance_metrics
     
     @classmethod
@@ -217,7 +203,7 @@ class ReportingSystem:
         benchmark = yf.download("^GSPC", \
                         start=rebalance_problem.start_date, end=rebalance_problem.end_date)
         freq = rebalance_problem.trading_frequency
-        # Map deprecated 'w' to 'W' for pandas compatibility
+
         if freq == 'w':
             freq = 'W'
         benchmark = benchmark.asfreq(freq, method='ffill')
@@ -233,33 +219,3 @@ class ReportingSystem:
         benchmark_annualized = (1 + aligned['benchmark']).prod() ** (annualization_factor/len(aligned)) - 1
         alpha = portfolio_annualized - benchmark_annualized
         return alpha
-        
-    @classmethod
-    def _save_performance_plot(cls, portfolio_returns, wealth_factors, sharpe_ratio, rebalance_problem):
-        """Generate and save performance plot with descriptive filename."""
-        returns = portfolio_returns.dropna(axis = 0)
-        if isinstance(returns, pd.Series):
-            if returns.name is None:
-                returns.name = 'portfolio'      
-            returns = returns.to_frame()        
-        ax = wealth_factors.plot(figsize = (10,4))
-        ax.set_title('Cumulative Return',  fontsize = 16)
-        ax.tick_params(axis='x', labelsize = 12)
-        ax.tick_params(axis='y', labelsize = 12)
-
-        if np.isscalar(sharpe_ratio):
-            labels = [f"{col} - Sharpe: {sharpe_ratio:.2f}" for col in returns.columns]
-        else:
-            labels = [f"{col} - Sharpe: {sharpe_ratio.get(col, 0):.2f}" for col in returns.columns]
-        plt.legend(labels, fontsize=12.5)
-
-        program_type = getattr(rebalance_problem, 'program_type', 'unknown')
-        try:
-            start_date = str(wealth_factors.index[0])[:10]
-            end_date = str(wealth_factors.index[-1])[:10]
-        except Exception:
-            start_date = 'unknown_start'
-            end_date = 'unknown_end'
-        filename = f"backtest_results/cumulative_return_{program_type}_{start_date}_to_{end_date}.png"
-        plt.savefig(filename, bbox_inches='tight')
-        plt.close()

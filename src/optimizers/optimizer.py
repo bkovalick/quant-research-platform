@@ -91,7 +91,23 @@ class Optimizer(IOptimizer):
 										    constraints: list, 
 											rebalance_problem: RebalanceProblem) -> list:
 		"""Setup asset class size constraints (max position size, max number of positions)."""
-		return []
+		if getattr(rebalance_problem, "asset_class_constraints") is None:
+			return
+		
+		# for asset_class, bounds in rebalance_problem.asset_class_constraints.items():
+		# 	min_bound, max_bound = bounds[0], bounds[1]
+
+		# 	constraints += [{
+		# 		'type': 'ineq',
+		# 		'fun': lambda x, tickers: max_bound - np.sum([x[i] for i, t in 
+		# 							enumerate(rebalance_problem.tickers)]) 
+		# 	}]
+
+		# 	constraints += [{
+		# 		'type': 'ineq',
+		# 		'fun': lambda x, tickers: np.sum([x[i] for i, t in 
+		# 							enumerate(rebalance_problem.tickers)]) - min_bound
+		# 	}]
 
 	def _setup_sector_size_constraints(self, 
 									   constraints: list, 
