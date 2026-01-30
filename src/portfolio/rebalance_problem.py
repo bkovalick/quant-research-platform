@@ -22,6 +22,14 @@ class RebalanceProblem:
         return Signals(DummyMarketEnv())
     
     @property
+    def use_full_universe(self) -> bool:
+        return self._data.get("use_full_universe", False)
+    
+    @property
+    def benchmark_universe(self) -> str:
+        return self._data.get("benchmark_universe", "SPY")
+        
+    @property
     def n_constituents(self) -> int:
         return len(self.tickers)
 
@@ -30,9 +38,21 @@ class RebalanceProblem:
         return self._data.get("tickers", [])
     
     @property
-    def program_type(self) -> str:
-        return self._data.get("program_type", "fixed_weights")
+    def optimizer_type(self) -> str:
+        return self._data.get("optimizer_type", "fwp_optimizer")
     
+    @property
+    def strategy_type(self) -> str:
+        return self._data.get("strategy_type", "fwp_strategy")
+    
+    @property
+    def apply_max_return_objective(self) -> bool:
+        return self._data.get("apply_max_return_objective", False)
+    
+    @property
+    def apply_sharpe_objective(self) -> bool:
+        return self._data.get("apply_sharpe_objective", False)    
+
     @property
     def start_date(self) -> str:
         return self._data.get("start_date")
@@ -44,10 +64,6 @@ class RebalanceProblem:
     @property
     def risk_free_rate(self) -> float:
         return self._data.get("risk_free_rate")
-
-    @property
-    def target_weights(self) -> list:
-        return self._data.get("target_weights")
 
     @property
     def initial_weights(self) -> list:
@@ -84,10 +100,6 @@ class RebalanceProblem:
         return self._data.get("risk_tolerance", 0)
     
     @property
-    def model_constraints(self) -> dict:
-        return self._data.get("model_constraints", {})
-    
-    @property
     def apply_windsoring(self) -> bool:
         return self._data.get("apply_windsoring", True)
     
@@ -96,14 +108,25 @@ class RebalanceProblem:
         return self._data.get("windsor_percentiles", {"lower": 0.05, "upper": 0.95})
 
     @property
-    def trading_buffer(self) -> float:
-        return self._data.get("trading_buffer", 0.0)
+    def turnover_limit(self) -> float:
+        return self._data.get("turnover_limit", 0.0)
     
     @property
-    def apply_max_return_objective(self) -> bool:
-        return self._data.get("apply_max_return_objective", False)
+    def min_position_size(self) -> float:
+        return self._data.get("min_position_size", None) 
+        
+    @property
+    def max_position_size(self) -> float:
+        return self._data.get("max_position_size", None) 
+
+    @property
+    def max_number_of_positions(self) -> int:
+        return self._data.get("max_number_of_positions", None)
     
     @property
-    def apply_sharpe_objective(self) -> bool:
-        return self._data.get("apply_sharpe_objective", False)
+    def asset_class_constraints(self) -> int:
+        return self._data.get("asset_class_constraints", None)
     
+    @property
+    def sector_constraints(self) -> int:
+        return self._data.get("sector_constraints", None)

@@ -107,3 +107,4 @@ wrapt==1.16.0
 xgboost==2.0.3
 xyzservices==2024.4.0
 yfinance==0.2.38
+cvxpy==1.4.3

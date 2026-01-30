@@ -11,15 +11,15 @@ class IStrategyFactory(abc.ABC):
 class StrategyFactory(IStrategyFactory):
 
     _strategies = {
-        "mv_optimizer": MVOptimizationStrategy,
-        "fixed_weights": FixedWeightStrategy
+        "mv_strategy": MVOptimizationStrategy,
+        "fwp_strategy": FixedWeightStrategy
     }
 
     """Concrete implementation of an optimizer factory."""
     @classmethod
     def create_strategy(cls, rebalance_problem, optimizer):
-        strategy = cls._strategies.get(rebalance_problem.program_type)
+        strategy = cls._strategies.get(rebalance_problem.strategy_type)
         if strategy:
             return strategy(rebalance_problem, optimizer)
         else:
-            raise ValueError(f"Unknown strategy type: {rebalance_problem.program_type}")
+            raise ValueError(f"Unknown strategy type: {rebalance_problem.strategy_type}")

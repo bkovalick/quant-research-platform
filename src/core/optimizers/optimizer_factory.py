@@ -1,5 +1,5 @@
 import abc
-from optimizers.optimizer import Optimizer
+from optimizers.optimizer import CvxpyOptimizer, ScipyOptimizer
 from core.optimizers.ioptimizer import IOptimizer
 
 class IOptimizerFactory(abc.ABC):
@@ -18,15 +18,16 @@ class FixedWeightOptimizer(IOptimizer):
 class OptimizerFactory(IOptimizerFactory):
 
     _optimizers = {
-        "mv_optimizer": Optimizer,
-        "fixed_weights": FixedWeightOptimizer
+        "scipy_optimizer": ScipyOptimizer,
+        "cvxpy_optimizer": CvxpyOptimizer,
+        "fwp_optimizer": FixedWeightOptimizer
     }
 
     """Concrete implementation of an optimizer factory."""
     @classmethod
-    def create_optimizer(cls, program_type):
-        optimizer = cls._optimizers.get(program_type)
+    def create_optimizer(cls, optimizer_type):
+        optimizer = cls._optimizers.get(optimizer_type)
         if optimizer:
             return optimizer()
         else:
-            raise ValueError(f"Unknown optimizer type: {program_type}")
+            raise ValueError(f"Unknown optimizer type: {optimizer_type}")

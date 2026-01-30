@@ -1,3 +1,4 @@
+from os import path
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -11,15 +12,23 @@ class MarketDataGateway:
     
 class MarketEnvironment:
     """ Environment to interact with market data gateway """
-    def __init__(self, gateway=None, market_params = None):
+
+    def __init__(self, gateway = None, market_params = None):
+        """ Initialize with market data gateway and parameters """
         self.gateway = gateway or MarketDataGateway()
         self.market_params = market_params
         tickers = [t for t in self.market_params["tickers"] if t.upper() != "CASH"]
         self._market_data = self.gateway.get_price_data(
             tickers, self.market_params["start_date"], self.market_params["end_date"]
         )
-        self._market_data["CASH"] = 1.0
+        self._market_data = pd.concat([self._market_data, pd.DataFrame(1.0, \
+                                index=self._market_data.index, columns=["CASH"])], axis=1)
         self._market_data = self._market_data[self.market_params["tickers"]]
+        tickers_not_in_market_data = [ticker for ticker in tickers \
+                                      if ticker not in self._market_data.columns]
+        if len(tickers_not_in_market_data) > 0:
+            raise ValueError(f"Tickers not found in market data: {tickers_not_in_market_data}")
+        
         self._normalized_prices = None
     
     @property
@@ -27,18 +36,25 @@ class MarketEnvironment:
         """ Normalize prices to start at 1 """
         if self._normalized_prices is not None:
             return self._normalized_prices
+        
+        trading_frequency = self.market_params["trading_frequency"]
+        if trading_frequency == 'w':
+            trading_frequency = 'W'
         normalized = self._market_data / self._market_data.iloc[0]
-        normalized = normalized.asfreq(
-            self.market_params["trading_frequency"], method='ffill'
-        )
+        normalized = normalized.asfreq(trading_frequency, method='ffill')
         re_normalized = normalized / normalized.iloc[0]
-        re_normalized = re_normalized.dropna(axis=0)
+
+        for col in re_normalized.columns:
+            if re_normalized[col].notna().any():
+                re_normalized[col] = re_normalized[col].ffill()
+            else:
+                re_normalized[col] = 1.0
         return re_normalized
 
     @normalized_prices.setter
     def normalized_prices(self, df: pd.DataFrame):
-        self._normalized_prices = df
-    
+        self._normalized_prices = df 
+
 if __name__ == "__main__":
     market_params = {
         "tickers": ["AAPL", "MSFT", "GOOGL"],

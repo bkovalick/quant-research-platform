@@ -1,0 +1,46 @@
+{
+    "strategy_type": "fwp_strategy",
+    "optimizer_type": "fwp_optimizer",
+    "use_full_universe": true,
+    "benchmark_universe": "SPY",
+    "rebalance_sub_parameters": [
+        {"ticker": "AAPL", "initial_weights": 0.25},
+        {"ticker": "GOOGL", "initial_weights": 0.25},
+        {"ticker": "MSFT", "initial_weights": 0.25},
+        {"ticker": "NVDA", "initial_weights": 0.25}
+    ],
+    "risk_free_rate": 0.03,
+    "cash_allocation": 0.0,
+    "risk_tolerance": 0.10,
+    "start_date": "2005-01-01",
+    "end_date": "2026-01-15",
+    "trading_frequency": "w",
+    "lookback_window": "1y", 
+    "first_rebal": 0,
+    "constraints": {
+        "apply_windsoring": true,
+        "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
+        "turnover_limit": 0.2,
+        "min_position_size": 0.005,
+        "max_position_size": 0.15,
+        "max_positions": 50,
+        "asset_class_constraints": { 
+            "Equity": [0.75, 0.95], 
+            "Fixed Income": [0.025, 0.25], 
+            "Cash": [0.0, 0.025] 
+        },
+        "sector_constraints": {
+            "Technology": [0.25, 0.45], 
+            "Communication Services": [0.10, 0.20],
+            "Financial Services": [0.10, 0.20],
+            "Consumer Discretionary": [0.10, 0.15], 
+            "Consumer Staples": [0.075, 0.15],
+            "Healthcare": [0.10, 0.15],
+            "Materials": [0.0, 0.05],
+            "Energy": [0.0, 0.04],
+            "Real Estate": [0.0, 0.025],
+            "Utilities": [0.0, 0.02],
+            "Industrials": [0.0, 0.02]
+        }        
+    }         
+}
