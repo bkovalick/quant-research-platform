@@ -1,5 +1,5 @@
 import abc
-from optimizers.optimizer import Optimizer
+from optimizers.optimizer import CvxpyOptimizer, ScipyOptimizer
 from core.optimizers.ioptimizer import IOptimizer
 
 class IOptimizerFactory(abc.ABC):
@@ -18,7 +18,8 @@ class FixedWeightOptimizer(IOptimizer):
 class OptimizerFactory(IOptimizerFactory):
 
     _optimizers = {
-        "mv_optimizer": Optimizer,
+        "scipy_optimizer": ScipyOptimizer,
+        "cvxpy_optimizer": CvxpyOptimizer,
         "fwp_optimizer": FixedWeightOptimizer
     }
 

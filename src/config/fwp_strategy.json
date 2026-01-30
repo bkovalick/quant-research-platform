@@ -21,7 +21,8 @@
         "apply_windsoring": true,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
         "turnover_limit": 0.2,
-        "max_position_size": 0.50,
+        "min_position_size": 0.005,
+        "max_position_size": 0.15,
         "max_positions": 50,
         "asset_class_constraints": { 
             "Equity": [0.75, 0.95], 

@@ -15,6 +15,7 @@ class RebalanceProblemBuilder:
         use_full_universe = self.config.get("use_full_universe", False)
         if use_full_universe:
             tickers = MarketDataUtils.get_universe_tickers()
+            # tickers = ["APPL", "TSLA", "MSFT", "GOOGL", "AMZN"]
             n_assets = len(tickers)
             initial_weights = np.ones(n_assets) / n_assets
             initial_weights = initial_weights.tolist() + [cash_allocation]
@@ -48,6 +49,7 @@ class RebalanceProblemBuilder:
             "windsor_percentiles": self.config["constraints"].get("windsor_percentiles", \
                                                                   {"lower": 0.05, "upper": 0.95}),
             "turnover_limit": self.config["constraints"].get("turnover_limit", None),
+            "min_position_size": self.config["constraints"].get("min_position_size", None),
             "max_position_size": self.config["constraints"].get("max_position_size", None),
             "max_number_of_positions": self.config["constraints"].get("max_number_of_positions", None),
             "asset_class_constraints": self.config["constraints"].get("asset_class_constraints", None),

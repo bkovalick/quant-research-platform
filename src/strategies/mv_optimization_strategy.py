@@ -1,7 +1,7 @@
 import numpy as np
 
 from signals.signals import Signals
-from optimizers.optimizer import Optimizer
+from optimizers.optimizer import ScipyOptimizer
 from core.strategies.istrategy import StrategyInterface
 from infrastructure.market_data.marketdatagateway import MarketEnvironment
 
@@ -16,7 +16,7 @@ class MVOptimizationStrategy(StrategyInterface):
             "end_date": rebalance_problem.end_date, 
             "trading_frequency": rebalance_problem.trading_frequency}
         self.market_env = MarketEnvironment(market_params=self.market_params)
-        self.optimizer = optimizer or Optimizer()
+        self.optimizer = optimizer or ScipyOptimizer()
         self.signals = Signals(self.market_env, 
                                ann_factor=self.freq_map.get(rebalance_problem.trading_frequency, 252))
         self.rebalance_solution = None

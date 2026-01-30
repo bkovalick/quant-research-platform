@@ -112,6 +112,10 @@ class RebalanceProblem:
         return self._data.get("turnover_limit", 0.0)
     
     @property
+    def min_position_size(self) -> float:
+        return self._data.get("min_position_size", None) 
+        
+    @property
     def max_position_size(self) -> float:
         return self._data.get("max_position_size", None) 
 

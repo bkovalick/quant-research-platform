@@ -2,13 +2,127 @@ from dataclasses import dataclass
 import numpy as np
 from scipy.optimize import minimize
 from collections import defaultdict
+import cvxpy as cp
 
 from core.optimizers.ioptimizer import IOptimizer
 from portfolio.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
 from signals.signals import Signals
 
-class Optimizer(IOptimizer):
+
+class CvxpyOptimizer(IOptimizer):
+	"""Optimizer using Cvxpy's minimize function."""
+	def __init__(self):
+		super().__init__()	
+
+	def optimize(self, 
+			  rebalance_problem: RebalanceProblem, 
+			  signals: Signals = None,
+			  current_weights: np.ndarray = None) -> RebalanceSolution:
+		"""Optimize portfolio weights for the given rebalance problem."""
+		if current_weights is None:
+			current_weights = np.array(rebalance_problem.initial_weights)				
+
+		decision_variables = self._setup_decision_variables(rebalance_problem)
+		constraints = self._setup_constraints(decision_variables, rebalance_problem, signals, current_weights)
+		objective = self._set_objective(decision_variables, rebalance_problem, signals)
+		prob = cp.Problem(objective, constraints)
+
+		try:
+			prob.solve(solver=cp.ECOS, verbose=False)
+		except cp.SolverError as e:
+			try:
+				prob.solve(solver=cp.OSQP, verbose=False)
+			except cp.SolverError as e:
+				raise RuntimeError(f"Optimization failed: {str(e)}")
+			
+		if prob.status not in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
+			raise RuntimeError(f"Optimization failed: Problem status {prob.status}")
+		
+		optimal_weights = decision_variables['portfolio_weights'].value
+		total_trades = optimal_weights - current_weights
+		return RebalanceSolution(
+			model="Cvxpy",
+			decision_variables={
+				'portfolio_weights': optimal_weights,
+				'total_trades': total_trades
+			},
+			rebalance_problem=rebalance_problem
+		)		
+
+	def _setup_decision_variables(self, rebalance_problem: RebalanceProblem) -> dict:
+		"""Setup decision variables for the optimization problem."""
+		n_assets = len(rebalance_problem.tickers)
+		portfolio_weights = cp.Variable(n_assets)
+		return {'portfolio_weights': portfolio_weights}
+
+	def _setup_constraints(self, 
+						   decision_variables: dict,
+						   rebalance_problem: RebalanceProblem, 
+						   signals: Signals = None,
+						   current_weights: np.ndarray = None) -> list:
+		"""Setup constraints for the optimization problem."""
+		constraints = []
+		constraints.extend(
+			self._setup_portfolio_constraints(decision_variables, rebalance_problem, signals)
+		)
+		constraints.extend(
+			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
+		)
+		return constraints
+
+	def _setup_portfolio_constraints(self, 
+								     decision_variables: dict,
+								     rebalance_problem: RebalanceProblem,
+									 signals: Signals = None) -> list: 
+		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
+		portfolio_weights = decision_variables.get('portfolio_weights')
+		min_position_size = getattr(rebalance_problem, 'min_position_size', 0.0)
+		max_position_size = getattr(rebalance_problem, 'max_position_size', 1.0)
+		return [
+				cp.sum(portfolio_weights) == 1,
+				portfolio_weights >= min_position_size,
+				portfolio_weights <= max_position_size
+			]
+
+	def _setup_turnover_constraints(self, 
+								     decision_variables: dict,
+								     rebalance_problem: RebalanceProblem,
+									 current_weights: np.ndarray = None) -> list: 
+		"""Setup turnover constraints based on trading buffer."""
+		if getattr(rebalance_problem, 'turnover_limit') is None or current_weights is None:
+			return []
+		
+		portfolio_weights = decision_variables.get('portfolio_weights')
+		return [
+				cp.norm1(portfolio_weights - current_weights) <= rebalance_problem.turnover_limit * 2
+		]
+
+	def _set_objective(self, 
+					   decision_variables: dict, 
+					   rebalance_problem: RebalanceProblem, 
+					   signals: Signals = None) -> callable:
+		"""Set the objective function based on rebalance problem settings."""
+		if getattr(rebalance_problem, 'apply_max_return_objective'):
+			return self._set_maximize_return_objective(decision_variables, rebalance_problem, signals)
+		
+	def _set_maximize_return_objective(self, 
+									   decision_variables: dict,
+									   rebalance_problem: RebalanceProblem, 
+									   signals: Signals) -> callable:
+		"""Set objective to maximize returns minus risk penalty."""
+		portfolio_weights = decision_variables.get('portfolio_weights')
+		mean_vector = signals.mean_returns
+		cov_matrix = signals.covariance_matrix
+		risk_tolerance = getattr(rebalance_problem, 'risk_tolerance', 1.0)
+		portfolio_risk = cp.quad_form(portfolio_weights, cov_matrix)
+		concentration_penalty = cp.sum_squares(portfolio_weights)  # penalize large weights
+		concentration_strength = 1
+		objective = cp.Maximize(mean_vector @ portfolio_weights - risk_tolerance * \
+						  portfolio_risk - concentration_strength * concentration_penalty)
+		return objective
+
+class ScipyOptimizer(IOptimizer):
 	"""Optimizer using SciPy's minimize function with SLSQP method."""
 	def __init__(self):
 		super().__init__()
@@ -21,17 +135,17 @@ class Optimizer(IOptimizer):
 		if current_weights is None:
 			current_weights = np.array(rebalance_problem.initial_weights)
 
-		bounds = self._setup_position_bounds(rebalance_problem, current_weights)
-		# bounds = self._setup_position_bounds(rebalance_problem)
+		bounds = self._setup_position_bounds(rebalance_problem)
 		constraints = self._setup_constraints(rebalance_problem, current_weights)
 		objective = self._set_objective(rebalance_problem, signals)
 	
 		result = minimize(
 			objective,
 			x0=current_weights,
-			method='SLSQP',
+			method='trust-constr',
 			bounds=bounds,
-			constraints=constraints
+			constraints=constraints,
+			# options={"maxiter": 1000, "ftol": 1e-6}
 		)
 
 		if not result.success:
@@ -50,29 +164,20 @@ class Optimizer(IOptimizer):
 		)
 
 	def _setup_position_bounds(self, 
-							   rebalance_problem: RebalanceProblem,
-							   current_weights: np.ndarray = None) -> list:
+							   rebalance_problem: RebalanceProblem) -> list:
 		"""Setup position size bounds."""
-		n_assets = len(current_weights)
+		n_assets = len(rebalance_problem.tickers)
 		max_bound = getattr(rebalance_problem, "max_position_size")
 		if max_bound is None or max_bound == 0:
 			max_bound = 1.0
 		return [(0, max_bound) for _ in range(n_assets)]
-	# def _setup_position_bounds(self, 
-	# 						   rebalance_problem: RebalanceProblem) -> list:
-	# 	"""Setup position size bounds."""
-	# 	n_assets = len(rebalance_problem.tickers)
-	# 	max_bound = getattr(rebalance_problem, "max_position_size")
-	# 	if max_bound is None or max_bound == 0:
-	# 		max_bound = 1.0
-	# 	return [(0, max_bound) for _ in range(n_assets)]
 
 	def _setup_constraints(self, rebalance_problem: RebalanceProblem, 
 						   current_weights: np.ndarray = None) -> list:
 		"""Setup constraints for the optimization problem."""
 		constraints = []
 		self._setup_portfolio_constraints(constraints, rebalance_problem)
-		# self._setup_turnover_constraints(constraints, rebalance_problem, current_weights)
+		self._setup_turnover_constraints(constraints, rebalance_problem, current_weights)
 		# self._setup_asset_class_size_constraints(constraints, rebalance_problem)
 		# self._setup_sector_size_constraints(constraints, rebalance_problem)
 		# self._setup_max_num_positions_constraints(constraints, rebalance_problem)
@@ -82,7 +187,7 @@ class Optimizer(IOptimizer):
 								  	 constraints: list,
 								     rebalance_problem: RebalanceProblem) -> list: 
 		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
-		constraints += [{'type': 'eq', 'fun': lambda x: np.isclose(np.sum(x), 1) - 1}]
+		constraints += [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]
 	
 	def _setup_turnover_constraints(self, 
 								 	constraints: list, 
@@ -151,7 +256,7 @@ class Optimizer(IOptimizer):
 		risk_tolerance = getattr(rebalance_problem, 'risk_tolerance', 1.0)
 		def objective(weights):
 			return - (mean_vector @ weights - risk_tolerance * (weights @ cov_matrix @ weights))
-		return objective		
+		return objective
 
 	def _set_maximum_sharpe_objective(self, rebalance_problem: RebalanceProblem, signals: Signals) -> callable:
 		"""Set objective to maximize Sharpe ratio."""
@@ -161,7 +266,7 @@ class Optimizer(IOptimizer):
 		def objective(weights):
 			port_return = mean_vector @ weights
 			port_vol = np.sqrt(weights.T @ cov_matrix @ weights)
-			if port_vol == 0:
+			if port_vol <= 1e-12:
 				return 1e6
 			return - (port_return - risk_free_rate) / port_vol
 		return objective

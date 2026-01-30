@@ -1,16 +1,18 @@
 {
     "strategy_type": "mv_strategy",
-    "optimizer_type": "mv_optimizer",
-    "use_full_universe": true,
+    "optimizer_type": "cvxpy_optimizer",
+    "use_full_universe": false,
     "benchmark_universe": "SPY",    
     "rebalance_sub_parameters": [
-        {"ticker": "AAPL", "initial_weights": 0.25},
-        {"ticker": "GOOGL", "initial_weights": 0.25},
-        {"ticker": "MSFT", "initial_weights": 0.25},
-        {"ticker": "NVDA", "initial_weights": 0.25}
+        {"ticker": "AAPL", "initial_weights": 0.20},
+        {"ticker": "GOOGL", "initial_weights": 0.20},
+        {"ticker": "MSFT", "initial_weights": 0.20},
+        {"ticker": "NVDA", "initial_weights": 0.20},
+        {"ticker": "TSLA", "initial_weights": 0.10},
+        {"ticker": "AGG", "initial_weights": 0.05}
     ],
     "risk_free_rate": 0.03,
-    "cash_allocation": 0.0,
+    "cash_allocation": 0.05,
     "risk_tolerance": 0.10,
     "start_date": "2005-01-01",
     "end_date": "2026-01-15",
@@ -23,7 +25,8 @@
         "apply_windsoring": true,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
         "turnover_limit": 0.9,
-        "max_position_size": 0.50,
+        "min_position_size": 0.0,
+        "max_position_size": 0.15,  
         "max_positions": 50,
         "asset_class_constraints": { 
             "Equity": [0.75, 0.95], 
