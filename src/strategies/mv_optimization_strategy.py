@@ -1,9 +1,9 @@
 import numpy as np
 
-from core.strategies.istrategy import StrategyInterface
-from infrastructure.market_data.marketdatagateway import MarketEnvironment
 from signals.signals import Signals
 from optimizers.optimizer import Optimizer
+from core.strategies.istrategy import StrategyInterface
+from infrastructure.market_data.marketdatagateway import MarketEnvironment
 
 class MVOptimizationStrategy(StrategyInterface):
     freq_map = {"d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
@@ -25,13 +25,14 @@ class MVOptimizationStrategy(StrategyInterface):
     def calculate_drifted_weights(self, prev_weights, prev_asset_returns):
         """Calculate drifted weights based on previous weights and returns."""
         curr_returns = np.sum(prev_weights * prev_asset_returns)
-        curr_weights = prev_weights * (1 + prev_asset_returns) / (1 + np.sum(prev_weights * prev_asset_returns))  
+        curr_weights = prev_weights * (1 + prev_asset_returns) / \
+            (1 + np.sum(prev_weights * prev_asset_returns))  
         curr_weights = curr_weights / sum(curr_weights)
         return curr_weights, curr_returns
     
     def calculate_rebalanced_weights(self, rebalance_idx, lookback_prices, current_weights):
         """Calculate rebalance weights"""
-        if rebalance_idx < self.rebalance_problem.lookback_window:
+        if rebalance_idx < self.rebalance_problem.lookback_window:       
             return self.rebalance_problem.initial_weights
         
         self.market_env.normalized_prices = self._apply_windsoring(lookback_prices)
@@ -42,7 +43,8 @@ class MVOptimizationStrategy(StrategyInterface):
     
     def _apply_windsoring(self, lookback_prices):
         """Apply windsoring to lookback prices."""
-        if self.rebalance_problem.windsor_percentiles is None or self.rebalance_problem.apply_windsoring is False:
+        if self.rebalance_problem.windsor_percentiles is None or \
+                self.rebalance_problem.apply_windsoring is False:
             return lookback_prices
         
         windsor_percentiles = self.rebalance_problem.windsor_percentiles

@@ -23,6 +23,11 @@ class MarketEnvironment:
         )
         self._market_data["CASH"] = 1.0
         self._market_data = self._market_data[self.market_params["tickers"]]
+        tickers_not_in_market_data = [ticker for ticker in tickers \
+                                      if ticker not in self._market_data.columns]
+        if len(tickers_not_in_market_data) > 0:
+            raise ValueError(f"Tickers not found in market data: {tickers_not_in_market_data}")
+        
         self._normalized_prices = None
     
     @property
@@ -35,61 +40,18 @@ class MarketEnvironment:
             self.market_params["trading_frequency"], method='ffill'
         )
         re_normalized = normalized / normalized.iloc[0]
-        re_normalized = re_normalized.dropna(axis=0)
+        # TOOD just kick out bad data and make sure the init weights and tickers are more robust
+        # downstream calcs as well
+        for col in re_normalized.columns:
+            if re_normalized[col].notna().any():
+                re_normalized[col] = re_normalized[col].ffill()
+            else:
+                re_normalized[col] = 1.0
         return re_normalized
 
     @normalized_prices.setter
     def normalized_prices(self, df: pd.DataFrame):
-        self._normalized_prices = df
-
-    @property
-    def get_universe_tickers(self) -> list:
-        """ Get combined universe tickers from fixed income and equity """
-        fi_tickers = self.get_fixed_income_mapping_universe['ticker'].tolist()
-        equity_tickers = self.get_equity_mapping_universe['ticker'].tolist()
-        return fi_tickers + equity_tickers
-
-    @property
-    def get_fixed_income_mapping_universe(self) -> pd.DataFrame:
-        """ Get fixed income universe dataframe """
-        if not path.exists("src/config/fixed_income_universe.csv"):
-            raise FileNotFoundError("Fixed income universe file not found.")
-        return pd.read_csv("src/config/fixed_income_universe.csv")
-
-    @property
-    def get_fixed_income_sector_mapping(self) -> dict:
-        """ Get sector mapping for fixed income """
-        df = self.get_fixed_income_mapping_universe
-        sector_mapping = df.set_index('ticker')['sector'].to_dict()
-        return sector_mapping
-
-    @property
-    def get_fixed_income_asset_class_mapping(self) -> dict:
-        """ Get asset class mapping for fixed income """
-        df = self.get_fixed_income_mapping_universe
-        asset_class_mapping = df.set_index('ticker')['asset_class'].to_dict()
-        return asset_class_mapping
-    
-    @property
-    def get_equity_mapping_universe(self) -> pd.DataFrame:
-        """ Get equity universe dataframe """
-        if not path.exists("src/config/equity_universe.csv"):
-            raise FileNotFoundError("Equity universe file not found.")
-        return pd.read_csv("src/config/equity_universe.csv")    
-
-    @property
-    def get_equity_sector_mapping(self) -> dict:
-        """ Get sector mapping for equities """
-        df = self.get_equity_mapping_universe
-        sector_mapping = df.set_index('ticker')['sector'].to_dict()
-        return sector_mapping
-    
-    @property
-    def get_equity_asset_class_mapping(self) -> dict:
-        """ Get asset class mapping for equities """
-        df = self.get_equity_mapping_universe
-        asset_class_mapping = df.set_index('ticker')['asset_class'].to_dict()
-        return asset_class_mapping    
+        self._normalized_prices = df 
 
 if __name__ == "__main__":
     market_params = {

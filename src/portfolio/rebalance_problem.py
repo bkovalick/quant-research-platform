@@ -22,6 +22,14 @@ class RebalanceProblem:
         return Signals(DummyMarketEnv())
     
     @property
+    def use_full_universe(self) -> bool:
+        return self._data.get("use_full_universe", False)
+    
+    @property
+    def benchmark_universe(self) -> str:
+        return self._data.get("benchmark_universe", "SPY")
+        
+    @property
     def n_constituents(self) -> int:
         return len(self.tickers)
 

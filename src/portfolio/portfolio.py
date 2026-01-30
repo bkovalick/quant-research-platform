@@ -1,7 +1,5 @@
 import pandas as pd
 import numpy as np
-from models.rebalance_solution import RebalanceSolution
-from core.optimizers.optimizer_factory import FixedWeightOptimizer
 from core.portfolio.iportfolio import PortfolioInterface
 
 class Portfolio(PortfolioInterface):
@@ -14,8 +12,12 @@ class Portfolio(PortfolioInterface):
         self.turnover = None
 
     def initialize(self, rebalance_problem, price_data):
-        self.weights = pd.DataFrame(0, dtype=float, index=price_data.index, columns=rebalance_problem.tickers)
-        self.weights.iloc[0] = rebalance_problem.initial_weights
+        """Initialize portfolio with rebalance problem and price data."""
+        if price_data.shape[0] == 0:
+            raise ValueError("price_data is empty—cannot initialize portfolio weights.")
+
+        self.weights = pd.DataFrame(0, dtype=float, index=price_data.index, columns=price_data.columns)
+        self.weights.iloc[0] = rebalance_problem.initial_weights  
         self.returns = pd.Series(0, dtype=float, index=price_data.index)
         self.turnover = pd.Series(0, dtype=float, index=price_data.index)
     

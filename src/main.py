@@ -31,8 +31,9 @@ if __name__ == '__main__':
 
     combined_metrics = []
     
-    # strategies = ["mv_strategy"]
-    strategies = ["fwp_strategy", "mv_strategy"]
+    # strategies = ["fwp_strategy"]
+    strategies = ["mv_strategy"]
+    # strategies = ["fwp_strategy", "mv_strategy"]
     # turnover_limits = [None, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     turnover_limits = [None]
     for strategy_type, turnover_limit in product(strategies, turnover_limits):

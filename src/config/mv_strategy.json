@@ -1,6 +1,8 @@
 {
     "strategy_type": "mv_strategy",
     "optimizer_type": "mv_optimizer",
+    "use_full_universe": true,
+    "benchmark_universe": "SPY",    
     "rebalance_sub_parameters": [
         {"ticker": "AAPL", "initial_weights": 0.25},
         {"ticker": "GOOGL", "initial_weights": 0.25},
@@ -41,5 +43,5 @@
             "Utilities": [0.0, 0.02],
             "Industrials": [0.0, 0.02]
         }
-    }        
+    }
 }

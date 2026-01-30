@@ -2,7 +2,6 @@ import abc
 import numpy as np
 import pandas as pd
 import time
-import matplotlib.pyplot as plt
 
 from portfolio.portfolio import PortfolioInterface
 from core.strategies.istrategy import StrategyInterface
@@ -43,10 +42,10 @@ class BacktestingEngine(BacktestingEngineInterface):
         self.portfolio.initialize(rebalance_problem, self.asset_prices)
         print("Running backtest...")
         start_time = time.time()
-        self._run_backtest_loop_new()
+        self._run_backtest_loop()
         print(f"Backtest duration: {time.time() - start_time} seconds")
     
-    def _run_backtest_loop_new(self):
+    def _run_backtest_loop(self):
         """Main backtesting loop over all dates."""
         first_rebal = self.rebalance_problem.first_rebal
         date_indices = list(self.asset_prices.index)
@@ -76,39 +75,5 @@ class BacktestingEngine(BacktestingEngineInterface):
             self.portfolio.weights.loc[curr_date] = optimized_weights
             self.portfolio.turnover.loc[curr_date] = (
                 np.sum(np.abs(self.portfolio.weights.loc[curr_date].values - prev_weights)) / 2
-            )
-            prev_weights = optimized_weights
-            
-    def _run_backtest_loop(self, rebalance_problem):
-        """Main backtesting loop over all dates."""
-        first_rebal = rebalance_problem.first_rebal
-        lookback_window = rebalance_problem.lookback_window
-        date_indices = list(self.asset_prices.index)
-        prev_weights = self.portfolio.weights.iloc[0].values.copy()
-        rebalance_frequency = getattr(rebalance_problem, 'rebalance_frequency', 'w')
-
-        for i, date_idx in enumerate(date_indices):
-            print(f"Backtesting date: {date_idx}")
-            if i < first_rebal:
-                continue
-
-            if i > first_rebal:
-                curr_weights, curr_return = self._calculate_drifted_weights(
-                    prev_weights, self.asset_returns.loc[date_idx].values
-                )
-                self.portfolio.weights.loc[date_idx] = curr_weights
-                self.portfolio.returns.loc[date_idx] = curr_return
-                prev_weights = curr_weights
-
-            if not self._is_rebalance_date(date_idx, rebalance_frequency):
-                continue
-
-            rebalance_problem.rebalanced_weights = prev_weights
-            optimized_weights = self._calculate_rebalance_weights(
-                i, lookback_window, rebalance_problem, self.asset_prices.loc[:date_idx]
-            )
-            self.portfolio.weights.loc[date_idx] = optimized_weights
-            self.portfolio.turnover.loc[date_idx] = (
-                np.sum(np.abs(self.portfolio.weights.loc[date_idx].values - prev_weights)) / 2
             )
             prev_weights = optimized_weights

@@ -1,8 +1,6 @@
 ticker,asset_class,sector
 AGG,Fixed Income,US Aggregate
-BND,Fixed Income,US Aggregate
 LQD,Fixed Income,US Corporate
-HYG,Fixed Income,US High Yield
 TLT,Fixed Income,US Treasury Long
 IEF,Fixed Income,US Treasury Intermediate
 SHY,Fixed Income,US Treasury Short

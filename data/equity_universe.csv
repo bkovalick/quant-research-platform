@@ -1,11 +1,6 @@
 ticker,asset_class,sector
-# US Large/Mid Cap
 MMM,Equity,Industrials
-AOS,Equity,Industrials
-ABMD,Equity,Health Care
 ACN,Equity,Information Technology
-ATVI,Equity,Communication Services
-ADM,Equity,Consumer Staples
 AFL,Equity,Financials
 A,Equity,Health Care
 APD,Equity,Materials
@@ -29,13 +24,10 @@ AIG,Equity,Financials
 AMT,Equity,Real Estate
 AWK,Equity,Utilities
 AMP,Equity,Financials
-ABC,Equity,Health Care
 AME,Equity,Industrials
 AMGN,Equity,Health Care
 APH,Equity,Information Technology
 ADI,Equity,Information Technology
-ANSS,Equity,Information Technology
-ANTM,Equity,Health Care
 AON,Equity,Financials
 AOS,Equity,Industrials
 APA,Equity,Energy
@@ -50,7 +42,6 @@ T,Equity,Communication Services
 ATO,Equity,Utilities
 ADSK,Equity,Information Technology
 ADP,Equity,Information Technology
-AZO,Equity,Consumer Discretionary
 AVB,Equity,Real Estate
 AVY,Equity,Materials
 BKR,Equity,Energy
@@ -59,7 +50,6 @@ BAC,Equity,Financials
 BK,Equity,Financials
 BAX,Equity,Health Care
 BDX,Equity,Health Care
-BRK.B,Equity,Financials
 BBY,Equity,Consumer Discretionary
 BIO,Equity,Health Care
 TECH,Equity,Health Care
@@ -74,9 +64,7 @@ BMY,Equity,Health Care
 AVGO,Equity,Information Technology
 BR,Equity,Information Technology
 BRO,Equity,Financials
-BF.B,Equity,Consumer Staples
 CHRW,Equity,Industrials
-COG,Equity,Energy
 CDNS,Equity,Information Technology
 CPB,Equity,Consumer Staples
 COF,Equity,Financials
@@ -84,7 +72,6 @@ CAH,Equity,Health Care
 KMX,Equity,Consumer Discretionary
 CCL,Equity,Consumer Discretionary
 CARR,Equity,Industrials
-CTLT,Equity,Health Care
 CAT,Equity,Industrials
 CBOE,Equity,Financials
 CBRE,Equity,Real Estate
@@ -92,8 +79,6 @@ CDW,Equity,Information Technology
 CE,Equity,Materials
 CNC,Equity,Health Care
 CNP,Equity,Utilities
-CTL,Equity,Communication Services
-CERN,Equity,Health Care
 CF,Equity,Materials
 CRL,Equity,Health Care
 SCHW,Equity,Financials
@@ -108,7 +93,6 @@ CTAS,Equity,Industrials
 CSCO,Equity,Information Technology
 C,Equity,Financials
 CFG,Equity,Financials
-CTXS,Equity,Information Technology
 CLX,Equity,Consumer Staples
 CME,Equity,Financials
 CMS,Equity,Utilities
@@ -140,10 +124,6 @@ DVN,Equity,Energy
 DXCM,Equity,Health Care
 FANG,Equity,Energy
 DLR,Equity,Real Estate
-DFS,Equity,Financials
-DISCA,Equity,Communication Services
-DISCK,Equity,Communication Services
-DISH,Equity,Communication Services
 DG,Equity,Consumer Staples
 DLTR,Equity,Consumer Staples
 D,Equity,Utilities
@@ -152,7 +132,6 @@ DOV,Equity,Industrials
 DOW,Equity,Materials
 DTE,Equity,Utilities
 DUK,Equity,Utilities
-DRE,Equity,Real Estate
 DD,Equity,Materials
 DXC,Equity,Information Technology
 EMN,Equity,Materials
@@ -172,7 +151,6 @@ EQR,Equity,Real Estate
 ESS,Equity,Real Estate
 EL,Equity,Consumer Staples
 ETSY,Equity,Consumer Discretionary
-RE,Equity,Financials
 EVRG,Equity,Utilities
 ES,Equity,Utilities
 EXC,Equity,Utilities
@@ -188,19 +166,15 @@ FDX,Equity,Industrials
 FIS,Equity,Information Technology
 FITB,Equity,Financials
 FE,Equity,Utilities
-FRC,Equity,Financials
 FISV,Equity,Information Technology
-FLT,Equity,Information Technology
 FMC,Equity,Materials
 F,Equity,Consumer Discretionary
 FTNT,Equity,Information Technology
 FTV,Equity,Industrials
-FBHS,Equity,Industrials
 FOXA,Equity,Communication Services
 FOX,Equity,Communication Services
 BEN,Equity,Financials
 FCX,Equity,Materials
-GPS,Equity,Consumer Discretionary
 GRMN,Equity,Consumer Discretionary
 IT,Equity,Information Technology
 GD,Equity,Industrials
@@ -219,10 +193,8 @@ HOG,Equity,Consumer Discretionary
 HIG,Equity,Financials
 HAS,Equity,Consumer Discretionary
 HCA,Equity,Health Care
-PEAK,Equity,Real Estate
 HSIC,Equity,Health Care
 HSY,Equity,Consumer Staples
-HES,Equity,Energy
 HPE,Equity,Information Technology
 HLT,Equity,Consumer Discretionary
 HOLX,Equity,Health Care
@@ -246,7 +218,6 @@ INTC,Equity,Information Technology
 ICE,Equity,Financials
 IBM,Equity,Information Technology
 IP,Equity,Materials
-IPG,Equity,Communication Services
 IFF,Equity,Materials
 INTU,Equity,Information Technology
 ISRG,Equity,Health Care
@@ -259,8 +230,6 @@ SJM,Equity,Consumer Staples
 JNJ,Equity,Health Care
 JCI,Equity,Industrials
 JPM,Equity,Financials
-JNPR,Equity,Information Technology
-KSU,Equity,Industrials
 K,Equity,Consumer Staples
 KEY,Equity,Financials
 KEYS,Equity,Information Technology
@@ -290,7 +259,6 @@ LOW,Equity,Consumer Discretionary
 LUMN,Equity,Communication Services
 LYB,Equity,Materials
 MTB,Equity,Financials
-MRO,Equity,Energy
 MPC,Equity,Energy
 MKTX,Equity,Financials
 MAR,Equity,Consumer Discretionary
@@ -318,7 +286,6 @@ MCO,Equity,Financials
 MS,Equity,Financials
 MSI,Equity,Information Technology
 MSCI,Equity,Financials
-MYL,Equity,Health Care
 NDAQ,Equity,Financials
 NOV,Equity,Energy
 NTAP,Equity,Information Technology
@@ -328,15 +295,11 @@ NEM,Equity,Materials
 NWSA,Equity,Communication Services
 NWS,Equity,Communication Services
 NEE,Equity,Utilities
-NLSN,Equity,Industrials
 NKE,Equity,Consumer Discretionary
 NI,Equity,Utilities
-NBL,Equity,Energy
-JWN,Equity,Consumer Discretionary
 NSC,Equity,Industrials
 NTRS,Equity,Financials
 NOC,Equity,Industrials
-NLOK,Equity,Information Technology
 NCLH,Equity,Consumer Discretionary
 NRG,Equity,Utilities
 NUE,Equity,Materials
@@ -356,15 +319,12 @@ PAYX,Equity,Information Technology
 PAYC,Equity,Information Technology
 PYPL,Equity,Information Technology
 PNR,Equity,Industrials
-PBCT,Equity,Financials
 PEP,Equity,Consumer Staples
-PKI,Equity,Health Care
 PRGO,Equity,Health Care
 PFE,Equity,Health Care
 PM,Equity,Consumer Staples
 PSX,Equity,Energy
 PNW,Equity,Utilities
-PXD,Equity,Energy
 PNC,Equity,Financials
 PPG,Equity,Materials
 PPL,Equity,Utilities
@@ -414,9 +374,7 @@ SBUX,Equity,Consumer Discretionary
 STT,Equity,Financials
 STE,Equity,Health Care
 SYK,Equity,Health Care
-SIVB,Equity,Financials
 SYF,Equity,Financials
-SNPS,Equity,Information Technology
 SYY,Equity,Consumer Staples
 TMUS,Equity,Communication Services
 TROW,Equity,Financials
@@ -424,8 +382,6 @@ TTWO,Equity,Communication Services
 TPR,Equity,Consumer Discretionary
 TRIP,Equity,Communication Services
 TFC,Equity,Financials
-TWTR,Equity,Communication Services
-TSCO,Equity,Consumer Discretionary
 TT,Equity,Industrials
 TDG,Equity,Industrials
 TEL,Equity,Information Technology
@@ -457,7 +413,6 @@ VICI,Equity,Real Estate
 V,Equity,Information Technology
 VMC,Equity,Materials
 WAB,Equity,Industrials
-WBA,Equity,Consumer Staples
 WMT,Equity,Consumer Staples
 WAT,Equity,Health Care
 WEC,Equity,Utilities
@@ -465,24 +420,18 @@ WFC,Equity,Financials
 WELL,Equity,Real Estate
 WST,Equity,Health Care
 WDC,Equity,Information Technology
-WRK,Equity,Materials
 WY,Equity,Real Estate
 WHR,Equity,Consumer Discretionary
 WMB,Equity,Energy
-WLTW,Equity,Financials
 WYNN,Equity,Consumer Discretionary
 XEL,Equity,Utilities
 XRX,Equity,Information Technology
-XLNX,Equity,Information Technology
 XYL,Equity,Industrials
 YUM,Equity,Consumer Discretionary
 ZBRA,Equity,Information Technology
 ZBH,Equity,Health Care
 ZION,Equity,Financials
 ZTS,Equity,Health Care
-# Developed Markets (non-US)
-NESN,Equity,Consumer Staples
-NOVN,Equity,Health Care
 UBS,Equity,Financials
 RY,Equity,Financials
 TD,Equity,Financials
@@ -494,15 +443,11 @@ ALIZY,Equity,Financials
 SAP,Equity,Information Technology
 BNPQY,Equity,Financials
 TOT,Equity,Energy
-ORAN,Equity,Communication Services
-# Emerging Markets
 VALE,Equity,Materials
 ITUB,Equity,Financials
 INFY,Equity,Information Technology
 TSM,Equity,Information Technology
 HDB,Equity,Financials
-SNP,Equity,Energy
-PTR,Equity,Energy
 BIDU,Equity,Communication Services
 MELI,Equity,Consumer Discretionary
 NPSNY,Equity,Communication Services

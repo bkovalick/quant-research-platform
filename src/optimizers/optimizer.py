@@ -21,7 +21,8 @@ class Optimizer(IOptimizer):
 		if current_weights is None:
 			current_weights = np.array(rebalance_problem.initial_weights)
 
-		bounds = self._setup_position_bounds(rebalance_problem)
+		bounds = self._setup_position_bounds(rebalance_problem, current_weights)
+		# bounds = self._setup_position_bounds(rebalance_problem)
 		constraints = self._setup_constraints(rebalance_problem, current_weights)
 		objective = self._set_objective(rebalance_problem, signals)
 	
@@ -49,30 +50,39 @@ class Optimizer(IOptimizer):
 		)
 
 	def _setup_position_bounds(self, 
-							   rebalance_problem: RebalanceProblem) -> list:
+							   rebalance_problem: RebalanceProblem,
+							   current_weights: np.ndarray = None) -> list:
 		"""Setup position size bounds."""
-		n_assets = len(rebalance_problem.tickers)
+		n_assets = len(current_weights)
 		max_bound = getattr(rebalance_problem, "max_position_size")
 		if max_bound is None or max_bound == 0:
 			max_bound = 1.0
 		return [(0, max_bound) for _ in range(n_assets)]
+	# def _setup_position_bounds(self, 
+	# 						   rebalance_problem: RebalanceProblem) -> list:
+	# 	"""Setup position size bounds."""
+	# 	n_assets = len(rebalance_problem.tickers)
+	# 	max_bound = getattr(rebalance_problem, "max_position_size")
+	# 	if max_bound is None or max_bound == 0:
+	# 		max_bound = 1.0
+	# 	return [(0, max_bound) for _ in range(n_assets)]
 
 	def _setup_constraints(self, rebalance_problem: RebalanceProblem, 
 						   current_weights: np.ndarray = None) -> list:
 		"""Setup constraints for the optimization problem."""
 		constraints = []
 		self._setup_portfolio_constraints(constraints, rebalance_problem)
-		self._setup_turnover_constraints(constraints, rebalance_problem, current_weights)
-		self._setup_asset_class_size_constraints(constraints, rebalance_problem)
-		self._setup_sector_size_constraints(constraints, rebalance_problem)
-		self._setup_max_num_positions_constraints(constraints, rebalance_problem)
+		# self._setup_turnover_constraints(constraints, rebalance_problem, current_weights)
+		# self._setup_asset_class_size_constraints(constraints, rebalance_problem)
+		# self._setup_sector_size_constraints(constraints, rebalance_problem)
+		# self._setup_max_num_positions_constraints(constraints, rebalance_problem)
 		return constraints
 	
 	def _setup_portfolio_constraints(self, 
 								  	 constraints: list,
 								     rebalance_problem: RebalanceProblem) -> list: 
 		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
-		constraints += [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]
+		constraints += [{'type': 'eq', 'fun': lambda x: np.isclose(np.sum(x), 1) - 1}]
 	
 	def _setup_turnover_constraints(self, 
 								 	constraints: list, 
