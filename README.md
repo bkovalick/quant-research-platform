@@ -1,7 +1,7 @@
 # portfolio-optimizer
 
 
-Portfolio-optimizer is a modular toolkit for portfolio optimization and backtesting, supporting multiple strategies (fixed weights, mean-variance, Sharpe maximization) and designed for extensibility and experimentation. It features a clean separation between market data, portfolio configuration, and optimization logic.
+Portfolio-optimizer is a modular toolkit for portfolio optimization and backtesting, supporting multiple strategies (fixed weights, mean-variance, sharpe maximization) and designed for extensibility and experimentation. It features a clean separation between market data, portfolio configuration, and optimization logic.
 
 ## System Overview
 This repository is a modular toolkit for portfolio optimization and backtesting. It supports multiple strategies (fixed weights, mean-variance, Sharpe maximization) and is designed for extensibility and experimentation.
