@@ -16,7 +16,7 @@ class MVOptimizationStrategy(StrategyInterface):
             "end_date": rebalance_problem.end_date, 
             "trading_frequency": rebalance_problem.trading_frequency}
         self.market_env = MarketEnvironment(market_params=self.market_params)
-        self.optimizer = optimizer or ScipyOptimizer()
+        self.optimizer = optimizer
         self.signals = Signals(self.market_env, 
                                ann_factor=self.freq_map.get(rebalance_problem.trading_frequency, 252))
         self.rebalance_solution = None

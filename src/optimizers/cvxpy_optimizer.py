@@ -1,6 +1,4 @@
-from dataclasses import dataclass
 import numpy as np
-from scipy.optimize import minimize
 from collections import defaultdict
 import cvxpy as cp
 
@@ -11,9 +9,6 @@ from signals.signals import Signals
 
 class CvxpyOptimizer(IOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
-	def __init__(self):
-		super().__init__()	
-
 	def optimize(self, 
 			  rebalance_problem: RebalanceProblem, 
 			  signals: Signals = None,
@@ -68,6 +63,9 @@ class CvxpyOptimizer(IOptimizer):
 		constraints.extend(
 			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
 		)
+		constraints.extend(
+			self._setup_asset_class_constraints(decision_variables, rebalance_problem, current_weights)
+		)
 		return constraints
 
 	def _setup_portfolio_constraints(self, 
@@ -85,10 +83,10 @@ class CvxpyOptimizer(IOptimizer):
 			]
 
 	def _setup_turnover_constraints(self, 
-								     decision_variables: dict,
-								     rebalance_problem: RebalanceProblem,
-									 current_weights: np.ndarray = None) -> list: 
-		"""Setup turnover constraints based on trading buffer."""
+								    decision_variables: dict,
+								    rebalance_problem: RebalanceProblem,
+									current_weights: np.ndarray = None) -> list: 
+		"""Setup turnover constraints based on turnover limit."""
 		if getattr(rebalance_problem, 'turnover_limit') is None or current_weights is None:
 			return []
 		
@@ -97,6 +95,13 @@ class CvxpyOptimizer(IOptimizer):
 				cp.norm1(portfolio_weights - current_weights) <= rebalance_problem.turnover_limit * 2
 		]
 
+	def _setup_asset_class_constraints(self, 
+								       decision_variables: dict,
+								       rebalance_problem: RebalanceProblem,
+									   current_weights: np.ndarray = None) -> list:
+		"""Setup asset class size constraints: Equity < 90%, Fixed < 20%, etc..."""
+		return []
+	
 	def _set_objective(self, 
 					   decision_variables: dict, 
 					   rebalance_problem: RebalanceProblem, 

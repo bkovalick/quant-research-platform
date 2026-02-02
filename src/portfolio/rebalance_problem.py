@@ -10,15 +10,6 @@ class RebalanceProblem:
         self._data = dict(prepared_data)
 
     @property
-    def signals(self):
-        class DummyMarketEnv:
-            @property
-            def normalized_prices(self):
-                return self_outer.price_data
-        self_outer = self
-        return Signals(DummyMarketEnv())
-    
-    @property
     def use_full_universe(self) -> bool:
         return self._data.get("use_full_universe", False)
     
