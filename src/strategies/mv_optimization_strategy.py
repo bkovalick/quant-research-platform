@@ -1,7 +1,7 @@
 import numpy as np
 
 from signals.signals import Signals
-from optimizers.optimizer import ScipyOptimizer
+from optimizers.scipy_optimizer import ScipyOptimizer
 from core.strategies.istrategy import StrategyInterface
 from infrastructure.market_data.marketdatagateway import MarketEnvironment
 
@@ -25,9 +25,8 @@ class MVOptimizationStrategy(StrategyInterface):
     def calculate_drifted_weights(self, prev_weights, prev_asset_returns):
         """Calculate drifted weights based on previous weights and returns."""
         curr_returns = np.sum(prev_weights * prev_asset_returns)
-        curr_weights = prev_weights * (1 + prev_asset_returns) / \
-            (1 + np.sum(prev_weights * prev_asset_returns))  
-        curr_weights = curr_weights / sum(curr_weights)
+        curr_weights = prev_weights * (1 + prev_asset_returns) / (1 + curr_returns)  
+        curr_weights /= sum(curr_weights)
         return curr_weights, curr_returns
     
     def calculate_rebalanced_weights(self, rebalance_idx, lookback_prices, current_weights):
@@ -39,7 +38,8 @@ class MVOptimizationStrategy(StrategyInterface):
         self.rebalance_solution = self.optimizer.optimize(self.rebalance_problem, 
                                                           self.signals, current_weights)
         self.rebalance_solutions.append(self.rebalance_solution)
-        return self.rebalance_solution.decision_variables['portfolio_weights']
+        portfolio_weights = self.rebalance_solution.decision_variables['portfolio_weights']
+        return portfolio_weights
     
     def _apply_windsoring(self, lookback_prices):
         """Apply windsoring to lookback prices."""

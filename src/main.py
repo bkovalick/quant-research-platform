@@ -1,9 +1,9 @@
-from core.strategies.strategy_factory import StrategyFactory
-from core.optimizers.optimizer_factory import OptimizerFactory
 from portfolio.portfolio import Portfolio
-from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
-from backtesting.backtesting_engine import BacktestingEngine
 from reporting.reporting_module import ReportingSystem
+from core.strategies.strategy_factory import StrategyFactory
+from backtesting.backtesting_engine import BacktestingEngine
+from core.optimizers.optimizer_factory import OptimizerFactory
+from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
 
 from multiprocessing import Pool
 from zipfile import Path
@@ -14,6 +14,7 @@ from itertools import product
 
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
+
     def run_strategy(config):
         strat_config = config.copy()
         builder = RebalanceProblemBuilder(strat_config)
@@ -56,7 +57,9 @@ if __name__ == '__main__':
     folder_name = "backtest_results/" + date.today().isoformat()
     path = Path(folder_name)
     path.mkdir(parents=True, exist_ok=True)
-    ReportingSystem.generate_report(f"{folder_name}/backtest_report_{config['start_date']}_{config['end_date']}.xlsx", {
+    ReportingSystem.generate_report(f"{folder_name}\
+                                    /backtest_report_{config['start_date']}_{config['end_date']}.xlsx", 
+    {
         "summary": summary_df,
         "time_series": portfolio_metrics_df if len(portfolio_metrics_df) > 0 else None,
         "rolling_time_series": rolling_metrics_df if len(rolling_metrics_df) > 0 else None

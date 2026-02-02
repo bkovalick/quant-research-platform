@@ -15,15 +15,23 @@ class RebalanceProblemBuilder:
         use_full_universe = self.config.get("use_full_universe", False)
         if use_full_universe:
             tickers = MarketDataUtils.get_universe_tickers()
-            # tickers = ["APPL", "TSLA", "MSFT", "GOOGL", "AMZN"]
             n_assets = len(tickers)
             initial_weights = np.ones(n_assets) / n_assets
-            initial_weights = initial_weights.tolist() + [cash_allocation]
+            initial_weights = initial_weights.tolist() + [cash_allocation]        
         else:
             tickers = [item["ticker"] for item in self.config["rebalance_sub_parameters"]]
-            initial_weights = [ item["initial_weights"] 
-                           for item in self.config["rebalance_sub_parameters"] ] + [cash_allocation]
-            
+            n_assets = len(tickers)
+            if self.config["use_init_weights"]:
+                initial_weights = [ item["initial_weights"] 
+                            for item in self.config["rebalance_sub_parameters"] ]                
+            else:
+                initial_weights = [ 1 / len(tickers) for t in tickers ]
+
+        if [cash_allocation] == 0:
+            initial_weights += [cash_allocation] 
+        else:
+            initial_weights = [ (1 - cash_allocation) / len(tickers) for t in tickers ] + [cash_allocation]
+
         tickers_with_cash = tickers + ["CASH"]
         lookback_window = self.config.get("lookback_window", "1y")
         trading_frequency = self.config.get("trading_frequency", "d")
