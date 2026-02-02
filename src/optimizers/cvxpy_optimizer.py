@@ -103,8 +103,27 @@ class CvxpyOptimizer(IOptimizer):
 								       rebalance_problem: RebalanceProblem,
 									   current_weights: np.ndarray = None) -> list:
 		"""Setup asset class size constraints: Equity < 90%, Fixed < 20%, etc..."""
-		return []
-	
+		if getattr(rebalance_problem, "asset_class_constraints") is None:
+			return []
+
+		portfolio_weights = decision_variables.get('portfolio_weights')
+		asset_class_map = { 
+			'Equity': {'Technology': ['APPL', 'MSFT'] }
+		}
+		asset_class_constraints = rebalance_problem.asset_class_constraints
+		constraints = []
+		for asset_class, min_max in asset_class_constraints.items():
+			indices = [ i for i, t in asset_class_map[asset_class].items() ]
+			min_weight, max_weight = min_max[0], min_max[1]
+			indices = []
+			class_weight = cp.sum(portfolio_weights[indices])
+			
+			if min_weight > 0:
+				constraints.append(class_weight >= min_weight)
+			
+			if max_weight < 1:
+				constraints.append(class_weight <= max_weight)
+
 	def _setup_sector_constraints(self, 
 								  decision_variables: dict,
 								  rebalance_problem: RebalanceProblem,

@@ -17,7 +17,7 @@ class RebalanceProblemBuilder:
             tickers = MarketDataUtils.get_universe_tickers()
             n_assets = len(tickers)
             initial_weights = np.ones(n_assets) / n_assets
-            initial_weights = initial_weights.tolist() + [cash_allocation]        
+            initial_weights = initial_weights.tolist() + [0]        
         else:
             tickers = [item["ticker"] for item in self.config["rebalance_sub_parameters"]]
             n_assets = len(tickers)
@@ -27,10 +27,10 @@ class RebalanceProblemBuilder:
             else:
                 initial_weights = [ 1 / len(tickers) for t in tickers ]
 
-        if [cash_allocation] == 0:
-            initial_weights += [cash_allocation] 
-        else:
-            initial_weights = [ (1 - cash_allocation) / len(tickers) for t in tickers ] + [cash_allocation]
+            if [cash_allocation] == 0:
+                initial_weights += [cash_allocation] 
+            else:
+                initial_weights = [ (1 - cash_allocation) / len(tickers) for t in tickers ] + [cash_allocation]
 
         tickers_with_cash = tickers + ["CASH"]
         lookback_window = self.config.get("lookback_window", "1y")
