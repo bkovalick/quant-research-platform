@@ -66,6 +66,9 @@ class CvxpyOptimizer(IOptimizer):
 		constraints.extend(
 			self._setup_asset_class_constraints(decision_variables, rebalance_problem, current_weights)
 		)
+		constraints.extend(
+			self._setup_sector_constraints(decision_variables, rebalance_problem, current_weights)
+		)
 		return constraints
 
 	def _setup_portfolio_constraints(self, 
@@ -102,6 +105,13 @@ class CvxpyOptimizer(IOptimizer):
 		"""Setup asset class size constraints: Equity < 90%, Fixed < 20%, etc..."""
 		return []
 	
+	def _setup_sector_constraints(self, 
+								  decision_variables: dict,
+								  rebalance_problem: RebalanceProblem,
+								  current_weights: np.ndarray = None) -> list:
+		"""Setup asset class size constraints: Financials < 15%, Tech: 20%, etc..."""
+		return []
+
 	def _set_objective(self, 
 					   decision_variables: dict, 
 					   rebalance_problem: RebalanceProblem, 
