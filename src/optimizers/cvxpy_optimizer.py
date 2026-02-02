@@ -1,5 +1,4 @@
 import numpy as np
-from collections import defaultdict
 import cvxpy as cp
 
 from core.optimizers.ioptimizer import IOptimizer
@@ -9,6 +8,9 @@ from signals.signals import Signals
 
 class CvxpyOptimizer(IOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
+	def __init__(self):
+		super().__init__()
+			
 	def optimize(self, 
 			  rebalance_problem: RebalanceProblem, 
 			  signals: Signals = None,
@@ -109,13 +111,13 @@ class CvxpyOptimizer(IOptimizer):
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		asset_class_map = { 
 			'Equity': {'Technology': ['APPL', 'MSFT'] }
-		}
+		} # this map has to align with universe itself.
 		asset_class_constraints = rebalance_problem.asset_class_constraints
 		constraints = []
 		for asset_class, min_max in asset_class_constraints.items():
-			indices = [ i for i, t in asset_class_map[asset_class].items() ]
 			min_weight, max_weight = min_max[0], min_max[1]
-			indices = []
+			tickers = [ticker for sublist in asset_class_map[asset_class].values() for ticker in sublist]
+			indices = [ i for i in range(len(tickers)) ]
 			class_weight = cp.sum(portfolio_weights[indices])
 			
 			if min_weight > 0:
@@ -138,6 +140,8 @@ class CvxpyOptimizer(IOptimizer):
 		"""Set the objective function based on rebalance problem settings."""
 		if getattr(rebalance_problem, 'apply_max_return_objective'):
 			return self._set_maximize_return_objective(decision_variables, rebalance_problem, signals)
+		else:
+			return
 		
 	def _set_maximize_return_objective(self, 
 									   decision_variables: dict,

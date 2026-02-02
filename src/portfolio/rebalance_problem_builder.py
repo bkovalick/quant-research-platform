@@ -20,14 +20,13 @@ class RebalanceProblemBuilder:
             initial_weights = initial_weights.tolist() + [0]        
         else:
             tickers = [item["ticker"] for item in self.config["rebalance_sub_parameters"]]
-            n_assets = len(tickers)
-            if self.config["use_init_weights"]:
+            if self.config.get("use_init_weights", True):
                 initial_weights = [ item["initial_weights"] 
                             for item in self.config["rebalance_sub_parameters"] ]                
             else:
                 initial_weights = [ 1 / len(tickers) for t in tickers ]
 
-            if [cash_allocation] == 0:
+            if cash_allocation == 0:
                 initial_weights += [cash_allocation] 
             else:
                 initial_weights = [ (1 - cash_allocation) / len(tickers) for t in tickers ] + [cash_allocation]
