@@ -33,8 +33,16 @@ class CvxpyOptimizer(IOptimizer):
 				raise RuntimeError(f"Optimization failed: {str(e)}")
 			
 		if prob.status not in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
-			raise RuntimeError(f"Optimization failed: Problem status {prob.status} {rebalance_problem.max_return}")
-		
+			print(f"Optimization failed: Problem status {prob.status} {rebalance_problem.max_return}")
+			return RebalanceSolution(
+				model="Cvxpy",
+				decision_variables={
+					'portfolio_weights': current_weights,
+					'total_trades': current_weights - current_weights
+				},
+				rebalance_problem=rebalance_problem				
+			)
+
 		optimal_weights = decision_variables['portfolio_weights'].value
 		total_trades = optimal_weights - current_weights
 		return RebalanceSolution(
@@ -65,9 +73,9 @@ class CvxpyOptimizer(IOptimizer):
 		constraints.extend(
 			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
 		)
-		# constraints.extend(
-		# 	self._setup_asset_class_constraints(decision_variables, rebalance_problem, current_weights)
-		# )
+		constraints.extend(
+			self._setup_asset_class_constraints(decision_variables, rebalance_problem, current_weights)
+		)
 		# constraints.extend(
 		# 	self._setup_sector_constraints(decision_variables, rebalance_problem, current_weights)
 		# )
@@ -86,7 +94,7 @@ class CvxpyOptimizer(IOptimizer):
 		return [
 				cp.sum(portfolio_weights) == 1,
 				portfolio_weights >= min_position_size,
-				# portfolio_weights <= max_position_size,
+				portfolio_weights <= max_position_size,
 				portfolio_weights @ expected_returns >= mu_bar
 			]
 

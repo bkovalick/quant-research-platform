@@ -33,26 +33,21 @@ if __name__ == '__main__':
         return backtestingEngine.portfolio, rebalance_problem
 
     combined_metrics = []
-    
-    # strategies = ["fwp_strategy"]
-    strategies = ["mv_strategy"]
-    # strategies = ["fwp_strategy", "mv_strategy"]
-    # turnover_limits = [None, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    # turnover_limits = [None]
-    returns = np.linspace(0.075, 0.27, 20)
-    for strategy_type, dynamic_constr in product(strategies, returns):
+    strategies = ["fwp_strategy", "mv_strategy"]
+    turnover_limits = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    returns = np.linspace(0.21, 0.50, 20)
+    for strategy_type, exp_return, turnover_limit in product(strategies, returns, turnover_limits):
         with open(f"src/config/{strategy_type}.json", 'r') as f:
             config = json.load(f)
-        # config['constraints']['turnover_limit'] = turnover_limit
-        config['constraints']['max_return'] =  dynamic_constr
 
+        config['constraints']['turnover_limit'] = turnover_limit
+        config['constraints']['max_return'] =  exp_return
         portfolio, rebalance_problem = run_strategy(config)
         if portfolio is None:
             continue
 
         metric = ReportingSystem.calculate_performance_metrics(rebalance_problem, portfolio)
-        if dynamic_constr is not None:
-            strategy_type += f"_expected_return_{str(round(dynamic_constr, 3))}"
+        strategy_type += f"_exp_mu_{str(round(exp_return, 3))}_turn_limit_{str(turnover_limit)}"
         combined_metrics.append((metric, strategy_type))
 
     summary_df, portfolio_metrics_df, rolling_metrics_df = \
