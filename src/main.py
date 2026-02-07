@@ -1,9 +1,9 @@
-from core.strategies.strategy_factory import StrategyFactory
-from core.optimizers.optimizer_factory import OptimizerFactory
 from portfolio.portfolio import Portfolio
-from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
-from backtesting.backtesting_engine import BacktestingEngine
 from reporting.reporting_module import ReportingSystem
+from core.strategies.strategy_factory import StrategyFactory
+from backtesting.backtesting_engine import BacktestingEngine
+from core.optimizers.optimizer_factory import OptimizerFactory
+from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
 
 from multiprocessing import Pool
 from zipfile import Path
@@ -11,9 +11,12 @@ from datetime import date
 from pathlib import Path
 import json
 from itertools import product
+from datetime import datetime
+import numpy as np
 
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
+
     def run_strategy(config):
         strat_config = config.copy()
         builder = RebalanceProblemBuilder(strat_config)
@@ -30,24 +33,21 @@ if __name__ == '__main__':
         return backtestingEngine.portfolio, rebalance_problem
 
     combined_metrics = []
-    
-    # strategies = ["fwp_strategy"]
-    strategies = ["mv_strategy"]
-    # strategies = ["fwp_strategy", "mv_strategy"]
-    # turnover_limits = [None, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    turnover_limits = [None]
-    for strategy_type, turnover_limit in product(strategies, turnover_limits):
+    strategies = ["fwp_strategy", "mv_strategy"]
+    turnover_limits = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    returns = np.linspace(0.21, 0.50, 20)
+    for strategy_type, exp_return, turnover_limit in product(strategies, returns, turnover_limits):
         with open(f"src/config/{strategy_type}.json", 'r') as f:
             config = json.load(f)
-        # config['constraints']['turnover_limit'] = turnover_limit
 
+        config['constraints']['turnover_limit'] = turnover_limit
+        config['constraints']['max_return'] =  exp_return
         portfolio, rebalance_problem = run_strategy(config)
         if portfolio is None:
             continue
 
         metric = ReportingSystem.calculate_performance_metrics(rebalance_problem, portfolio)
-        if turnover_limit is not None:
-            strategy_type += f"_turnover_{turnover_limit}"
+        strategy_type += f"_exp_mu_{str(round(exp_return, 3))}_turn_limit_{str(turnover_limit)}"
         combined_metrics.append((metric, strategy_type))
 
     summary_df, portfolio_metrics_df, rolling_metrics_df = \
@@ -56,7 +56,9 @@ if __name__ == '__main__':
     folder_name = "backtest_results/" + date.today().isoformat()
     path = Path(folder_name)
     path.mkdir(parents=True, exist_ok=True)
-    ReportingSystem.generate_report(f"{folder_name}/backtest_report_{config['start_date']}_{config['end_date']}.xlsx", {
+    ReportingSystem.generate_report(\
+        f"{folder_name}/backtest_report_{config['start_date']}_{config['end_date']}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.xlsx", 
+    {
         "summary": summary_df,
         "time_series": portfolio_metrics_df if len(portfolio_metrics_df) > 0 else None,
         "rolling_time_series": rolling_metrics_df if len(rolling_metrics_df) > 0 else None
@@ -67,7 +69,7 @@ if __name__ == '__main__':
 
     # with Pool(processes=len(strategies)) as pool:
     #     results = [
-    #         pool.apply_async(run_strategy, args=(label, strategy_type, config))
+    #         pool.apply_async(run_strategy, args=(config))
     #         for label, strategy_type in strategies
     #     ]
     #     for res in results:

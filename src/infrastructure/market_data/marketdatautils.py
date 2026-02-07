@@ -22,6 +22,13 @@ class MarketDataUtils:
         return fi_tickers + equity_tickers
     
     @staticmethod
+    def get_full_mapping_universe() -> dict:
+        fixed_income_df = MarketDataUtils.get_fixed_income_mapping_universe()
+        equity_df = MarketDataUtils.get_equity_mapping_universe()
+        combined = pd.concat([fixed_income_df, equity_df], axis = 0)
+        return combined
+    
+    @staticmethod
     def get_fixed_income_mapping_universe() -> pd.DataFrame:
         """ Get fixed income universe dataframe """
         if not path.exists("data/fixed_income_universe.csv"):

@@ -53,7 +53,7 @@ class BacktestingEngine(BacktestingEngineInterface):
         rebalance_frequency = getattr(self.rebalance_problem, 'rebalance_frequency', 'w')
 
         for curr_step, curr_date in enumerate(date_indices):
-            print(f"Backtesting date: {curr_date}")
+            print(f"Backtesting date: {curr_date.date()}")
             if curr_step < first_rebal:
                 continue
 

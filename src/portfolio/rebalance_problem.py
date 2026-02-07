@@ -1,7 +1,3 @@
-import pandas as pd
-import numpy as np
-
-from signals.signals import Signals
 
 class RebalanceProblem:    
     """
@@ -12,15 +8,6 @@ class RebalanceProblem:
     def __init__(self, prepared_data: dict):
         self._data = dict(prepared_data)
 
-    @property
-    def signals(self):
-        class DummyMarketEnv:
-            @property
-            def normalized_prices(self):
-                return self_outer.price_data
-        self_outer = self
-        return Signals(DummyMarketEnv())
-    
     @property
     def use_full_universe(self) -> bool:
         return self._data.get("use_full_universe", False)
@@ -68,16 +55,6 @@ class RebalanceProblem:
     @property
     def initial_weights(self) -> list:
         return self._data.get("initial_weights")
-
-    @property
-    def rebalanced_weights(self) -> list:
-        """Get the initial portfolio weights."""
-        return self._data.get("rebalanced_weights")
-    
-    @rebalanced_weights.setter
-    def rebalanced_weights(self, weights):
-        """Set the initial portfolio weights."""
-        self._data["rebalanced_weights"] = weights
 
     @property
     def cash_allocation(self) -> float:
@@ -130,3 +107,15 @@ class RebalanceProblem:
     @property
     def sector_constraints(self) -> int:
         return self._data.get("sector_constraints", None)
+
+    @property
+    def asset_class_map(self) -> dict:
+        return self._data.get("asset_class_map", {})
+    
+    @property
+    def sector_map(self) -> dict:
+        return self._data.get("sector_map", {})
+    
+    @property
+    def max_return(self) -> float:
+        return self._data.get("max_return", 0.05)
