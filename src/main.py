@@ -11,6 +11,8 @@ from datetime import date
 from pathlib import Path
 import json
 from itertools import product
+from datetime import datetime
+import numpy as np
 
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
@@ -36,19 +38,21 @@ if __name__ == '__main__':
     strategies = ["mv_strategy"]
     # strategies = ["fwp_strategy", "mv_strategy"]
     # turnover_limits = [None, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    turnover_limits = [None]
-    for strategy_type, turnover_limit in product(strategies, turnover_limits):
+    # turnover_limits = [None]
+    returns = np.linspace(0.075, 0.27, 20)
+    for strategy_type, dynamic_constr in product(strategies, returns):
         with open(f"src/config/{strategy_type}.json", 'r') as f:
             config = json.load(f)
         # config['constraints']['turnover_limit'] = turnover_limit
+        config['constraints']['max_return'] =  dynamic_constr
 
         portfolio, rebalance_problem = run_strategy(config)
         if portfolio is None:
             continue
 
         metric = ReportingSystem.calculate_performance_metrics(rebalance_problem, portfolio)
-        if turnover_limit is not None:
-            strategy_type += f"_turnover_{turnover_limit}"
+        if dynamic_constr is not None:
+            strategy_type += f"_expected_return_{str(round(dynamic_constr, 3))}"
         combined_metrics.append((metric, strategy_type))
 
     summary_df, portfolio_metrics_df, rolling_metrics_df = \
@@ -58,7 +62,7 @@ if __name__ == '__main__':
     path = Path(folder_name)
     path.mkdir(parents=True, exist_ok=True)
     ReportingSystem.generate_report(\
-        f"{folder_name}/backtest_report_{config['start_date']}_{config['end_date']}.xlsx", 
+        f"{folder_name}/backtest_report_{config['start_date']}_{config['end_date']}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.xlsx", 
     {
         "summary": summary_df,
         "time_series": portfolio_metrics_df if len(portfolio_metrics_df) > 0 else None,
@@ -70,7 +74,7 @@ if __name__ == '__main__':
 
     # with Pool(processes=len(strategies)) as pool:
     #     results = [
-    #         pool.apply_async(run_strategy, args=(label, strategy_type, config))
+    #         pool.apply_async(run_strategy, args=(config))
     #         for label, strategy_type in strategies
     #     ]
     #     for res in results:

@@ -1,4 +1,3 @@
-from signals.signals import Signals
 
 class RebalanceProblem:    
     """
@@ -108,3 +107,15 @@ class RebalanceProblem:
     @property
     def sector_constraints(self) -> int:
         return self._data.get("sector_constraints", None)
+
+    @property
+    def asset_class_map(self) -> dict:
+        return self._data.get("asset_class_map", {})
+    
+    @property
+    def sector_map(self) -> dict:
+        return self._data.get("sector_map", {})
+    
+    @property
+    def max_return(self) -> float:
+        return self._data.get("max_return", 0.05)

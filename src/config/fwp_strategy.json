@@ -1,8 +1,9 @@
 {
     "strategy_type": "fwp_strategy",
     "optimizer_type": "fwp_optimizer",
-    "use_full_universe": true,
+    "use_full_universe": false,
     "benchmark_universe": "SPY",
+    "use_init_weights": true,
     "rebalance_sub_parameters": [
         {"ticker": "AAPL", "initial_weights": 0.25},
         {"ticker": "GOOGL", "initial_weights": 0.25},

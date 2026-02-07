@@ -9,6 +9,24 @@ class RebalanceProblemBuilder:
         """Initialize with configuration dictionary."""
         self.config = config
 
+    def build_asset_class_map(self, tickers_with_cash) -> dict:
+        """Build a mapping from asset class to list of indices in tickers_with_cash."""
+        full_mapping_df = MarketDataUtils.get_full_mapping_universe()
+        asset_class_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers_with_cash)]
+        ticker_to_index = {ticker: idx for idx, ticker in enumerate(tickers_with_cash)}
+        asset_class_map = asset_class_df.groupby('asset_class')['ticker'].apply(
+            lambda tickers: [(ticker_to_index[t], t) for t in tickers if t in ticker_to_index]
+        ).to_dict()
+        cash_idx = tickers_with_cash.index("CASH")
+        asset_class_map.update({"Cash": (cash_idx, "CASH")})
+        return asset_class_map
+    
+    def build_sector_map(self, tickers) -> dict: # do the same as above
+        """Build and asset/sector grouping related to the assets in the investable universe."""
+        full_mapping_df = MarketDataUtils.get_full_mapping_universe()
+        asset_class_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers)]
+        return asset_class_df.groupby('sector')['ticker'].apply(list).to_dict()
+    
     def build(self) -> RebalanceProblem:
         """Build and return a RebalanceProblem instance."""
         cash_allocation = self.config.get("cash_allocation", 0.0)
@@ -34,6 +52,9 @@ class RebalanceProblemBuilder:
         tickers_with_cash = tickers + ["CASH"]
         lookback_window = self.config.get("lookback_window", "1y")
         trading_frequency = self.config.get("trading_frequency", "d")
+        asset_class_map = self.build_asset_class_map(tickers_with_cash)
+        sector_map = self.build_sector_map(tickers_with_cash)
+
         prepared_data = {
             "use_full_universe": self.config.get("use_full_universe", False),
             "benchmark_universe": self.config.get("benchmark_universe", "SPY"),
@@ -60,7 +81,10 @@ class RebalanceProblemBuilder:
             "max_position_size": self.config["constraints"].get("max_position_size", None),
             "max_number_of_positions": self.config["constraints"].get("max_number_of_positions", None),
             "asset_class_constraints": self.config["constraints"].get("asset_class_constraints", None),
-            "sector_constraints": self.config["constraints"].get("sector_constraints", None)
+            "sector_constraints": self.config["constraints"].get("sector_constraints", None),
+            "asset_class_map": asset_class_map,
+            "sector_map": sector_map,
+            "max_return": self.config["constraints"].get("max_return", 0.05)
         }
 
         return RebalanceProblem(prepared_data)
