@@ -199,7 +199,6 @@ class ReportingSystem:
         """Calculate alpha of the portfolio against a benchmark (S&P 500)."""
         annual_trading_days = { "d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
         annualization_factor = annual_trading_days.get(rebalance_problem.trading_frequency, 252)
-        """Benchmark function to fetch data for given rebalance problem."""
         benchmark = yf.download("^GSPC", \
                         start=rebalance_problem.start_date, end=rebalance_problem.end_date)
         freq = rebalance_problem.trading_frequency
@@ -219,3 +218,14 @@ class ReportingSystem:
         benchmark_annualized = (1 + aligned['benchmark']).prod() ** (annualization_factor/len(aligned)) - 1
         alpha = portfolio_annualized - benchmark_annualized
         return alpha
+    
+    @classmethod
+    def get_benchmark(cls, rebalance_problem):
+        benchmark_data = {}
+        freq = rebalance_problem.get("trading_frequency", None)
+        benchmark_universe = rebalance_problem.get("benchmark_universe", "SPY")
+        benchmark = yf.download(benchmark_universe, start=rebalance_problem.start_date, end=rebalance_problem.end_date)
+        benchmark = benchmark.asfreq(freq, method='ffill')
+        benchmark_data.update({"benchmark_returns": benchmark["Close"].pct_change().fillna(0)})
+        benchmark_data.update({"benchmark_wfs": benchmark / benchmark.iloc[0] })
+        return benchmark_data
