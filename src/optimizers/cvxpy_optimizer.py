@@ -68,7 +68,7 @@ class CvxpyOptimizer(IOptimizer):
 		"""Setup constraints for the optimization problem."""
 		constraints = []
 		constraints.extend(
-			self._setup_portfolio_constraints(decision_variables, rebalance_problem, signals)
+			self._setup_portfolio_constraints(decision_variables, rebalance_problem)
 		)
 		constraints.extend(
 			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
@@ -83,8 +83,7 @@ class CvxpyOptimizer(IOptimizer):
 
 	def _setup_portfolio_constraints(self, 
 								     decision_variables: dict,
-								     rebalance_problem: RebalanceProblem,
-									 signals: Signals = None) -> list: 
+								     rebalance_problem: RebalanceProblem) -> list: 
 		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		min_position_size = getattr(rebalance_problem, 'min_position_size', 0.0)
@@ -105,7 +104,7 @@ class CvxpyOptimizer(IOptimizer):
 		
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		return [
-				cp.norm1(portfolio_weights - current_weights) <= rebalance_problem.turnover_limit * 2
+				cp.norm1(portfolio_weights - current_weights) <= rebalance_problem.turnover_limit
 		]
 
 	def _setup_asset_class_constraints(self, 
@@ -186,16 +185,17 @@ class CvxpyOptimizer(IOptimizer):
 		mean_vector = signals.mean_returns
 		cov_matrix = signals.covariance_matrix
 		portfolio_risk = cp.quad_form(portfolio_weights, cov_matrix)
-		concentration_objective = self._get_concentration_objective(decision_variables)
+		concentration_objective = self._get_concentration_objective(decision_variables, rebalance_problem)
 		objective = cp.Maximize(mean_vector @ portfolio_weights - risk_tolerance * \
 						  portfolio_risk - concentration_objective)
 		return objective
 	
 	def _get_concentration_objective(self, 
-								  	 decision_variables: dict,):
+								  	 decision_variables: dict,
+									 rebalance_problem: RebalanceProblem):
 		"""Set concentration objective that will penalize large weights."""
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		concentration_penalty = cp.sum_squares(portfolio_weights)
-		concentration_strength = 10
+		concentration_strength = getattr(rebalance_problem, "concentration_strength")
 		concentration_objective = concentration_penalty * concentration_strength
 		return concentration_objective

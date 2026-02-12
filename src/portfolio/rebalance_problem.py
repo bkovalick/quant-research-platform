@@ -119,3 +119,7 @@ class RebalanceProblem:
     @property
     def max_return(self) -> float:
         return self._data.get("max_return", 0.05)
+    
+    @property
+    def concentration_strength(self) -> int:
+        return self._data.get("concentration_strength", 1)

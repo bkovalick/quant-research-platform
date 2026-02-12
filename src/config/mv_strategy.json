@@ -1,8 +1,8 @@
 {
     "strategy_type": "mv_strategy",
     "optimizer_type": "cvxpy_optimizer",
-    "use_full_universe": false,
     "benchmark_universe": "SPY",
+    "use_full_universe": false,
     "use_init_weights": false,
     "rebalance_sub_parameters": [
         {"ticker": "AAPL", "initial_weights": null}, {"ticker": "GOOGL", "initial_weights": null}, 
@@ -18,17 +18,19 @@
         {"ticker": "BIDU", "initial_weights": null}, {"ticker": "ZION", "initial_weights": null},
         {"ticker": "V", "initial_weights": null}, {"ticker": "UA", "initial_weights": null}
     ],
+    
     "risk_free_rate": 0.03,
     "cash_allocation": 0.05,
     "risk_tolerance": 0.10,
     "start_date": "2005-01-01",
-    "end_date": "2026-01-15",
+    "end_date": "2026-02-11",
     "trading_frequency": "w",
     "lookback_window": "1y", 
     "first_rebal": 0,
     "apply_max_return_objective": true,
     "apply_sharpe_objective": false,
     "constraints": {
+        "concentration_strength": 1,
         "apply_windsoring": true,
         "max_return": 0.25,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},

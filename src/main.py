@@ -37,7 +37,8 @@ def create_fwp_rebalance_problem(config):
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
     strategies = ["mv_strategy"]
-    risk_tolerance = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    risk_tolerances = [1.0, 2.0, 3.0]
+    concentration_strengths = [1, 5, 10]
     rebalance_problems = {}
     combined_metrics = []
     with open(f"src/config/fwp_strategy.json", 'r') as f:
@@ -45,16 +46,17 @@ if __name__ == '__main__':
     fwp_rebal_problem = create_fwp_rebalance_problem(fwp_config)
     rebalance_problems.update({'fwp_strategy': fwp_rebal_problem})
 
-    for strategy_type, risk_tol in product(strategies, risk_tolerance):
+    for strategy_type, risk_tol, con_strength in product(strategies, risk_tolerances, concentration_strengths):
         with open(f"src/config/{strategy_type}.json", 'r') as f:
             config = json.load(f)
 
         strat_config = config.copy()
         strat_config['constraints']['risk_tolerance'] =  risk_tol
+        strat_config['constraints']['concentration_strength'] =  con_strength
         builder = RebalanceProblemBuilder(strat_config)
         try:
             rebalance_problem = builder.build()
-            strategy_type += f"_risk_tolerance_{str(risk_tol)}"
+            strategy_type += f"_risk_tolerance_{str(risk_tol)}_con_strength{str(con_strength)}"
             rebalance_problems.update({strategy_type: rebalance_problem})
         except ValueError as e:
             print(f"Error building rebalance problem for {strat_config['strategy_type']}: {e}")

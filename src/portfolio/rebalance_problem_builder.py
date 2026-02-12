@@ -90,7 +90,8 @@ class RebalanceProblemBuilder:
             "sector_constraints": self.config["constraints"].get("sector_constraints", None),
             "asset_class_map": asset_class_map,
             "sector_map": sector_map,
-            "max_return": self.config["constraints"].get("max_return", 0.05)
+            "max_return": self.config["constraints"].get("max_return", 0.05),
+            "concentration_strength": self.config["constraints"].get("concentration_strength", 1)
         }
 
         return RebalanceProblem(prepared_data)

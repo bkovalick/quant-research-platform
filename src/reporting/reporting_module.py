@@ -21,7 +21,7 @@ def align_series_to_dataframe(df, series, col_name):
 class ReportingSystem:
     WEEKS_PER_YEAR = 52
     ANNUAL_TRADING_DAYS = { "d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
-
+    
     @classmethod
     def generate_report(cls, filename: str, results: dict):
         wb = Workbook()
@@ -223,6 +223,7 @@ class ReportingSystem:
     def get_benchmark(cls, rebalance_problem):
         benchmark_data = {}
         freq = rebalance_problem.get("trading_frequency", None)
+        freq = 'W' if freq == 'w' else freq
         benchmark_universe = rebalance_problem.get("benchmark_universe", "SPY")
         benchmark = yf.download(benchmark_universe, start=rebalance_problem.start_date, end=rebalance_problem.end_date)
         benchmark = benchmark.asfreq(freq, method='ffill')
