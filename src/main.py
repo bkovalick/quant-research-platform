@@ -37,8 +37,7 @@ def create_fwp_rebalance_problem(config):
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
     strategies = ["mv_strategy"]
-    turnover_limits = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    returns = np.linspace(0.21, 0.50, 20)
+    risk_tolerance = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     rebalance_problems = {}
     combined_metrics = []
     with open(f"src/config/fwp_strategy.json", 'r') as f:
@@ -46,23 +45,22 @@ if __name__ == '__main__':
     fwp_rebal_problem = create_fwp_rebalance_problem(fwp_config)
     rebalance_problems.update({'fwp_strategy': fwp_rebal_problem})
 
-    for strategy_type, exp_return, turnover_limit in product(strategies, returns, turnover_limits):
+    for strategy_type, risk_tol in product(strategies, risk_tolerance):
         with open(f"src/config/{strategy_type}.json", 'r') as f:
             config = json.load(f)
 
         strat_config = config.copy()
-        strat_config['constraints']['turnover_limit'] = turnover_limit
-        strat_config['constraints']['max_return'] =  exp_return
+        strat_config['constraints']['risk_tolerance'] =  risk_tol
         builder = RebalanceProblemBuilder(strat_config)
         try:
             rebalance_problem = builder.build()
-            strategy_type += f"_exp_mu_{str(round(exp_return, 3))}_turn_limit_{str(turnover_limit)}"
+            strategy_type += f"_risk_tolerance_{str(risk_tol)}"
             rebalance_problems.update({strategy_type: rebalance_problem})
         except ValueError as e:
             print(f"Error building rebalance problem for {strat_config['strategy_type']}: {e}")
             continue
 
-    max_workers = min(16, multiprocessing.cpu_count())
+    max_workers = min(8, multiprocessing.cpu_count())
     with Pool(processes=max_workers) as pool:
         results = [
             (strategy_type, pool.apply_async(run_strategy_async, args=(rebalance_problem,)))

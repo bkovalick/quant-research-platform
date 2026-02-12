@@ -15,17 +15,23 @@ class RebalanceProblemBuilder:
         asset_class_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers_with_cash)]
         ticker_to_index = {ticker: idx for idx, ticker in enumerate(tickers_with_cash)}
         asset_class_map = asset_class_df.groupby('asset_class')['ticker'].apply(
-            lambda tickers: [(ticker_to_index[t], t) for t in tickers if t in ticker_to_index]
+            lambda tickers: [(ticker_to_index[ticker], ticker) for ticker in tickers if ticker in ticker_to_index]
         ).to_dict()
         cash_idx = tickers_with_cash.index("CASH")
         asset_class_map.update({"Cash": (cash_idx, "CASH")})
         return asset_class_map
     
-    def build_sector_map(self, tickers) -> dict: # do the same as above
+    def build_sector_map(self, tickers_with_cash) -> dict: # do the same as above
         """Build and asset/sector grouping related to the assets in the investable universe."""
         full_mapping_df = MarketDataUtils.get_full_mapping_universe()
-        asset_class_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers)]
-        return asset_class_df.groupby('sector')['ticker'].apply(list).to_dict()
+        sector_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers_with_cash)]
+        ticker_to_index = {ticker: idx for idx, ticker in enumerate(tickers_with_cash)}
+        sector_map = sector_df.groupby('sector')['ticker'].apply(
+            lambda tickers: [(ticker_to_index[ticker], ticker) for ticker in tickers if ticker in ticker_to_index]
+        ).to_dict()
+        cash_idx = tickers_with_cash.index("CASH")
+        sector_map.update({"Cash": (cash_idx, "CASH")})
+        return sector_map
     
     def build(self) -> RebalanceProblem:
         """Build and return a RebalanceProblem instance."""
