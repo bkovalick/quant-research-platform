@@ -21,7 +21,7 @@ def align_series_to_dataframe(df, series, col_name):
 class ReportingSystem:
     WEEKS_PER_YEAR = 52
     ANNUAL_TRADING_DAYS = { "d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
-
+    
     @classmethod
     def generate_report(cls, filename: str, results: dict):
         wb = Workbook()
@@ -67,16 +67,16 @@ class ReportingSystem:
 
             if "portfolio_weights" in metrics:
                 weights_df = pd.DataFrame(metrics["portfolio_weights"].values, columns=metrics["portfolio_weights"].columns)
-                weights_df.insert(0, "Date", metrics["portfolio_wealth_factors"].index)
+                weights_df.insert(0, "Date", pd.to_datetime(metrics["portfolio_wealth_factors"].index))
                 weights_df.insert(1, "Strategy", label)
-                weights_df["WealthFactor"] = metrics["portfolio_wealth_factors"].values
-                weights_df["PortfolioReturns"] = metrics["portfolio_returns"].values
-                weights_df["PortfolioTurnover"] = metrics["portfolio_turnover"].values
+                weights_df.insert(2, "WealthFactor", metrics["portfolio_wealth_factors"].values)
+                weights_df.insert(3, "PortfolioReturns", metrics["portfolio_returns"].values)
+                weights_df.insert(4, "PortfolioTurnover", metrics["portfolio_turnover"].values)
                 portfolio_dfs.append(weights_df)
 
             if "rolling_returns" in metrics:
                 rolling_df = pd.DataFrame({
-                    "Date": metrics["rolling_returns"].index,
+                    "Date": pd.to_datetime(metrics["rolling_returns"].index),
                     "Strategy": label,
                     "RollingReturns": metrics["rolling_returns"].values,
                     "RollingVolatility": metrics["rolling_volatility"].values,
@@ -223,6 +223,7 @@ class ReportingSystem:
     def get_benchmark(cls, rebalance_problem):
         benchmark_data = {}
         freq = rebalance_problem.get("trading_frequency", None)
+        freq = 'W' if freq == 'w' else freq
         benchmark_universe = rebalance_problem.get("benchmark_universe", "SPY")
         benchmark = yf.download(benchmark_universe, start=rebalance_problem.start_date, end=rebalance_problem.end_date)
         benchmark = benchmark.asfreq(freq, method='ffill')
