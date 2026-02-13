@@ -1,7 +1,7 @@
 import abc
-from optimizers.scipy_optimizer import ScipyOptimizer
-from optimizers.cvxpy_optimizer import CvxpyOptimizer
-from core.optimizers.ioptimizer import IOptimizer
+from domain.optimizers.scipy_optimizer import ScipyOptimizer
+from domain.optimizers.cvxpy_optimizer import CvxpyOptimizer
+from domain.optimizers.ioptimizer import IOptimizer
 
 class IOptimizerFactory(abc.ABC):
     """Interface for optimizer factories."""

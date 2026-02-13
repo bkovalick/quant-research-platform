@@ -1,6 +1,7 @@
 import numpy as np
-from portfolio.rebalance_problem import RebalanceProblem
-from infrastructure.market_data.marketdatautils import MarketDataUtils
+from models.rebalance_problem import RebalanceProblem
+from data.market_metadata import MarketMetadata
+from config.lookback_windows import LOOKBACK_WINDOWS
 
 class RebalanceProblemBuilder:
     """Orchestrates the pipeline to build a RebalanceProblem from input configuration."""
@@ -9,9 +10,9 @@ class RebalanceProblemBuilder:
         """Initialize with configuration dictionary."""
         self.config = config
 
-    def build_asset_class_map(self, tickers_with_cash) -> dict:
+    def build_asset_class_map(self, tickers_with_cash: list) -> dict:
         """Build a mapping from asset class to list of indices in tickers_with_cash."""
-        full_mapping_df = MarketDataUtils.get_full_mapping_universe()
+        full_mapping_df = MarketMetadata.get_full_mapping_universe()
         asset_class_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers_with_cash)]
         ticker_to_index = {ticker: idx for idx, ticker in enumerate(tickers_with_cash)}
         asset_class_map = asset_class_df.groupby('asset_class')['ticker'].apply(
@@ -23,7 +24,7 @@ class RebalanceProblemBuilder:
     
     def build_sector_map(self, tickers_with_cash) -> dict: # do the same as above
         """Build and asset/sector grouping related to the assets in the investable universe."""
-        full_mapping_df = MarketDataUtils.get_full_mapping_universe()
+        full_mapping_df = MarketMetadata.get_full_mapping_universe()
         sector_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers_with_cash)]
         ticker_to_index = {ticker: idx for idx, ticker in enumerate(tickers_with_cash)}
         sector_map = sector_df.groupby('sector')['ticker'].apply(
@@ -38,7 +39,7 @@ class RebalanceProblemBuilder:
         cash_allocation = self.config.get("cash_allocation", 0.0)
         use_full_universe = self.config.get("use_full_universe", False)
         if use_full_universe:
-            tickers = MarketDataUtils.get_universe_tickers()
+            tickers = MarketMetadata.get_universe_tickers()
             n_assets = len(tickers)
             initial_weights = np.ones(n_assets) / n_assets
             initial_weights = initial_weights.tolist() + [0]        
@@ -76,12 +77,10 @@ class RebalanceProblemBuilder:
             "cash_allocation": cash_allocation,
             "risk_tolerance": self.config.get("risk_tolerance", 0.0),
             "trading_frequency": trading_frequency,
-            "lookback_window":  MarketDataUtils.get_lookback_window_mapping()\
-                [trading_frequency][lookback_window],
+            "lookback_window":  LOOKBACK_WINDOWS[trading_frequency][lookback_window],
             "first_rebal": self.config.get("first_rebal", 0),
-            "apply_windsoring": self.config["constraints"].get("apply_windsoring", True),
-            "windsor_percentiles": self.config["constraints"].get("windsor_percentiles", \
-                                                                  {"lower": 0.05, "upper": 0.95}),
+            "apply_winsorizing": self.config["constraints"].get("apply_winsorizing", True),
+            "windsor_percentiles": self.config["constraints"].get("windsor_percentiles", {"lower": 0.05, "upper": 0.95}),
             "turnover_limit": self.config["constraints"].get("turnover_limit", None),
             "min_position_size": self.config["constraints"].get("min_position_size", None),
             "max_position_size": self.config["constraints"].get("max_position_size", None),

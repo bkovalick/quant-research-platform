@@ -3,25 +3,23 @@ import numpy as np
 import pandas as pd
 import time
 
-from portfolio.portfolio import PortfolioInterface
-from core.strategies.istrategy import StrategyInterface
+from domain.portfolio.iportfolio import PortfolioInterface
+from domain.strategies.istrategy import StrategyInterface
+from config.lookback_windows import LOOKBACK_WINDOWS
 
 class BacktestingEngineInterface(abc.ABC):
     """Interface for backtesting engines."""
     @abc.abstractmethod
     def run_backtest(self, rebalance_problem, optimizer):
-        pass
+        raise NotImplementedError("Must implement run_backtest in derived classes.")
 
 class BacktestingEngine(BacktestingEngineInterface):
     """Concrete implementation of a backtesting engine."""
-    WEEKS_PER_YEAR = 52
-    
     def __init__(self, portfolio: PortfolioInterface, strategy: StrategyInterface):
         self.portfolio = portfolio
         self.strategy = strategy
         self.rebalance_problem = self.strategy.rebalance_problem
-        self.annual_trading_days = { "d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
-        
+
     def _is_rebalance_date(self, date_idx, rebalance_frequency):
         """Determine if the current date is a rebalance date based on frequency."""
         if rebalance_frequency == 'w':
@@ -37,9 +35,10 @@ class BacktestingEngine(BacktestingEngineInterface):
 
     def run_backtest(self, rebalance_problem):
         """Run backtest on the given rebalance problem."""
+        initial_weights = rebalance_problem.initial_weights
         self.asset_prices = self.strategy.market_env.normalized_prices.copy()
         self.asset_returns = self.asset_prices.pct_change().fillna(0)        
-        self.portfolio.initialize(rebalance_problem, self.asset_prices)
+        self.portfolio.initialize(self.asset_prices.index, self.asset_prices.columns, initial_weights)
         print("Running backtest...")
         start_time = time.time()
         self._run_backtest_loop()

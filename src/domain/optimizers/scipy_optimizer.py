@@ -2,10 +2,10 @@ import numpy as np
 from scipy.optimize import minimize
 from collections import defaultdict
 
-from core.optimizers.ioptimizer import IOptimizer
-from portfolio.rebalance_problem import RebalanceProblem
+from domain.optimizers.ioptimizer import IOptimizer
+from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
-from signals.signals import Signals
+from domain.signals.signals import Signals
 
 class ScipyOptimizer(IOptimizer):
 	"""Optimizer using SciPy's minimize function with SLSQP method."""

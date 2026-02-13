@@ -5,23 +5,16 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
-from portfolio.portfolio import Portfolio
-
-def align_series_to_dataframe(df, series, col_name):
-    """
-        Add a (possibly shorter) series to a DataFrame, aligning valid values at the end.
-        NaNs will be at the top if the series is shorter than the DataFrame.
-    """
-    n = len(df) - len(series)
-    nan_part = pd.Series([np.nan]*n, index=df.index[:n])
-    aligned = pd.concat([nan_part, series])
-    aligned = aligned.reindex(df.index)
-    return aligned
+from domain.portfolio.portfolio import Portfolio
+from config.lookback_windows import LOOKBACK_WINDOWS
 
 class ReportingSystem:
-    WEEKS_PER_YEAR = 52
-    ANNUAL_TRADING_DAYS = { "d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
-    
+    def __new__(cls, rebalance_problem):
+        cls.rebalance_problem = rebalance_problem
+        cls.trading_frequency = cls.rebalance_problem.get("trading_frequency", "y")
+        cls.annual_trading_days = LOOKBACK_WINDOWS[cls.trading_frequency]
+        cls.weeks_per_year = cls.annual_trading_days["1y"]
+
     @classmethod
     def generate_report(cls, filename: str, results: dict):
         wb = Workbook()
@@ -108,9 +101,9 @@ class ReportingSystem:
         wealth_factors = (1 + portfolio_returns).cumprod()
         cumulative_returns = wealth_factors - 1
         num_periods = cumulative_returns.shape[0]
-        years = num_periods / cls.WEEKS_PER_YEAR
+        years = num_periods / cls.weeks_per_year
         annualized_return = wealth_factors.iloc[-1] ** (1 / years) - 1
-        annualized_volatility = portfolio_returns.std() * np.sqrt(cls.ANNUAL_TRADING_DAYS[rebalance_problem.trading_frequency])
+        annualized_volatility = portfolio_returns.std() * np.sqrt(cls.annual_trading_days[cls.trading_frequency])
 
         sharpe_ratio = (
             annualized_return / annualized_volatility 
@@ -134,25 +127,25 @@ class ReportingSystem:
             "portfolio_turnover": portfolio_turnover,
             "cumulative_returns": cumulative_returns,            
             "rolling_returns": cls._calculate_rolling_returns(portfolio_returns, lookback_window, 
-                                                             rebalance_problem.trading_frequency),
+                                                             cls.trading_frequency),
             "rolling_volatility": cls._calculate_rolling_volatility(portfolio_returns, lookback_window, 
-                                                                   rebalance_problem.trading_frequency),
+                                                                   cls.trading_frequency),
             "rolling_sharpe_ratio": cls._calculate_rolling_sharpe_ratio(portfolio_returns, lookback_window, 
-                                                                       rebalance_problem.trading_frequency),
+                                                                       cls.trading_frequency),
             "rolling_drawdown": rolling_dd,
             "rolling_turnover": cls._calculate_rolling_turnover(portfolio_turnover, lookback_window, 
-                                                                rebalance_problem.trading_frequency),
+                                                                cls.trading_frequency),
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
             "max_drawdown": abs(cls._calculate_max_drawdown(drawdown_returns)),
-            "turnover": portfolio_turnover.mean() * cls.WEEKS_PER_YEAR,
+            "turnover": portfolio_turnover.mean() * cls.weeks_per_year,
             "alpha": cls.get_alpha(portfolio_returns, rebalance_problem)
         }
         return performance_metrics
     
     @classmethod
-    def _calculate_max_drawdown(cls, cumulative_returns):
+    def _calculate_max_drawdown(cls, cumulative_returns: pd.Series):
         """Calculate maximum drawdown from cumulative returns."""
         running_max = cumulative_returns.cummax()
         drawdown = (cumulative_returns - running_max) / running_max
@@ -166,7 +159,7 @@ class ReportingSystem:
     @classmethod 
     def _calculate_rolling_returns(cls, returns: pd.Series, window: int, trading_frequency: str):
         """Calculate rolling return over a specified window."""
-        annualization_factor = cls.ANNUAL_TRADING_DAYS.get(trading_frequency, 252)
+        annualization_factor = cls.annual_trading_days.get(trading_frequency, 252)
         rolling_return = (1 + returns).rolling(window=window).apply(np.prod, raw=True) - 1
         rolling_return = (1 + rolling_return) ** (annualization_factor / window) - 1
         return rolling_return
@@ -174,7 +167,7 @@ class ReportingSystem:
     @classmethod
     def _calculate_rolling_volatility(cls, returns: pd.Series, window: int, trading_frequency: str):
         """Calculate rolling volatility over a specified window."""
-        annualization_factor = cls.ANNUAL_TRADING_DAYS.get(trading_frequency, 252)
+        annualization_factor = cls.annual_trading_days.get(trading_frequency, 252)
         rolling_std = returns.rolling(window=window).std()
         rolling_volatility = rolling_std * np.sqrt(annualization_factor)
         return rolling_volatility
@@ -182,7 +175,7 @@ class ReportingSystem:
     @classmethod
     def _calculate_rolling_sharpe_ratio(cls, returns: pd.Series, window: int, trading_frequency: str):
         """Calculate rolling Sharpe ratio over a specified window."""
-        annualization_factor = cls.ANNUAL_TRADING_DAYS.get(trading_frequency, 252)
+        annualization_factor = cls.annual_trading_days.get(trading_frequency, 252)
         rolling_mean = returns.rolling(window=window).mean()
         rolling_std = returns.rolling(window=window).std()
         rolling_sharpe = (rolling_mean / rolling_std) * np.sqrt(annualization_factor)
@@ -191,7 +184,7 @@ class ReportingSystem:
     @classmethod
     def _calculate_rolling_turnover(cls, turnover: pd.Series, window: int, trading_frequency: str):
         """Calculate rolling turnover over a specified window."""
-        annualization_factor = cls.ANNUAL_TRADING_DAYS.get(trading_frequency, 252)
+        annualization_factor = cls.annual_trading_days.get(trading_frequency, 252)
         return turnover.rolling(window=window).mean() * np.sqrt(annualization_factor)
     
     @classmethod
@@ -201,10 +194,8 @@ class ReportingSystem:
         annualization_factor = annual_trading_days.get(rebalance_problem.trading_frequency, 252)
         benchmark = yf.download("^GSPC", \
                         start=rebalance_problem.start_date, end=rebalance_problem.end_date)
-        freq = rebalance_problem.trading_frequency
-
-        if freq == 'w':
-            freq = 'W'
+        freq = cls.trading_frequency
+        freq = 'W' if freq == 'w' else freq
         benchmark = benchmark.asfreq(freq, method='ffill')
         benchmark_returns = benchmark["Close"].pct_change().fillna(0)
 
@@ -222,7 +213,7 @@ class ReportingSystem:
     @classmethod
     def get_benchmark(cls, rebalance_problem):
         benchmark_data = {}
-        freq = rebalance_problem.get("trading_frequency", None)
+        freq = cls.trading_frequency
         freq = 'W' if freq == 'w' else freq
         benchmark_universe = rebalance_problem.get("benchmark_universe", "SPY")
         benchmark = yf.download(benchmark_universe, start=rebalance_problem.start_date, end=rebalance_problem.end_date)
@@ -230,3 +221,10 @@ class ReportingSystem:
         benchmark_data.update({"benchmark_returns": benchmark["Close"].pct_change().fillna(0)})
         benchmark_data.update({"benchmark_wfs": benchmark / benchmark.iloc[0] })
         return benchmark_data
+    
+def align_series_to_dataframe(df, series, col_name):
+    n = len(df) - len(series)
+    nan_part = pd.Series([np.nan]*n, index=df.index[:n])
+    aligned = pd.concat([nan_part, series])
+    aligned = aligned.reindex(df.index)
+    return aligned

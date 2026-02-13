@@ -8,6 +8,9 @@ class RebalanceProblem:
     def __init__(self, prepared_data: dict):
         self._data = dict(prepared_data)
 
+    def to_dict(self):
+        return dict(self._data)
+
     @property
     def use_full_universe(self) -> bool:
         return self._data.get("use_full_universe", False)
@@ -77,8 +80,8 @@ class RebalanceProblem:
         return self._data.get("risk_tolerance", 0)
     
     @property
-    def apply_windsoring(self) -> bool:
-        return self._data.get("apply_windsoring", True)
+    def apply_winsorizing(self) -> bool:
+        return self._data.get("apply_winsorizing", True)
     
     @property
     def windsor_percentiles(self) -> dict:
