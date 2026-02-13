@@ -1,8 +1,8 @@
 from domain.portfolio.portfolio import Portfolio
 from reporting.reporting_module import ReportingSystem
-from domain.strategies.strategy_factory import StrategyFactory
 from simulation.backtesting_engine import BacktestingEngine
-from domain.optimizers.optimizer_factory import OptimizerFactory
+from services.strategy_factory import StrategyFactory
+from services.optimizer_factory import OptimizerFactory
 from services.rebalance_problem_builder import RebalanceProblemBuilder
 
 from multiprocessing import Pool
@@ -64,6 +64,7 @@ if __name__ == '__main__':
             print(f"Error building rebalance problem for {strat_config['strategy_type']}: {e}")
             continue
 
+    
     max_workers = min(8, multiprocessing.cpu_count())
     with Pool(processes=max_workers) as pool:
         results = [
@@ -75,21 +76,22 @@ if __name__ == '__main__':
             if portfolio is None:
                 continue
 
-            metric = ReportingSystem.calculate_performance_metrics(rebalance_problems[strategy_type], portfolio)
-            combined_metrics.append((metric, strategy_type))
+    #         reporter = ReportingSystem(rebalance_problems[strategy_type])
+    #         metric = reporter.calculate_performance_metrics(rebalance_problems[strategy_type], portfolio)
+    #         combined_metrics.append((metric, strategy_type))
 
-    summary_df, portfolio_metrics_df, rolling_metrics_df = \
-        ReportingSystem.aggregate_performance_metrics(combined_metrics)
+    # summary_df, portfolio_metrics_df, rolling_metrics_df = \
+    #     ReportingSystem.aggregate_performance_metrics(combined_metrics)
     
-    folder_name = "backtest_results/" + date.today().isoformat()
-    path = Path(folder_name)
-    path.mkdir(parents=True, exist_ok=True)
-    ReportingSystem.generate_report(\
-        f"{folder_name}/backtest_report_{config['start_date']}_{config['end_date']}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.xlsx", 
-    {
-        "summary": summary_df,
-        "time_series": portfolio_metrics_df if len(portfolio_metrics_df) > 0 else None,
-        "rolling_time_series": rolling_metrics_df if len(rolling_metrics_df) > 0 else None
-    })
+    # folder_name = "backtest_results/" + date.today().isoformat()
+    # path = Path(folder_name)
+    # path.mkdir(parents=True, exist_ok=True)
+    # ReportingSystem.generate_report(\
+    #     f"{folder_name}/backtest_report_{config['start_date']}_{config['end_date']}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.xlsx", 
+    # {
+    #     "summary": summary_df,
+    #     "time_series": portfolio_metrics_df if len(portfolio_metrics_df) > 0 else None,
+    #     "rolling_time_series": rolling_metrics_df if len(rolling_metrics_df) > 0 else None
+    # })
 
     print("Backtesting complete.")

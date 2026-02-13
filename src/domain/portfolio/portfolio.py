@@ -11,15 +11,15 @@ class Portfolio(PortfolioInterface):
         self.holdings = None
         self.turnover = None
 
-    def initialize(self, date_index, tickers, initial_weights):
+    def initialize(self, dates, tickers, initial_weights):
         """Initialize portfolio with rebalance problem and price data."""
-        # if price_data.shape[0] == 0:
-        #     raise ValueError("price_data is empty—cannot initialize portfolio weights.")
+        if len(initial_weights) == 0:
+            raise ValueError("price_data is empty—cannot initialize portfolio weights.")
 
-        self.weights = pd.DataFrame(0, dtype=float, index=date_index, columns=tickers)
+        self.weights = pd.DataFrame(0, dtype=float, index=dates, columns=tickers)
         self.weights.iloc[0] = initial_weights
-        self.returns = pd.Series(0, dtype=float, index=date_index)
-        self.turnover = pd.Series(0, dtype=float, index=date_index)
+        self.returns = pd.Series(0, dtype=float, index=dates)
+        self.turnover = pd.Series(0, dtype=float, index=dates)
     
     @property
     def rebalanced_weights(self):

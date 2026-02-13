@@ -44,7 +44,7 @@ class MVOptimizationStrategy(StrategyInterface):
     def _apply_winsorizing(self, lookback_prices):
         """Apply windsoring to lookback prices."""
         if self.rebalance_problem.windsor_percentiles is None or \
-                self.rebalance_problem.apply_windsoring is False:
+                self.rebalance_problem.apply_winsorizing is False:
             return lookback_prices
         
         windsor_percentiles = self.rebalance_problem.windsor_percentiles
