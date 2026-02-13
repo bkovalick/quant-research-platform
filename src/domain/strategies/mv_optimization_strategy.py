@@ -1,9 +1,9 @@
 import numpy as np
 
-from signals.signals import Signals
-from optimizers.cvxpy_optimizer import CvxpyOptimizer
-from core.strategies.istrategy import StrategyInterface
-from infrastructure.market_data.marketdatagateway import MarketEnvironment
+from domain.signals.signals import Signals
+from domain.optimizers.cvxpy_optimizer import CvxpyOptimizer
+from domain.strategies.istrategy import StrategyInterface
+from data.market_data_gateway import MarketEnvironment
 
 class MVOptimizationStrategy(StrategyInterface):
     freq_map = {"d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
@@ -34,14 +34,14 @@ class MVOptimizationStrategy(StrategyInterface):
         if rebalance_idx < self.rebalance_problem.lookback_window:       
             return self.rebalance_problem.initial_weights
         
-        self.market_env.normalized_prices = self._apply_windsoring(lookback_prices)
+        self.market_env.normalized_prices = self._apply_winsorizing(lookback_prices)
         self.rebalance_solution = self.optimizer.optimize(self.rebalance_problem, 
                                                           self.signals, current_weights)
         self.rebalance_solutions.append(self.rebalance_solution)
         portfolio_weights = self.rebalance_solution.decision_variables['portfolio_weights']
         return portfolio_weights
     
-    def _apply_windsoring(self, lookback_prices):
+    def _apply_winsorizing(self, lookback_prices):
         """Apply windsoring to lookback prices."""
         if self.rebalance_problem.windsor_percentiles is None or \
                 self.rebalance_problem.apply_windsoring is False:

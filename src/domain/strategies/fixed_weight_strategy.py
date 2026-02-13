@@ -1,7 +1,7 @@
 import numpy as np
 
-from core.strategies.istrategy import StrategyInterface
-from infrastructure.market_data.marketdatagateway import MarketEnvironment
+from domain.strategies.istrategy import StrategyInterface
+from data.market_data_gateway import MarketEnvironment
 
 class FixedWeightStrategy(StrategyInterface):
     def __init__(self, rebalance_problem, optimizer=None):

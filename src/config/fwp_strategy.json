@@ -19,7 +19,7 @@
     "lookback_window": "1y", 
     "first_rebal": 0,
     "constraints": {
-        "apply_windsoring": true,
+        "apply_winsorizing": true,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
         "turnover_limit": 0.2,
         "min_position_size": 0.005,

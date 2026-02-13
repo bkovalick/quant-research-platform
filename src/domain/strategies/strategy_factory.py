@@ -1,6 +1,6 @@
 import abc
-from strategies.mv_optimization_strategy import MVOptimizationStrategy
-from strategies.fixed_weight_strategy import FixedWeightStrategy
+from domain.strategies.mv_optimization_strategy import MVOptimizationStrategy
+from domain.strategies.fixed_weight_strategy import FixedWeightStrategy
 
 class IStrategyFactory(abc.ABC):
     """Interface for optimizer factories."""

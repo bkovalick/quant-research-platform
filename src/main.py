@@ -1,9 +1,9 @@
-from portfolio.portfolio import Portfolio
+from domain.portfolio.portfolio import Portfolio
 from reporting.reporting_module import ReportingSystem
-from core.strategies.strategy_factory import StrategyFactory
-from backtesting.backtesting_engine import BacktestingEngine
-from core.optimizers.optimizer_factory import OptimizerFactory
-from portfolio.rebalance_problem_builder import RebalanceProblemBuilder
+from domain.strategies.strategy_factory import StrategyFactory
+from simulation.backtesting_engine import BacktestingEngine
+from domain.optimizers.optimizer_factory import OptimizerFactory
+from services.rebalance_problem_builder import RebalanceProblemBuilder
 
 from multiprocessing import Pool
 import multiprocessing
@@ -37,8 +37,10 @@ def create_fwp_rebalance_problem(config):
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
     strategies = ["mv_strategy"]
-    risk_tolerances = [1.0, 2.0, 3.0]
-    concentration_strengths = [0.1, 0.5, 1, 5, 10]
+    # risk_tolerances = [1.0, 2.0, 3.0]
+    risk_tolerances = [1]
+    # concentration_strengths = [0.1, 0.5, 1, 5, 10]
+    concentration_strengths = [10]
     rebalance_problems = {}
     combined_metrics = []
     with open(f"src/config/fwp_strategy.json", 'r') as f:

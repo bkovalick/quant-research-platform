@@ -1,10 +1,10 @@
 import numpy as np
 import cvxpy as cp
 
-from core.optimizers.ioptimizer import IOptimizer
-from portfolio.rebalance_problem import RebalanceProblem
+from domain.optimizers.ioptimizer import IOptimizer
+from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
-from signals.signals import Signals
+from domain.signals.signals import Signals
 
 class CvxpyOptimizer(IOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""

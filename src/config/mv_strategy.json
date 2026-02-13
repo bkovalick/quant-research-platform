@@ -31,7 +31,7 @@
     "apply_sharpe_objective": false,
     "constraints": {
         "concentration_strength": 1,
-        "apply_windsoring": true,
+        "apply_winsorizing": true,
         "max_return": 0.25,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
         "turnover_limit": 0.30,
