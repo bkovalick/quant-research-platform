@@ -38,7 +38,7 @@ def create_fwp_rebalance_problem(config):
 if __name__ == '__main__':
     strategies = ["mv_strategy"]
     risk_tolerances = [1.0, 2.0, 3.0]
-    concentration_strengths = [1, 5, 10]
+    concentration_strengths = [0.1, 0.5, 1, 5, 10]
     rebalance_problems = {}
     combined_metrics = []
     with open(f"src/config/fwp_strategy.json", 'r') as f:
