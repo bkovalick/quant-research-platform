@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from domain.portfolio.iportfolio import PortfolioInterface
 
 class Portfolio(PortfolioInterface):

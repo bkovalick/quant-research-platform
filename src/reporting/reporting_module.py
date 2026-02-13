@@ -7,42 +7,66 @@ import yfinance as yf
 
 from domain.portfolio.portfolio import Portfolio
 from config.lookback_windows import LOOKBACK_WINDOWS
+from models.backtest_result import BacktestResult
+from models.experiment import Experiment
+from models.rebalance_problem import RebalanceProblem
 
-class ReportingSystem:
-    def __init__(self, rebalance_problem):
-        self.rebalance_problem = rebalance_problem
-        self.trading_frequency = self.rebalance_problem.get("trading_frequency", "y")
-        self.annual_trading_days = LOOKBACK_WINDOWS[self.trading_frequency]
-        self.weeks_per_year = self.annual_trading_days["1y"]
+# split out excel report generation.
+# create a MetricsComputer class that returns a BacktestResult
+
+class ExcelGenerator:
+    def __init__(self, filename: str, experiment: Experiment):
+        pass
+
+class JsonGenerator():
+    pass
+
+class MetricsCompute:
+    def __init__(self):
+        pass
+        # self.rebalance_problem = rebalance_problem
+        # self.trading_frequency = self.rebalance_problem.get("trading_frequency", "y")
+        # self.annual_trading_days = LOOKBACK_WINDOWS[self.trading_frequency]
+        # self.weeks_per_year = self.annual_trading_days["1y"]
 
     def generate_report(self, filename: str, results: dict):
-        wb = Workbook()
-        default_sheet = wb.active
-        wb.remove(default_sheet)
-        if "summary" in results:
-            summary_ws = wb.create_sheet(title="Summary")
-            summary_rows = dataframe_to_rows(results["summary"], header=True, index=False)   
-            for r_idx, row in enumerate(summary_rows, 1):
-                for c_idx, value in enumerate(row, 1):
-                    summary_ws.cell(row=r_idx, column=c_idx, value=value)
+        pass
+        # wb = Workbook()
+        # default_sheet = wb.active
+        # wb.remove(default_sheet)
+        # if "summary" in results:
+        #     summary_ws = wb.create_sheet(title="Summary")
+        #     summary_rows = dataframe_to_rows(results["summary"], header=True, index=False)   
+        #     for r_idx, row in enumerate(summary_rows, 1):
+        #         for c_idx, value in enumerate(row, 1):
+        #             summary_ws.cell(row=r_idx, column=c_idx, value=value)
 
-        if "time_series" in results:
-            ts_ws = wb.create_sheet(title="Time Series")
-            ts_rows = dataframe_to_rows(results["time_series"], header=True, index=False)
-            for r_idx, row in enumerate(ts_rows, 1):
-                for c_idx, value in enumerate(row, 1):
-                    ts_ws.cell(row=r_idx, column=c_idx, value=value)
+        # if "time_series" in results:
+        #     ts_ws = wb.create_sheet(title="Time Series")
+        #     ts_rows = dataframe_to_rows(results["time_series"], header=True, index=False)
+        #     for r_idx, row in enumerate(ts_rows, 1):
+        #         for c_idx, value in enumerate(row, 1):
+        #             ts_ws.cell(row=r_idx, column=c_idx, value=value)
 
-        if "rolling_time_series" in results:
-            ts_ws = wb.create_sheet(title="Rolling Time Series")
-            ts_rows = dataframe_to_rows(results["rolling_time_series"], header=True, index=False)
-            for r_idx, row in enumerate(ts_rows, 1):
-                for c_idx, value in enumerate(row, 1):
-                    ts_ws.cell(row=r_idx, column=c_idx, value=value)              
+        # if "rolling_time_series" in results:
+        #     ts_ws = wb.create_sheet(title="Rolling Time Series")
+        #     ts_rows = dataframe_to_rows(results["rolling_time_series"], header=True, index=False)
+        #     for r_idx, row in enumerate(ts_rows, 1):
+        #         for c_idx, value in enumerate(row, 1):
+        #             ts_ws.cell(row=r_idx, column=c_idx, value=value)              
 
-        wb.save(filename)
-        wb.close()
+        # wb.save(filename)
+        # wb.close()
 
+    def compute(self, rebalance_problem: RebalanceProblem, portfolio: Portfolio) -> BacktestResult:
+        # build each piece of the backtest result
+        self.rebalance_problem = rebalance_problem
+        self.trading_frequency = self.rebalance_problem.trading_frequency
+        self.lookback_window = self.rebalance_problem.lookback_window
+        self.annual_trading_days = LOOKBACK_WINDOWS[self.trading_frequency]
+        self.weeks_per_year = self.annual_trading_days[self.lookback_window]
+        return BacktestResult({}, {}, [], {})
+    
     def aggregate_performance_metrics(self, all_metrics):
         """Aggregate performance metrics from multiple strategies into summary and time series DataFrames."""
         summary_rows = []
@@ -90,7 +114,7 @@ class ReportingSystem:
 
         return summary_df, portfolio_metrics_df, rolling_metrics_df
 
-    def calculate_performance_metrics(self, rebalance_problem, portfolio: Portfolio):
+    def calculate_performance_metrics(self, rebalance_problem: RebalanceProblem, portfolio: Portfolio):
         """Calculate performance metrics for the portfolio."""
         portfolio_weights = portfolio.weights
         portfolio_returns = portfolio.returns
@@ -111,11 +135,11 @@ class ReportingSystem:
         if lookback_window > 0:
             drawdown_returns = cumulative_returns.iloc[lookback_window:]
             rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, lookback_window)
-            rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd, "RollingDrawdown")
+            rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd)
         else:
             drawdown_returns = cumulative_returns
             rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, lookback_window)
-            rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd, "RollingDrawdown")
+            rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd)
 
         performance_metrics = {
             "portfolio_wealth_factors": wealth_factors,
@@ -180,7 +204,6 @@ class ReportingSystem:
 
     def get_alpha(self, portfolio_returns, rebalance_problem):
         """Calculate alpha of the portfolio against a benchmark (S&P 500)."""
-        # annual_trading_days = { "d": 252, "w": 52, "m": 12, "q": 4, "y": 1}
         annualization_factor = self.annual_trading_days.get(rebalance_problem.trading_frequency, 252)
         benchmark = yf.download("^GSPC", \
                         start=rebalance_problem.start_date, end=rebalance_problem.end_date)
@@ -199,7 +222,7 @@ class ReportingSystem:
         alpha = portfolio_annualized - benchmark_annualized
         return alpha
 
-    def get_benchmark(self, rebalance_problem):
+    def get_benchmark(self, rebalance_problem: RebalanceProblem):
         benchmark_data = {}
         freq = 'W' if self.trading_frequency == 'w' else self.trading_frequency
         benchmark_universe = rebalance_problem.get("benchmark_universe", "SPY")
@@ -209,7 +232,7 @@ class ReportingSystem:
         benchmark_data.update({"benchmark_wfs": benchmark / benchmark.iloc[0] })
         return benchmark_data
     
-def align_series_to_dataframe(df, series, col_name):
+def align_series_to_dataframe(df, series):
     n = len(df) - len(series)
     nan_part = pd.Series([np.nan]*n, index=df.index[:n])
     aligned = pd.concat([nan_part, series])

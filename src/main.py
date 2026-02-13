@@ -1,9 +1,12 @@
 from domain.portfolio.portfolio import Portfolio
-from reporting.reporting_module import ReportingSystem
+from reporting.reporting_module import MetricsCompute
 from simulation.backtesting_engine import BacktestingEngine
 from services.strategy_factory import StrategyFactory
 from services.optimizer_factory import OptimizerFactory
 from services.rebalance_problem_builder import RebalanceProblemBuilder
+from models.strategy_run import StrategyRun
+from models.backtest_result import BacktestResult
+from models.experiment import Experiment
 
 from multiprocessing import Pool
 import multiprocessing
@@ -14,6 +17,7 @@ import json
 from itertools import product
 from datetime import datetime
 import numpy as np
+import uuid
 
 def run_strategy_async(rebalance_problem):
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type)
@@ -46,7 +50,7 @@ if __name__ == '__main__':
     with open(f"src/config/fwp_strategy.json", 'r') as f:
         fwp_config = json.load(f)
     fwp_rebal_problem = create_fwp_rebalance_problem(fwp_config)
-    rebalance_problems.update({'fwp_strategy': fwp_rebal_problem})
+    # rebalance_problems.update({'fwp_strategy': fwp_rebal_problem})
 
     for strategy_type, risk_tol, con_strength in product(strategies, risk_tolerances, concentration_strengths):
         with open(f"src/config/{strategy_type}.json", 'r') as f:
@@ -64,7 +68,8 @@ if __name__ == '__main__':
             print(f"Error building rebalance problem for {strat_config['strategy_type']}: {e}")
             continue
 
-    
+    runs = []
+    metrics_computer = MetricsCompute()
     max_workers = min(8, multiprocessing.cpu_count())
     with Pool(processes=max_workers) as pool:
         results = [
@@ -75,7 +80,12 @@ if __name__ == '__main__':
             portfolio = res.get()
             if portfolio is None:
                 continue
+        
+        run_id = str(uuid.uuid4())
+        backtest_result = metrics_computer.compute(rebalance_problems[strategy_type], portfolio)
+        runs.append(StrategyRun(run_id, rebalance_problems[strategy_type], backtest_result))
 
+    # experiment = Experiment()
     #         reporter = ReportingSystem(rebalance_problems[strategy_type])
     #         metric = reporter.calculate_performance_metrics(rebalance_problems[strategy_type], portfolio)
     #         combined_metrics.append((metric, strategy_type))

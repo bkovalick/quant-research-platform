@@ -6,5 +6,4 @@ from models.backtest_result import BacktestResult
 class StrategyRun:
     run_id: str
     strategy_config: Dict[str, Any]
-    optimizer_config: Dict[str, Any]
     result: BacktestResult
