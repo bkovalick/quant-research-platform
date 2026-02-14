@@ -1,6 +1,6 @@
 import abc
 from domain.optimizers.scipy_optimizer import ScipyOptimizer
-from domain.optimizers.cvxpy_optimizer import CvxpyOptimizer
+from src.domain.optimizers.portfolio_optimizer import PortfolioOptimizer
 from domain.optimizers.ioptimizer import IOptimizer
 
 class IOptimizerFactory(abc.ABC):
@@ -20,7 +20,7 @@ class OptimizerFactory(IOptimizerFactory):
 
     _optimizers = {
         "scipy_optimizer": ScipyOptimizer,
-        "cvxpy_optimizer": CvxpyOptimizer,
+        "cvxpy_optimizer": PortfolioOptimizer,
         "fwp_optimizer": FixedWeightOptimizer
     }
 

@@ -1,12 +1,15 @@
 from domain.portfolio.portfolio import Portfolio
 from reporting.reporting_module import MetricsCompute
 from simulation.backtesting_engine import BacktestingEngine
+from simulation.market_state import MarketState
 from services.strategy_factory import StrategyFactory
 from services.optimizer_factory import OptimizerFactory
 from services.rebalance_problem_builder import RebalanceProblemBuilder
 from models.strategy_run import StrategyRun
 from models.backtest_result import BacktestResult
 from models.experiment import Experiment
+from models.market_config import MarketStateConfig, MarketStoreConfig
+from data.market_data_gateway import MarketDataStore
 
 from multiprocessing import Pool
 import multiprocessing
@@ -20,12 +23,14 @@ import numpy as np
 import uuid
 
 def run_strategy_async(rebalance_problem):
-    optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type)
+    mkt_state = create_market_state()
+    opt_type = rebalance_problem.optimizer_type
+    optimizer = OptimizerFactory.create_optimizer(opt_type)
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
     portfolio = Portfolio()
-    backtestingEngine = BacktestingEngine(portfolio, strategy)
-    backtestingEngine.run_backtest(rebalance_problem)
-    return backtestingEngine.portfolio
+    backtestingEngine = BacktestingEngine(portfolio, strategy, mkt_state)
+    backtestedPortfolio = backtestingEngine.run_backtest(rebalance_problem)
+    return backtestedPortfolio
 
 def create_fwp_rebalance_problem(config):
     rebalance_problem = None
@@ -37,6 +42,24 @@ def create_fwp_rebalance_problem(config):
         print(f"Error building rebalance problem for {strat_config['strategy_type']}: {e}") 
 
     return rebalance_problem
+
+def create_market_state():
+    market_store = MarketStoreConfig(
+        tickers = [
+            'AAPL', 'NVDA', 'MSFT', 'TSLA'
+        ],        
+        start_date = "2005-01-01",
+        end_date = "2026-02-13"
+    )
+    market_state_config = MarketStateConfig(
+        trading_frequency = "w",
+        lookback_window = "1y",
+        apply_winsorizing = True,
+        windsor_percentiles = {"lower": 0.05, "upper": 0.95}
+    )
+    mkt_store = MarketDataStore(market_store)
+    mkt_state = MarketState(mkt_store, market_state_config)
+    return mkt_state
 
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
@@ -50,23 +73,23 @@ if __name__ == '__main__':
     with open(f"src/config/fwp_strategy.json", 'r') as f:
         fwp_config = json.load(f)
     fwp_rebal_problem = create_fwp_rebalance_problem(fwp_config)
-    # rebalance_problems.update({'fwp_strategy': fwp_rebal_problem})
+    rebalance_problems.update({'fwp_strategy': fwp_rebal_problem})
 
-    for strategy_type, risk_tol, con_strength in product(strategies, risk_tolerances, concentration_strengths):
-        with open(f"src/config/{strategy_type}.json", 'r') as f:
-            config = json.load(f)
+    # for strategy_type, risk_tol, con_strength in product(strategies, risk_tolerances, concentration_strengths):
+    #     with open(f"src/config/{strategy_type}.json", 'r') as f:
+    #         config = json.load(f)
 
-        strat_config = config.copy()
-        strat_config['constraints']['risk_tolerance'] =  risk_tol
-        strat_config['constraints']['concentration_strength'] =  con_strength
-        builder = RebalanceProblemBuilder(strat_config)
-        try:
-            rebalance_problem = builder.build()
-            strategy_type += f"_risk_tolerance_{str(risk_tol)}_con_strength{str(con_strength)}"
-            rebalance_problems.update({strategy_type: rebalance_problem})
-        except ValueError as e:
-            print(f"Error building rebalance problem for {strat_config['strategy_type']}: {e}")
-            continue
+    #     strat_config = config.copy()
+    #     strat_config['constraints']['risk_tolerance'] =  risk_tol
+    #     strat_config['constraints']['concentration_strength'] =  con_strength
+    #     builder = RebalanceProblemBuilder(strat_config)
+    #     try:
+    #         rebalance_problem = builder.build()
+    #         strategy_type += f"_risk_tolerance_{str(risk_tol)}_con_strength{str(con_strength)}"
+    #         rebalance_problems.update({strategy_type: rebalance_problem})
+    #     except ValueError as e:
+    #         print(f"Error building rebalance problem for {strat_config['strategy_type']}: {e}")
+    #         continue
 
     runs = []
     metrics_computer = MetricsCompute()

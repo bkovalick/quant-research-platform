@@ -22,8 +22,6 @@
     "risk_free_rate": 0.03,
     "cash_allocation": 0.05,
     "risk_tolerance": 0.10,
-    "start_date": "2005-01-01",
-    "end_date": "2026-02-11",
     "trading_frequency": "w",
     "lookback_window_key": "1y", 
     "first_rebal": 0,

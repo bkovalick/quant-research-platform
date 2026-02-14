@@ -152,14 +152,14 @@ class MetricsCompute:
             "portfolio_turnover": portfolio_turnover,
             "cumulative_returns": cumulative_returns,            
             "rolling_returns": self._calculate_rolling_returns(
-                portfolio_returns, self.lookback_window, self.trading_frequency),
+                portfolio_returns, self.weeks_per_year, self.trading_frequency),
             "rolling_volatility": self._calculate_rolling_volatility(
-                portfolio_returns, self.lookback_window, self.trading_frequency),
+                portfolio_returns, self.weeks_per_year, self.trading_frequency),
             "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(
-                portfolio_returns, self.lookback_window, self.trading_frequency),
+                portfolio_returns, self.weeks_per_year, self.trading_frequency),
             "rolling_drawdown": rolling_dd,
             "rolling_turnover": self._calculate_rolling_turnover(
-                portfolio_turnover, self.lookback_window, self.trading_frequency),
+                portfolio_turnover, self.weeks_per_year, self.trading_frequency),
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,

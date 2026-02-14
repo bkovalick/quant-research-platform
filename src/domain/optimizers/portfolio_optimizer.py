@@ -6,7 +6,7 @@ from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
 from domain.signals.signals import Signals
 
-class CvxpyOptimizer(IOptimizer):
+class PortfolioOptimizer(IOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
 	def __init__(self):
 		super().__init__()
@@ -44,15 +44,16 @@ class CvxpyOptimizer(IOptimizer):
 			)
 
 		optimal_weights = decision_variables['portfolio_weights'].value
-		total_trades = optimal_weights - current_weights
-		return RebalanceSolution(
-			model="Cvxpy",
-			decision_variables={
-				'portfolio_weights': optimal_weights,
-				'total_trades': total_trades
-			},
-			rebalance_problem=rebalance_problem
-		)		
+		return optimal_weights
+		# total_trades = optimal_weights - current_weights
+		# return RebalanceSolution(
+		# 	model="Cvxpy",
+		# 	decision_variables={
+		# 		'portfolio_weights': optimal_weights,
+		# 		'total_trades': total_trades
+		# 	},
+		# 	rebalance_problem=rebalance_problem
+		# )		
 
 	def _setup_decision_variables(self, rebalance_problem: RebalanceProblem) -> dict:
 		"""Setup decision variables for the optimization problem."""

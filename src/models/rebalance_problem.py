@@ -41,15 +41,7 @@ class RebalanceProblem:
     
     @property
     def apply_sharpe_objective(self) -> bool:
-        return self._data.get("apply_sharpe_objective", False)    
-
-    @property
-    def start_date(self) -> str:
-        return self._data.get("start_date")
-    
-    @property
-    def end_date(self) -> str:
-        return self._data.get("end_date")
+        return self._data.get("apply_sharpe_objective", False)
 
     @property
     def risk_free_rate(self) -> float:

@@ -70,8 +70,6 @@ class RebalanceProblemBuilder:
             "strategy_type": self.config.get("strategy_type"),
             "apply_max_return_objective": self.config.get("apply_max_return_objective", False),
             "apply_sharpe_objective": self.config.get("apply_sharpe_objective", False),
-            "start_date": self.config["start_date"],
-            "end_date": self.config["end_date"],
             "initial_weights": initial_weights,
             "cash_allocation": cash_allocation,
             "risk_tolerance": self.config.get("risk_tolerance", 0.0),
