@@ -16,7 +16,7 @@
     "start_date": "2005-01-01",
     "end_date": "2026-01-15",
     "trading_frequency": "w",
-    "lookback_window": "1y", 
+    "lookback_window_key": "1y", 
     "first_rebal": 0,
     "constraints": {
         "apply_winsorizing": true,

@@ -30,7 +30,7 @@ def run_strategy_async(rebalance_problem):
 def create_fwp_rebalance_problem(config):
     rebalance_problem = None
     strat_config = config.copy()
-    builder = RebalanceProblemBuilder(strat_config)
+    builder = RebalanceProblemBuilder(strat_config) 
     try:
         rebalance_problem = builder.build()
     except ValueError as e:
@@ -83,7 +83,12 @@ if __name__ == '__main__':
         
         run_id = str(uuid.uuid4())
         backtest_result = metrics_computer.compute(rebalance_problems[strategy_type], portfolio)
-        runs.append(StrategyRun(run_id, rebalance_problems[strategy_type], backtest_result))
+        metadata = {
+            "timestamp": datetime.now(), 
+            "username": "bkovalick", 
+            "engine_version": "1.0.0"
+        }
+        runs.append(StrategyRun(run_id, rebalance_problems[strategy_type], backtest_result, metadata))
 
     # experiment = Experiment()
     #         reporter = ReportingSystem(rebalance_problems[strategy_type])

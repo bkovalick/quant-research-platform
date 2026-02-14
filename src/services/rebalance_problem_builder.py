@@ -57,11 +57,10 @@ class RebalanceProblemBuilder:
                 initial_weights = [ (1 - cash_allocation) / len(tickers) for t in tickers ] + [cash_allocation]
 
         tickers_with_cash = tickers + ["CASH"]
-        lookback_window = self.config.get("lookback_window", "1y")
+        lookback_window_key = self.config.get("lookback_window_key", "1y")
         trading_frequency = self.config.get("trading_frequency", "d")
         asset_class_map = self.build_asset_class_map(tickers_with_cash)
         sector_map = self.build_sector_map(tickers_with_cash)
-
         prepared_data = {
             "use_full_universe": self.config.get("use_full_universe", False),
             "benchmark_universe": self.config.get("benchmark_universe", "SPY"),
@@ -77,7 +76,8 @@ class RebalanceProblemBuilder:
             "cash_allocation": cash_allocation,
             "risk_tolerance": self.config.get("risk_tolerance", 0.0),
             "trading_frequency": trading_frequency,
-            "lookback_window":  LOOKBACK_WINDOWS[trading_frequency][lookback_window],
+            "lookback_window_key": lookback_window_key,
+            "lookback_window":  LOOKBACK_WINDOWS[trading_frequency][lookback_window_key],
             "first_rebal": self.config.get("first_rebal", 0),
             "apply_winsorizing": self.config["constraints"].get("apply_winsorizing", True),
             "windsor_percentiles": self.config["constraints"].get("windsor_percentiles", {"lower": 0.05, "upper": 0.95}),

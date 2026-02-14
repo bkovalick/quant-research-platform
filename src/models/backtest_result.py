@@ -5,5 +5,3 @@ from typing import Dict, List, Any
 class BacktestResult:
     summary: Dict[str, float]
     series: Dict[str, Any]
-    trades: List[Dict[str, Any]]
-    metadata: Dict[str, Any]

@@ -68,6 +68,10 @@ class RebalanceProblem:
         return self._data.get("trading_frequency", "d")
     
     @property
+    def lookback_window_key(self) -> int:
+        return self._data.get("lookback_window_key", "1y")
+        
+    @property
     def lookback_window(self) -> int:
         return self._data.get("lookback_window", 252)
     

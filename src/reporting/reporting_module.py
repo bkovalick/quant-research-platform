@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import yfinance as yf
+from datetime import datetime
 
 from domain.portfolio.portfolio import Portfolio
 from config.lookback_windows import LOOKBACK_WINDOWS
@@ -15,58 +16,40 @@ from models.rebalance_problem import RebalanceProblem
 # create a MetricsComputer class that returns a BacktestResult
 
 class ExcelGenerator:
-    def __init__(self, filename: str, experiment: Experiment):
-        pass
-
-class JsonGenerator():
-    pass
-
-class MetricsCompute:
-    def __init__(self):
-        pass
-        # self.rebalance_problem = rebalance_problem
-        # self.trading_frequency = self.rebalance_problem.get("trading_frequency", "y")
-        # self.annual_trading_days = LOOKBACK_WINDOWS[self.trading_frequency]
-        # self.weeks_per_year = self.annual_trading_days["1y"]
-
-    def generate_report(self, filename: str, results: dict):
-        pass
-        # wb = Workbook()
-        # default_sheet = wb.active
-        # wb.remove(default_sheet)
-        # if "summary" in results:
-        #     summary_ws = wb.create_sheet(title="Summary")
-        #     summary_rows = dataframe_to_rows(results["summary"], header=True, index=False)   
-        #     for r_idx, row in enumerate(summary_rows, 1):
-        #         for c_idx, value in enumerate(row, 1):
-        #             summary_ws.cell(row=r_idx, column=c_idx, value=value)
-
-        # if "time_series" in results:
-        #     ts_ws = wb.create_sheet(title="Time Series")
-        #     ts_rows = dataframe_to_rows(results["time_series"], header=True, index=False)
-        #     for r_idx, row in enumerate(ts_rows, 1):
-        #         for c_idx, value in enumerate(row, 1):
-        #             ts_ws.cell(row=r_idx, column=c_idx, value=value)
-
-        # if "rolling_time_series" in results:
-        #     ts_ws = wb.create_sheet(title="Rolling Time Series")
-        #     ts_rows = dataframe_to_rows(results["rolling_time_series"], header=True, index=False)
-        #     for r_idx, row in enumerate(ts_rows, 1):
-        #         for c_idx, value in enumerate(row, 1):
-        #             ts_ws.cell(row=r_idx, column=c_idx, value=value)              
-
-        # wb.save(filename)
-        # wb.close()
-
-    def compute(self, rebalance_problem: RebalanceProblem, portfolio: Portfolio) -> BacktestResult:
-        # build each piece of the backtest result
-        self.rebalance_problem = rebalance_problem
-        self.trading_frequency = self.rebalance_problem.trading_frequency
-        self.lookback_window = self.rebalance_problem.lookback_window
-        self.annual_trading_days = LOOKBACK_WINDOWS[self.trading_frequency]
-        self.weeks_per_year = self.annual_trading_days[self.lookback_window]
-        return BacktestResult({}, {}, [], {})
+    def __init__(self, experiment: Experiment):
+        self.experiment = experiment
+        self.aggregated_metrics = []
     
+    def generate_report(self, filename: str, results: dict):
+        results = self.aggregate_performance_metrics([])
+
+        wb = Workbook()
+        default_sheet = wb.active
+        wb.remove(default_sheet)
+        if "summary" in results:
+            summary_ws = wb.create_sheet(title="Summary")
+            summary_rows = dataframe_to_rows(results["summary"], header=True, index=False)   
+            for r_idx, row in enumerate(summary_rows, 1):
+                for c_idx, value in enumerate(row, 1):
+                    summary_ws.cell(row=r_idx, column=c_idx, value=value)
+
+        if "time_series" in results:
+            ts_ws = wb.create_sheet(title="Time Series")
+            ts_rows = dataframe_to_rows(results["time_series"], header=True, index=False)
+            for r_idx, row in enumerate(ts_rows, 1):
+                for c_idx, value in enumerate(row, 1):
+                    ts_ws.cell(row=r_idx, column=c_idx, value=value)
+
+        if "rolling_time_series" in results:
+            ts_ws = wb.create_sheet(title="Rolling Time Series")
+            ts_rows = dataframe_to_rows(results["rolling_time_series"], header=True, index=False)
+            for r_idx, row in enumerate(ts_rows, 1):
+                for c_idx, value in enumerate(row, 1):
+                    ts_ws.cell(row=r_idx, column=c_idx, value=value)              
+
+        wb.save(filename)
+        wb.close()
+
     def aggregate_performance_metrics(self, all_metrics):
         """Aggregate performance metrics from multiple strategies into summary and time series DataFrames."""
         summary_rows = []
@@ -112,9 +95,31 @@ class MetricsCompute:
         else:
             rolling_metrics_df = None
 
-        return summary_df, portfolio_metrics_df, rolling_metrics_df
+        return summary_df, portfolio_metrics_df, rolling_metrics_df        
 
-    def calculate_performance_metrics(self, rebalance_problem: RebalanceProblem, portfolio: Portfolio):
+class JsonGenerator():
+    pass
+
+class MetricsCompute:
+    def __init__(self):
+        pass
+
+    def compute(self, rebalance_problem: RebalanceProblem, portfolio: Portfolio) -> BacktestResult:
+        """ Build each piece of the backtest result """
+        self.rebalance_problem = rebalance_problem
+        self.trading_frequency = self.rebalance_problem.trading_frequency
+        self.lookback_window_key = self.rebalance_problem.lookback_window_key
+        self.annual_trading_days = LOOKBACK_WINDOWS[self.trading_frequency]
+        self.weeks_per_year = self.annual_trading_days[self.lookback_window_key]
+        performance_metrics = self._calculate_performance_metrics(rebalance_problem, portfolio)
+        performance_series = self._build_performance_series(performance_metrics)
+        summary = self._build_summary(performance_metrics)
+        return BacktestResult(
+            summary=summary,
+            series=performance_series
+        )
+
+    def _calculate_performance_metrics(self, rebalance_problem: RebalanceProblem, portfolio: Portfolio):
         """Calculate performance metrics for the portfolio."""
         portfolio_weights = portfolio.weights
         portfolio_returns = portfolio.returns
@@ -124,21 +129,20 @@ class MetricsCompute:
         num_periods = cumulative_returns.shape[0]
         years = num_periods / self.weeks_per_year
         annualized_return = wealth_factors.iloc[-1] ** (1 / years) - 1
-        annualized_volatility = portfolio_returns.std() * np.sqrt(self.annual_trading_days[self.trading_frequency])
+        annualized_volatility = portfolio_returns.std() * np.sqrt(self.weeks_per_year)
 
         sharpe_ratio = (
             annualized_return / annualized_volatility 
             if annualized_volatility != 0 else 0.0
         )
 
-        lookback_window = getattr(rebalance_problem, 'lookback_window', 0)
-        if lookback_window > 0:
-            drawdown_returns = cumulative_returns.iloc[lookback_window:]
-            rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, lookback_window)
+        if self.weeks_per_year > 0:
+            drawdown_returns = cumulative_returns.iloc[self.weeks_per_year:]
+            rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self.weeks_per_year)
             rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd)
         else:
             drawdown_returns = cumulative_returns
-            rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, lookback_window)
+            rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self.weeks_per_year)
             rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd)
 
         performance_metrics = {
@@ -147,21 +151,21 @@ class MetricsCompute:
             "portfolio_returns": portfolio_returns,
             "portfolio_turnover": portfolio_turnover,
             "cumulative_returns": cumulative_returns,            
-            "rolling_returns": self._calculate_rolling_returns(portfolio_returns, lookback_window, 
-                                                             self.trading_frequency),
-            "rolling_volatility": self._calculate_rolling_volatility(portfolio_returns, lookback_window, 
-                                                                   self.trading_frequency),
-            "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(portfolio_returns, lookback_window, 
-                                                                       self.trading_frequency),
+            "rolling_returns": self._calculate_rolling_returns(
+                portfolio_returns, self.lookback_window, self.trading_frequency),
+            "rolling_volatility": self._calculate_rolling_volatility(
+                portfolio_returns, self.lookback_window, self.trading_frequency),
+            "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(
+                portfolio_returns, self.lookback_window, self.trading_frequency),
             "rolling_drawdown": rolling_dd,
-            "rolling_turnover": self._calculate_rolling_turnover(portfolio_turnover, lookback_window, 
-                                                                self.trading_frequency),
+            "rolling_turnover": self._calculate_rolling_turnover(
+                portfolio_turnover, self.lookback_window, self.trading_frequency),
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
             "max_drawdown": abs(self._calculate_max_drawdown(drawdown_returns)),
             "turnover": portfolio_turnover.mean() * self.weeks_per_year,
-            "alpha": self.get_alpha(portfolio_returns, rebalance_problem)
+            "alpha": self._calculate_alpha(portfolio_returns, rebalance_problem)
         }
         return performance_metrics
 
@@ -202,7 +206,7 @@ class MetricsCompute:
         annualization_factor = self.annual_trading_days.get(trading_frequency, 252)
         return turnover.rolling(window=window).mean() * np.sqrt(annualization_factor)
 
-    def get_alpha(self, portfolio_returns, rebalance_problem):
+    def _calculate_alpha(self, portfolio_returns, rebalance_problem):
         """Calculate alpha of the portfolio against a benchmark (S&P 500)."""
         annualization_factor = self.annual_trading_days.get(rebalance_problem.trading_frequency, 252)
         benchmark = yf.download("^GSPC", \
@@ -222,16 +226,50 @@ class MetricsCompute:
         alpha = portfolio_annualized - benchmark_annualized
         return alpha
 
-    def get_benchmark(self, rebalance_problem: RebalanceProblem):
+    def _get_benchmark(self, rebalance_problem: RebalanceProblem):
         benchmark_data = {}
         freq = 'W' if self.trading_frequency == 'w' else self.trading_frequency
-        benchmark_universe = rebalance_problem.get("benchmark_universe", "SPY")
+        benchmark_universe = rebalance_problem.benchmark_universe
         benchmark = yf.download(benchmark_universe, start=rebalance_problem.start_date, end=rebalance_problem.end_date)
         benchmark = benchmark.asfreq(freq, method='ffill')
         benchmark_data.update({"benchmark_returns": benchmark["Close"].pct_change().fillna(0)})
         benchmark_data.update({"benchmark_wfs": benchmark / benchmark.iloc[0] })
         return benchmark_data
     
+    def _build_performance_series(self, performance_metrics: dict) -> dict:
+        """Create performance series dictionary for BacktestResult dataclass"""
+        if performance_metrics is None:
+            return
+                
+        performance_series = {
+            "portfolio_wealth_factors": performance_metrics["portfolio_wealth_factors"],
+            "portfolio_weights": performance_metrics["portfolio_weights"],
+            "portfolio_returns": performance_metrics["portfolio_returns"],
+            "portfolio_turnover": performance_metrics["portfolio_turnover"],
+            "cumulative_returns": performance_metrics["cumulative_returns"],
+            "rolling_returns": performance_metrics["rolling_returns"],
+            "rolling_volatility": performance_metrics["rolling_volatility"],
+            "rolling_sharpe_ratio": performance_metrics["rolling_sharpe_ratio"],
+            "rolling_drawdown": performance_metrics["rolling_drawdown"],
+            "rolling_turnover": performance_metrics["rolling_turnover"]
+        }
+        return performance_series
+
+    def _build_summary(self, performance_metrics) -> dict:
+        """Create summary dictionary for BacktestResult dataclass"""
+        if performance_metrics is None:
+            return
+        
+        performance_summary = {
+            "return": performance_metrics["return"],
+            "volatility": performance_metrics["volatility"],
+            "sharpe_ratio": performance_metrics["sharpe_ratio"],
+            "max_drawdown": performance_metrics["max_drawdown"],
+            "turnover": performance_metrics["turnover"],
+            "alpha": performance_metrics["alpha"]
+        }
+        return performance_summary
+
 def align_series_to_dataframe(df, series):
     n = len(df) - len(series)
     nan_part = pd.Series([np.nan]*n, index=df.index[:n])
