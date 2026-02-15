@@ -1,4 +1,4 @@
-from src.domain.optimizers.portfolio_optimizer import PortfolioOptimizer
+from domain.optimizers.portfolio_optimizer import PortfolioOptimizer
 from domain.strategies.istrategy import StrategyInterface
 from models.rebalance_problem import RebalanceProblem
 

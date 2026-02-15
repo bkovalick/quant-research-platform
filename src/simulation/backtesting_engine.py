@@ -1,13 +1,11 @@
 import abc
-import numpy as np
-import pandas as pd
 import time
 
 from domain.portfolio.iportfolio import PortfolioInterface
 from domain.strategies.istrategy import StrategyInterface
 from domain.signals.signals import Signals
 from models.rebalance_problem import RebalanceProblem
-from data.market_data_gateway import MarketState
+from simulation.market_state import MarketState
 
 class BacktestingEngineInterface(abc.ABC):
     """Interface for backtesting engines."""
