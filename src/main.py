@@ -23,7 +23,7 @@ import numpy as np
 import uuid
 
 def run_strategy_async(rebalance_problem):
-    mkt_state = create_market_state()
+    mkt_state = create_market_state(market_store)
     opt_type = rebalance_problem.optimizer_type
     optimizer = OptimizerFactory.create_optimizer(opt_type)
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
@@ -43,15 +43,16 @@ def create_fwp_rebalance_problem(config):
 
     return rebalance_problem
 
-def create_market_state():
-    market_store = MarketStoreConfig(
-        tickers = [
-            'AAPL', 'NVDA', 'MSFT', 'TSLA'
-        ],        
-        start_date = "2005-01-01",
-        end_date = "2026-02-13",
-        data_source="yfinance"
-    )
+market_store = MarketStoreConfig(
+    tickers = [
+        'AAPL', 'NVDA', 'MSFT', 'TSLA'
+    ],        
+    start_date = "2005-01-01",
+    end_date = "2026-02-13",
+    data_source="yfinance"
+)
+
+def create_market_state(market_store):
     market_state_config = MarketStateConfig(
         trading_frequency = "w",
         lookback_window = "1y",
@@ -106,7 +107,7 @@ if __name__ == '__main__':
                 continue
         
         run_id = str(uuid.uuid4())
-        backtest_result = metrics_computer.compute(rebalance_problems[strategy_type], portfolio)
+        backtest_result = metrics_computer.compute(rebalance_problems[strategy_type], portfolio, market_store)
         metadata = {
             "timestamp": datetime.now(), 
             "username": "bkovalick", 
@@ -115,22 +116,4 @@ if __name__ == '__main__':
         runs.append(StrategyRun(run_id, rebalance_problems[strategy_type], backtest_result, metadata))
 
     # experiment = Experiment()
-    #         reporter = ReportingSystem(rebalance_problems[strategy_type])
-    #         metric = reporter.calculate_performance_metrics(rebalance_problems[strategy_type], portfolio)
-    #         combined_metrics.append((metric, strategy_type))
-
-    # summary_df, portfolio_metrics_df, rolling_metrics_df = \
-    #     ReportingSystem.aggregate_performance_metrics(combined_metrics)
-    
-    # folder_name = "backtest_results/" + date.today().isoformat()
-    # path = Path(folder_name)
-    # path.mkdir(parents=True, exist_ok=True)
-    # ReportingSystem.generate_report(\
-    #     f"{folder_name}/backtest_report_{config['start_date']}_{config['end_date']}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.xlsx", 
-    # {
-    #     "summary": summary_df,
-    #     "time_series": portfolio_metrics_df if len(portfolio_metrics_df) > 0 else None,
-    #     "rolling_time_series": rolling_metrics_df if len(rolling_metrics_df) > 0 else None
-    # })
-
     print("Backtesting complete.")
