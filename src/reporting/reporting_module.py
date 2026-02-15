@@ -158,20 +158,20 @@ class MetricsCompute:
             "portfolio_turnover": portfolio_turnover,
             "cumulative_returns": cumulative_returns,            
             "rolling_returns": self._calculate_rolling_returns(
-                portfolio_returns, self.weeks_per_year, self.market_frequency),
+                portfolio_returns, self.weeks_per_year),
             "rolling_volatility": self._calculate_rolling_volatility(
-                portfolio_returns, self.weeks_per_year, self.market_frequency),
+                portfolio_returns, self.weeks_per_year),
             "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(
-                portfolio_returns, self.weeks_per_year, self.market_frequency),
+                portfolio_returns, self.weeks_per_year),
             "rolling_drawdown": rolling_dd,
             "rolling_turnover": self._calculate_rolling_turnover(
-                portfolio_turnover, self.weeks_per_year, self.market_frequency),
+                portfolio_turnover, self.weeks_per_year),
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
             "max_drawdown": abs(self._calculate_max_drawdown(drawdown_returns)),
             "turnover": portfolio_turnover.mean() * self.weeks_per_year,
-            "alpha": self._calculate_alpha(portfolio_returns, self.market_frequency, market_str_cfg)
+            "alpha": self._calculate_alpha(portfolio_returns, self.weeks_per_year, self.market_frequency, market_str_cfg)
         }
         return performance_metrics
 
@@ -185,39 +185,39 @@ class MetricsCompute:
         """Calculate rolling drawdown series over a specified window."""
         return cumulative.rolling(window, min_periods=1).apply(self._calculate_max_drawdown, raw=False)
 
-    def _calculate_rolling_returns(self, returns: pd.Series, window: int, trading_frequency: str):
+    def _calculate_rolling_returns(self, returns: pd.Series, window: int):
         """Calculate rolling return over a specified window."""
-        annualization_factor = self.annual_trading_days.get(trading_frequency, "1y")
+        annualization_factor = window
         rolling_return = (1 + returns).rolling(window=window).apply(np.prod, raw=True) - 1
         rolling_return = (1 + rolling_return) ** (annualization_factor / window) - 1
         return rolling_return
 
-    def _calculate_rolling_volatility(self, returns: pd.Series, window: int, trading_frequency: str):
+    def _calculate_rolling_volatility(self, returns: pd.Series, window: int):
         """Calculate rolling volatility over a specified window."""
-        annualization_factor = self.annual_trading_days.get(trading_frequency, "1y")
+        annualization_factor = window
         rolling_std = returns.rolling(window=window).std()
         rolling_volatility = rolling_std * np.sqrt(annualization_factor)
         return rolling_volatility
 
-    def _calculate_rolling_sharpe_ratio(self, returns: pd.Series, window: int, trading_frequency: str):
+    def _calculate_rolling_sharpe_ratio(self, returns: pd.Series, window: int):
         """Calculate rolling Sharpe ratio over a specified window."""
-        annualization_factor = self.annual_trading_days.get(trading_frequency, "1y")
+        annualization_factor = window
         rolling_mean = returns.rolling(window=window).mean()
         rolling_std = returns.rolling(window=window).std()
         rolling_sharpe = (rolling_mean / rolling_std) * np.sqrt(annualization_factor)
         return rolling_sharpe
 
-    def _calculate_rolling_turnover(self, turnover: pd.Series, window: int, trading_frequency: str):
+    def _calculate_rolling_turnover(self, turnover: pd.Series, window: int):
         """Calculate rolling turnover over a specified window."""
-        annualization_factor = self.annual_trading_days.get(trading_frequency, "1y")
+        annualization_factor = window
         return turnover.rolling(window=window).mean() * np.sqrt(annualization_factor)
 
     def _calculate_alpha(self, 
                          portfolio_returns: pd.Series, 
-                         trading_frequency: str,
+                         window: int,
                          market_str_cfg: MarketStoreConfig):
         """Calculate alpha of the portfolio against a benchmark (S&P 500)."""
-        annualization_factor = self.annual_trading_days.get(trading_frequency, "1y")
+        annualization_factor = window
         benchmark = yf.download("^GSPC", \
                         start=market_str_cfg.start_date, end=market_str_cfg.end_date)
         freq = 'W' if self.market_frequency == 'w' else self.market_frequency

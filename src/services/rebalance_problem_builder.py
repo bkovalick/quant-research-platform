@@ -70,7 +70,7 @@ class RebalanceProblemBuilder:
             "cash_allocation": cash_allocation,
             "risk_tolerance": self.config.get("risk_tolerance", 0.0),
             "rebalance_frequency": rebalance_frequency,
-            "trading_frequency": market_frequency,
+            "market_frequency": market_frequency,
             "lookback_window_key": lookback_window_key,
             "lookback_window":  LOOKBACK_WINDOWS[market_frequency][lookback_window_key],
             "first_rebal": self.config.get("first_rebal", 0),
