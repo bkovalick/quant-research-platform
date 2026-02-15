@@ -1,5 +1,5 @@
 import abc
-from domain.strategies.mv_optimization_strategy import MVOptimizationStrategy
+from domain.strategies.mean_variance_strategy import MeanVarianceStrategy
 from domain.strategies.fixed_weight_strategy import FixedWeightStrategy
 
 class IStrategyFactory(abc.ABC):
@@ -11,7 +11,7 @@ class IStrategyFactory(abc.ABC):
 class StrategyFactory(IStrategyFactory):
 
     _strategies = {
-        "mv_strategy": MVOptimizationStrategy,
+        "mean_variance_strategy": MeanVarianceStrategy,
         "fwp_strategy": FixedWeightStrategy
     }
 

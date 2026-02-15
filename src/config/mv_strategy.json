@@ -1,6 +1,6 @@
 {
-    "strategy_type": "mv_strategy",
-    "optimizer_type": "cvxpy_optimizer",
+    "strategy_type": "mean_variance_strategy",
+    "optimizer_type": "portfolio_optimizer",
     "benchmark_universe": "SPY",
     "use_full_universe": false,
     "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",

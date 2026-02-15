@@ -2,7 +2,7 @@ from domain.optimizers.portfolio_optimizer import PortfolioOptimizer
 from domain.strategies.istrategy import StrategyInterface
 from models.rebalance_problem import RebalanceProblem
 
-class MVOptimizationStrategy(StrategyInterface):
+class MeanVarianceStrategy(StrategyInterface):
     def __init__(self, 
                  rebalance_problem: RebalanceProblem, 
                  optimizer=None):

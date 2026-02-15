@@ -18,7 +18,7 @@ class FixedWeightOptimizer(IOptimizer):
 class OptimizerFactory(IOptimizerFactory):
 
     _optimizers = {
-        "cvxpy_optimizer": PortfolioOptimizer,
+        "portfolio_optimizer": PortfolioOptimizer,
         "fwp_optimizer": FixedWeightOptimizer
     }
 

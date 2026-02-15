@@ -8,9 +8,9 @@ class MarketDataGateway:
     @staticmethod
     def get_price_data(market_store_config: MarketStoreConfig):
         data_source = market_store_config.data_source
-        tickers = market_store_config.data_source
-        start_date = market_store_config.data_source
-        end_date = market_store_config.data_source
+        tickers = market_store_config.tickers
+        start_date = market_store_config.start_date
+        end_date = market_store_config.end_date
         csv_file = market_store_config.csv_file
         match data_source:
             case "yfinance":
@@ -40,6 +40,9 @@ class MarketDataStore:
         self._prices = self._prices.bfill().ffill()
         if "CASH" not in self._prices.columns:
             self._prices["CASH"] = 1.0
+
+        if len(self._prices) == 0:
+            raise ValueError("Market Data Store not created properly, please check inputs.")
 
     @property
     def prices(self):
