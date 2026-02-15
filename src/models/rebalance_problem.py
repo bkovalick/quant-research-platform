@@ -56,9 +56,13 @@ class RebalanceProblem:
         return self._data.get("cash_allocation")
     
     @property
-    def trading_frequency(self) -> str:
-        return self._data.get("trading_frequency", "d")
+    def market_frequency(self) -> str:
+        return self._data.get("market_frequency", "d")
     
+    @property
+    def rebalance_frequency(self) -> dict:
+        return self._data.get("rebalance_frequency", {})
+
     @property
     def lookback_window_key(self) -> int:
         return self._data.get("lookback_window_key", "1y")

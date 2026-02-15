@@ -44,21 +44,17 @@ class RebalanceProblemBuilder:
             initial_weights = np.ones(n_assets) / n_assets
             initial_weights = initial_weights.tolist() + [0]        
         else:
-            tickers = [item["ticker"] for item in self.config["rebalance_sub_parameters"]]
-            if self.config.get("use_init_weights", True):
-                initial_weights = [ item["initial_weights"] 
-                            for item in self.config["rebalance_sub_parameters"] ]                
-            else:
-                initial_weights = [ 1 / len(tickers) for t in tickers ]
-
+            tickers = self.config.get("universe_tickers", ["AAPL"])
+            initial_weights = [ 1 / len(tickers) for t in tickers ]
             if cash_allocation == 0:
                 initial_weights += [cash_allocation] 
             else:
                 initial_weights = [ (1 - cash_allocation) / len(tickers) for t in tickers ] + [cash_allocation]
 
         tickers_with_cash = tickers + ["CASH"]
+        rebalance_frequency = self.config.get("rebalance_frequency", None)
         lookback_window_key = self.config.get("lookback_window_key", "1y")
-        trading_frequency = self.config.get("trading_frequency", "d")
+        market_frequency = self.config.get("market_frequency", "w")
         asset_class_map = self.build_asset_class_map(tickers_with_cash)
         sector_map = self.build_sector_map(tickers_with_cash)
         prepared_data = {
@@ -73,9 +69,10 @@ class RebalanceProblemBuilder:
             "initial_weights": initial_weights,
             "cash_allocation": cash_allocation,
             "risk_tolerance": self.config.get("risk_tolerance", 0.0),
-            "trading_frequency": trading_frequency,
+            "rebalance_frequency": rebalance_frequency,
+            "trading_frequency": market_frequency,
             "lookback_window_key": lookback_window_key,
-            "lookback_window":  LOOKBACK_WINDOWS[trading_frequency][lookback_window_key],
+            "lookback_window":  LOOKBACK_WINDOWS[market_frequency][lookback_window_key],
             "first_rebal": self.config.get("first_rebal", 0),
             "apply_winsorizing": self.config["constraints"].get("apply_winsorizing", True),
             "windsor_percentiles": self.config["constraints"].get("windsor_percentiles", {"lower": 0.05, "upper": 0.95}),

@@ -107,9 +107,9 @@ class MetricsCompute:
     def compute(self, rebalance_problem: RebalanceProblem, portfolio: Portfolio) -> BacktestResult:
         """ Build each piece of the backtest result """
         self.rebalance_problem = rebalance_problem
-        self.trading_frequency = self.rebalance_problem.trading_frequency
+        self.market_frequency = self.rebalance_problem.market_frequency
         self.lookback_window_key = self.rebalance_problem.lookback_window_key
-        self.annual_trading_days = LOOKBACK_WINDOWS[self.trading_frequency]
+        self.annual_trading_days = LOOKBACK_WINDOWS[self.market_frequency]
         self.weeks_per_year = self.annual_trading_days[self.lookback_window_key]
         performance_metrics = self._calculate_performance_metrics(rebalance_problem, portfolio)
         performance_series = self._build_performance_series(performance_metrics)
@@ -152,14 +152,14 @@ class MetricsCompute:
             "portfolio_turnover": portfolio_turnover,
             "cumulative_returns": cumulative_returns,            
             "rolling_returns": self._calculate_rolling_returns(
-                portfolio_returns, self.weeks_per_year, self.trading_frequency),
+                portfolio_returns, self.weeks_per_year, self.market_frequency),
             "rolling_volatility": self._calculate_rolling_volatility(
-                portfolio_returns, self.weeks_per_year, self.trading_frequency),
+                portfolio_returns, self.weeks_per_year, self.market_frequency),
             "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(
-                portfolio_returns, self.weeks_per_year, self.trading_frequency),
+                portfolio_returns, self.weeks_per_year, self.market_frequency),
             "rolling_drawdown": rolling_dd,
             "rolling_turnover": self._calculate_rolling_turnover(
-                portfolio_turnover, self.weeks_per_year, self.trading_frequency),
+                portfolio_turnover, self.weeks_per_year, self.market_frequency),
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
@@ -211,7 +211,7 @@ class MetricsCompute:
         annualization_factor = self.annual_trading_days.get(rebalance_problem.trading_frequency, 252)
         benchmark = yf.download("^GSPC", \
                         start=rebalance_problem.start_date, end=rebalance_problem.end_date)
-        freq = 'W' if self.trading_frequency == 'w' else self.trading_frequency
+        freq = 'W' if self.market_frequency == 'w' else self.market_frequency
         benchmark = benchmark.asfreq(freq, method='ffill')
         benchmark_returns = benchmark["Close"].pct_change().fillna(0)
 
@@ -228,7 +228,7 @@ class MetricsCompute:
 
     def _get_benchmark(self, rebalance_problem: RebalanceProblem):
         benchmark_data = {}
-        freq = 'W' if self.trading_frequency == 'w' else self.trading_frequency
+        freq = 'W' if self.market_frequency == 'w' else self.market_frequency
         benchmark_universe = rebalance_problem.benchmark_universe
         benchmark = yf.download(benchmark_universe, start=rebalance_problem.start_date, end=rebalance_problem.end_date)
         benchmark = benchmark.asfreq(freq, method='ffill')

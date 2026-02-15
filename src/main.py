@@ -49,7 +49,8 @@ def create_market_state():
             'AAPL', 'NVDA', 'MSFT', 'TSLA'
         ],        
         start_date = "2005-01-01",
-        end_date = "2026-02-13"
+        end_date = "2026-02-13",
+        data_source="yfinance"
     )
     market_state_config = MarketStateConfig(
         trading_frequency = "w",
