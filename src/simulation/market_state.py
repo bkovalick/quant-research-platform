@@ -53,4 +53,4 @@ class MarketState:
         return self.prices.index[self.cursor]
     
     def has_next(self):
-        return self.cursor < len(self.prices)
+        return self.cursor < len(self.prices) - 1
