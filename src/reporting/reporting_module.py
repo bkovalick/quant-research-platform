@@ -171,7 +171,7 @@ class MetricsCompute:
             "sharpe_ratio": sharpe_ratio,
             "max_drawdown": abs(self._calculate_max_drawdown(drawdown_returns)),
             "turnover": portfolio_turnover.mean() * self.weeks_per_year,
-            "alpha": self._calculate_alpha(portfolio_returns, self.weeks_per_year, self.market_frequency, market_str_cfg)
+            "alpha": self._calculate_alpha(portfolio_returns, self.weeks_per_year, market_str_cfg)
         }
         return performance_metrics
 
