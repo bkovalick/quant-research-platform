@@ -22,8 +22,17 @@ from datetime import datetime
 import numpy as np
 import uuid
 
+market_store = MarketStoreConfig(
+    tickers = [
+        'AAPL', 'NVDA', 'MSFT', 'TSLA', 'GOOGL'
+    ],        
+    start_date = "2005-01-01",
+    end_date = "2026-02-13",
+    data_source = { "yfinance": None }
+)
+
 def run_strategy_async(rebalance_problem):
-    mkt_state = create_market_state(market_store)
+    mkt_state = create_market_state(rebalance_problem)
     opt_type = rebalance_problem.optimizer_type
     optimizer = OptimizerFactory.create_optimizer(opt_type)
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
@@ -43,23 +52,9 @@ def create_fwp_rebalance_problem(config):
 
     return rebalance_problem
 
-market_store = MarketStoreConfig(
-    tickers = [
-        'AAPL', 'NVDA', 'MSFT', 'TSLA'
-    ],        
-    start_date = "2005-01-01",
-    end_date = "2026-02-13",
-    data_source="yfinance"
-)
-
-def create_market_state(market_store):
-    market_state_config = MarketStateConfig(
-        trading_frequency = "w",
-        lookback_window = "1y",
-        apply_winsorizing = True,
-        windsor_percentiles = {"lower": 0.05, "upper": 0.95}
-    )
+def create_market_state(rebalance_problem):
     mkt_store = MarketDataStore(market_store)
+    market_state_config = rebalance_problem.market_state_config
     mkt_state = MarketState(mkt_store, market_state_config)
     return mkt_state
 

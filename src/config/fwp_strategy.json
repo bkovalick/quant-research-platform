@@ -1,40 +1,14 @@
 {
     "strategy_type": "fwp_strategy",
     "optimizer_type": "fwp_optimizer",
-    "use_full_universe": false,
     "benchmark_universe": "SPY",
     "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA"],
-    "risk_free_rate": 0.03,
     "cash_allocation": 0.0,
-    "risk_tolerance": 0.10,
-    "market_frequency": "w",
     "rebalance_frequency": {"from": "w", "to": "w", "steps": 1},
-    "lookback_window_key": "1y", 
-    "first_rebal": 0,
-    "constraints": {
+    "market_state_config": {
+        "market_frequency": "w",
+        "lookback_window_key": "1y",
         "apply_winsorizing": true,
-        "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
-        "turnover_limit": 0.2,
-        "min_position_size": 0.005,
-        "max_position_size": 0.15,
-        "max_positions": 50,
-        "asset_class_constraints": { 
-            "Equity": [0.75, 0.95], 
-            "Fixed Income": [0.025, 0.25], 
-            "Cash": [0.0, 0.025] 
-        },
-        "sector_constraints": {
-            "Technology": [0.25, 0.45], 
-            "Communication Services": [0.10, 0.20],
-            "Financial Services": [0.10, 0.20],
-            "Consumer Discretionary": [0.10, 0.15], 
-            "Consumer Staples": [0.075, 0.15],
-            "Healthcare": [0.10, 0.15],
-            "Materials": [0.0, 0.05],
-            "Energy": [0.0, 0.04],
-            "Real Estate": [0.0, 0.025],
-            "Utilities": [0.0, 0.02],
-            "Industrials": [0.0, 0.02]
-        }        
-    }         
+        "windsor_percentiles": {"lower": 0.05, "upper": 0.95}
+    }
 }

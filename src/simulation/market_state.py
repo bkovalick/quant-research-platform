@@ -1,27 +1,32 @@
 from models.market_config import MarketStateConfig
 from config.lookback_windows import LOOKBACK_WINDOWS
 from data.market_data_gateway import MarketDataStore
+import pandas as pd
 
 class MarketState:
     def __init__(self, store: MarketDataStore, state_config: MarketStateConfig):
         """ Stores the current state of the market """
         self.store = store
         self.state_config = state_config
-        self.lookback_key = state_config.lookback_window
-        self.trading_frequency = state_config.trading_frequency
-        self.lookback = LOOKBACK_WINDOWS[self.trading_frequency][self.lookback_key]
-        self.cursor = 0
+        self.lookback = state_config.lookback_window
+        self.market_frequency = state_config.market_frequency
         self.apply_winsorizing = state_config.apply_winsorizing
-        self.windsor_percentiles = state_config.windsor_percentiles
-        self.prices = self._resample(self.trading_frequency)
+        self.windsor_percentiles = state_config.windsor_percentiles        
+        self.universe_tickers = state_config.universe_tickers 
+        self.cursor = 0
+        self.parsed_prices = self._parse_universe(self.universe_tickers)
+        self.prices = self._resample(self.market_frequency)
         self.returns = self.prices.pct_change()
     
-    def _resample(self, trading_frequency):  
+    def _parse_universe(self, universe_tickers):
+        return self.store.prices[[universe_tickers]]
+    
+    def _resample(self, trading_frequency) -> pd.DataFrame:
         if trading_frequency == "d":
-            return self.store.prices        
+            return self.parsed_prices
         
         rule = {"w": "W-FRI", "m": "M"}[trading_frequency]
-        resampled_prices = self.store.prices.resample(rule).last()
+        resampled_prices = self.parsed_prices.resample(rule).last()
 
         if not self.apply_winsorizing:
             return resampled_prices
@@ -52,5 +57,5 @@ class MarketState:
     def current_date(self):
         return self.prices.index[self.cursor]
     
-    def has_next(self):
+    def has_next(self) -> bool:
         return self.cursor < len(self.prices) - 1

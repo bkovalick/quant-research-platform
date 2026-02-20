@@ -1,0 +1,22 @@
+{
+  "market_store_config": {
+	"tickers": ["AAPL"],
+    "start_date": "2005-01-01",
+    "end_date": "2026-02-19",
+    "data_source": { "yfinance": null }
+  },
+  "strategies": [
+    {
+      "name": "fixed_weight_portfolio",
+      "rebalance_problem": {}
+    },
+    {
+      "name": "equal_weight_portfolio",
+      "rebalance_problem": {}
+    },    
+    {
+      "name": "high_risk",
+      "rebalance_problem": {}
+    }
+  ]
+}

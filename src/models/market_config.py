@@ -3,15 +3,15 @@ from typing import Dict, List, Any, Optional
 
 @dataclass(frozen=True)
 class MarketStateConfig:
-    lookback_window: int
-    trading_frequency: str
+    lookback_window: str
+    market_frequency: str
     apply_winsorizing: bool
     windsor_percentiles: Dict
+    universe_tickers: List[str]
 
 @dataclass(frozen=True)
-class MarketStoreConfig:        
+class MarketStoreConfig:
     tickers: List[Any]
     start_date: str
     end_date: str
-    data_source: str
-    csv_file: Optional[str] = None # remove this later and have datasource handle this {"csv": "filename"} | {"yfinance": None}
+    data_source: Dict

@@ -1,3 +1,4 @@
+from models.market_config import MarketStateConfig
 
 class RebalanceProblem:    
     """
@@ -10,10 +11,6 @@ class RebalanceProblem:
 
     def to_dict(self):
         return dict(self._data)
-
-    @property
-    def use_full_universe(self) -> bool:
-        return self._data.get("use_full_universe", False)
     
     @property
     def benchmark_universe(self) -> str:
@@ -72,10 +69,6 @@ class RebalanceProblem:
         return self._data.get("lookback_window", 252)
     
     @property
-    def first_rebal(self) -> int:
-        return self._data.get("first_rebal", 0)
-    
-    @property
     def risk_tolerance(self) -> int:
         return self._data.get("risk_tolerance", 0)
     
@@ -126,3 +119,7 @@ class RebalanceProblem:
     @property
     def concentration_strength(self) -> int:
         return self._data.get("concentration_strength", 1)
+    
+    @property
+    def market_state_config(self) -> MarketStateConfig:
+        return self._data.get("market_state_config", MarketStateConfig)
