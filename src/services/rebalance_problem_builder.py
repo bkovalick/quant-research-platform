@@ -1,6 +1,5 @@
 import numpy as np
 from models.rebalance_problem import RebalanceProblem
-from models.market_config import MarketStateConfig
 from data.market_metadata import MarketMetadata
 from config.lookback_windows import LOOKBACK_WINDOWS
 
@@ -45,15 +44,10 @@ class RebalanceProblemBuilder:
         else:
             initial_weights = [ (1 - cash_allocation) / len(tickers) for t in tickers ] + [cash_allocation]
 
-        tickers_with_cash = tickers + ["CASH"]
-        lookback_window_key = self.config["market_state_config"].get("lookback_window_key", "1y")
-        market_frequency = self.config["market_state_config"].get("market_frequency", "w")
-        apply_winsorizing = self.config["market_state_config"].get("apply_winsorizing", True)
-        windsor_percentiles = self.config["market_state_config"].get("windsor_percentiles", {"lower": 0.05, "upper": 0.95})         
+        # tickers_with_cash = tickers + ["CASH"]         
 
         prepared_data = {
             "benchmark_universe": self.config.get("benchmark_universe", "SPY"),
-            "tickers": tickers_with_cash,
             "optimizer_type": self.config.get("optimizer_type"),
             "strategy_type": self.config.get("strategy_type"),
             "apply_max_return_objective": self.config.get("apply_max_return_objective", False),
@@ -70,9 +64,9 @@ class RebalanceProblemBuilder:
             "asset_class_constraints": self.config.get("constraints", {}).get("asset_class_constraints", None),
             "sector_constraints": self.config.get("constraints", {}).get("sector_constraints", None),
             "max_return": self.config.get("constraints", {}).get("max_return", 0.05),
-            "concentration_strength": self.config.get("constraints", {}).get("concentration_strength", 1),
-            "asset_class_map": self.build_asset_class_map(tickers_with_cash),
-            "sector_map": self.build_sector_map(tickers_with_cash),            
+            "concentration_strength": self.config.get("constraints", {}).get("concentration_strength", 1)
+            # "asset_class_map": self.build_asset_class_map(tickers_with_cash),
+            # "sector_map": self.build_sector_map(tickers_with_cash),
         }
 
         return RebalanceProblem(prepared_data)

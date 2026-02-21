@@ -12,7 +12,8 @@
       "name": "fixed_weight_portfolio",
       "market_state_config": {
         "market_frequency": "w",
-        "lookback_window_key": "1y"
+        "lookback_window_key": "1y",
+        "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX"]
       },
       "signals_config": {
         "apply_winsorizing": true,
@@ -22,7 +23,7 @@
         "strategy_type": "fwp_strategy",
         "optimizer_type": "fwp_optimizer",
         "benchmark_universe": "SPY",
-        "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX"],
+        "num_assets": 7,
         "cash_allocation": 0.0,
         "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
       }
@@ -31,7 +32,8 @@
       "name": "equal_weight_portfolio",
       "market_state_config": {
         "market_frequency": "w",
-        "lookback_window_key": "1y"
+        "lookback_window_key": "1y",
+        "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX"]
       },
       "signals_config": {
         "apply_winsorizing": true,
@@ -41,7 +43,7 @@
         "strategy_type": "fwp_strategy",
         "optimizer_type": "fwp_optimizer",
         "benchmark_universe": "SPY",
-        "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX"],
+        "num_assets": 7,
         "cash_allocation": 0.0,
         "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
       }
@@ -50,7 +52,10 @@
       "name": "high_risk",
       "market_state_config": {
         "market_frequency": "w",
-        "lookback_window_key": "1y"
+        "lookback_window_key": "1y",
+        "universe_tickers": ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
+            "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA"
+        ]        
       },
       "signal_config": {
         "apply_winsorizing": true,
@@ -60,9 +65,7 @@
         "strategy_type": "mean_variance_strategy",
         "optimizer_type": "portfolio_optimizer",
         "benchmark_universe": "SPY",
-        "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-            "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA"
-        ],
+        "num_assets": 24,
         "cash_allocation": 0.05,
         "rebalance_frequency": {"from": "w", "to": "w", "steps": 1},
         "apply_max_return_objective": true,
