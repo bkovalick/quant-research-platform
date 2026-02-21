@@ -3,7 +3,7 @@ from models.signals_config import SignalsConfig
 from models.market_config import MarketStateConfig
 
 class Signals:
-    def __init__(self, market_state, signals_cfg: SignalsConfig, ann_factor: int = 252):
+    def __init__(self, market_state: MarketStateConfig, signals_cfg: SignalsConfig, ann_factor: int = 252):
         self.market_state = market_state
         self.ann_factor = market_state.annual_trading_days
         self.signals_cfg = signals_cfg
@@ -23,21 +23,20 @@ class Signals:
     def lookback_returns(self):
         return self.lookback_prices.pct_change().iloc[-1]
 
-    # point all signals to these internal prices/returns
     @property
     def mean_returns(self) -> np.ndarray:
-        return self.market_state.lookback_returns().mean().values * self.ann_factor
+        return self.lookback_returns.mean().values * self.ann_factor
 
     @property
     def covariance_matrix(self) -> np.ndarray:
-        r = self.market_state.lookback_returns().values
+        r = self.lookback_returns.values
         cov = np.cov(r, rowvar=False) * self.ann_factor
         cov = 0.5 * (cov + cov.T)
         return cov
     
     @property
     def rolling_realized_vol(self, window: int = 20) -> float:
-        vol = self.market_state.lookback_returns().rolling(window).std().iloc[-1]
+        vol = self.lookback_returns.rolling(window).std().iloc[-1]
         return vol.values * np.sqrt(self.ann_factor)
 
     @property
@@ -47,5 +46,5 @@ class Signals:
 
     @property
     def momentum_signal(self) -> np.ndarray:
-        p = self.market_state.lookback_prices()
+        p = self.lookback_prices
         return (p.iloc[-1] / p.iloc[0] - 1).values
