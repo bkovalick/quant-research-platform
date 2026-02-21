@@ -6,7 +6,7 @@ from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
 from domain.signals.signals import Signals
 
-class CvxpyOptimizer(IOptimizer):
+class PortfolioOptimizer(IOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
 	def __init__(self):
 		super().__init__()
@@ -34,25 +34,10 @@ class CvxpyOptimizer(IOptimizer):
 			
 		if prob.status not in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
 			print(f"Optimization failed: Problem status {prob.status} {rebalance_problem.max_return}")
-			return RebalanceSolution(
-				model="Cvxpy",
-				decision_variables={
-					'portfolio_weights': current_weights,
-					'total_trades': current_weights - current_weights
-				},
-				rebalance_problem=rebalance_problem				
-			)
+			return current_weights
 
 		optimal_weights = decision_variables['portfolio_weights'].value
-		total_trades = optimal_weights - current_weights
-		return RebalanceSolution(
-			model="Cvxpy",
-			decision_variables={
-				'portfolio_weights': optimal_weights,
-				'total_trades': total_trades
-			},
-			rebalance_problem=rebalance_problem
-		)		
+		return optimal_weights	
 
 	def _setup_decision_variables(self, rebalance_problem: RebalanceProblem) -> dict:
 		"""Setup decision variables for the optimization problem."""
@@ -76,9 +61,9 @@ class CvxpyOptimizer(IOptimizer):
 		constraints.extend(
 			self._setup_asset_class_constraints(decision_variables, rebalance_problem, current_weights)
 		)
-		constraints.extend(
-			self._setup_sector_constraints(decision_variables, rebalance_problem, current_weights)
-		)
+		# constraints.extend(
+		# 	self._setup_sector_constraints(decision_variables, rebalance_problem, current_weights)
+		# )
 		return constraints
 
 	def _setup_portfolio_constraints(self, 

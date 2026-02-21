@@ -11,29 +11,33 @@ class Portfolio(PortfolioInterface):
         self.holdings = None
         self.turnover = None
 
-    def initialize(self, date_index, tickers, initial_weights):
+    def initialize(self, dates, tickers, initial_weights):
         """Initialize portfolio with rebalance problem and price data."""
-        # if price_data.shape[0] == 0:
-        #     raise ValueError("price_data is empty—cannot initialize portfolio weights.")
+        if len(initial_weights) == 0:
+            raise ValueError("price_data is empty—cannot initialize portfolio weights.")
 
-        self.weights = pd.DataFrame(0, dtype=float, index=date_index, columns=tickers)
+        self.weights = pd.DataFrame(0, dtype=float, index=dates, columns=tickers)
         self.weights.iloc[0] = initial_weights
-        self.returns = pd.Series(0, dtype=float, index=date_index)
-        self.turnover = pd.Series(0, dtype=float, index=date_index)
+        self.returns = pd.Series(0, dtype=float, index=dates)
+        self.turnover = pd.Series(0, dtype=float, index=dates)
     
-    @property
-    def rebalanced_weights(self):
-        """Get the current portfolio weights."""
-        return self.weights
-    
-    @property
-    def current_returns(self):
-        """Get the current portfolio returns."""
-        return self.returns
-    
-    @property
-    def current_turnover(self):
-        """Get the current portfolio turnover."""
-        return self.turnover
-    
-    
+    def apply(self, target_weights, prev_weights, cursor):
+        """ Updates weights and turnover """
+        turnover = np.sum(np.abs(target_weights - prev_weights)) / 2
+
+        self.weights.iloc[cursor] = target_weights
+        self.turnover.iloc[cursor] = turnover
+
+        return target_weights
+
+    def drift(self, prev_weights, asset_returns, cursor):
+        """ Updates weights and returns """
+        portfolio_return = np.sum(prev_weights * asset_returns)
+
+        new_weights = prev_weights * (1 + asset_returns)
+        new_weights /= new_weights.sum()
+
+        self.weights.iloc[cursor] = new_weights
+        self.returns.iloc[cursor] = portfolio_return
+
+        return new_weights

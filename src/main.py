@@ -1,9 +1,15 @@
 from domain.portfolio.portfolio import Portfolio
-from reporting.reporting_module import ReportingSystem
-from domain.strategies.strategy_factory import StrategyFactory
+from reporting.reporting_module import MetricsCompute
 from simulation.backtesting_engine import BacktestingEngine
-from domain.optimizers.optimizer_factory import OptimizerFactory
+from simulation.market_state import MarketState
+from services.strategy_factory import StrategyFactory
+from services.optimizer_factory import OptimizerFactory
 from services.rebalance_problem_builder import RebalanceProblemBuilder
+from models.strategy_run import StrategyRun
+from models.backtest_result import BacktestResult
+from models.experiment import Experiment
+from models.market_config import MarketStoreConfig
+from data.market_data_gateway import MarketDataStore
 
 from multiprocessing import Pool
 import multiprocessing
@@ -14,25 +20,43 @@ import json
 from itertools import product
 from datetime import datetime
 import numpy as np
+import uuid
+
+market_store = MarketStoreConfig(
+    tickers = [
+        "AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX", "HY"
+    ],        
+    start_date = "2005-01-01",
+    end_date = "2026-02-13",
+    data_source = { "yfinance": None }
+)
 
 def run_strategy_async(rebalance_problem):
-    optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type)
+    mkt_state = create_market_state(rebalance_problem)
+    opt_type = rebalance_problem.optimizer_type
+    optimizer = OptimizerFactory.create_optimizer(opt_type)
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
     portfolio = Portfolio()
-    backtestingEngine = BacktestingEngine(portfolio, strategy)
-    backtestingEngine.run_backtest(rebalance_problem)
-    return backtestingEngine.portfolio
+    backtestingEngine = BacktestingEngine(portfolio, strategy, mkt_state)
+    backtestedPortfolio = backtestingEngine.run_backtest(rebalance_problem)
+    return backtestedPortfolio
 
 def create_fwp_rebalance_problem(config):
     rebalance_problem = None
     strat_config = config.copy()
-    builder = RebalanceProblemBuilder(strat_config)
+    builder = RebalanceProblemBuilder(strat_config) 
     try:
         rebalance_problem = builder.build()
     except ValueError as e:
         print(f"Error building rebalance problem for {strat_config['strategy_type']}: {e}") 
 
     return rebalance_problem
+
+def create_market_state(rebalance_problem):
+    mkt_store = MarketDataStore(market_store)
+    market_state_config = rebalance_problem.market_state_config
+    mkt_state = MarketState(mkt_store, market_state_config)
+    return mkt_state
 
 """Main entry point for running the backtesting engine with a rebalance problem."""
 if __name__ == '__main__':
@@ -46,7 +70,7 @@ if __name__ == '__main__':
     with open(f"src/config/fwp_strategy.json", 'r') as f:
         fwp_config = json.load(f)
     fwp_rebal_problem = create_fwp_rebalance_problem(fwp_config)
-    rebalance_problems.update({'fwp_strategy': fwp_rebal_problem})
+    # rebalance_problems.update({'fwp_strategy': fwp_rebal_problem})
 
     for strategy_type, risk_tol, con_strength in product(strategies, risk_tolerances, concentration_strengths):
         with open(f"src/config/{strategy_type}.json", 'r') as f:
@@ -64,6 +88,8 @@ if __name__ == '__main__':
             print(f"Error building rebalance problem for {strat_config['strategy_type']}: {e}")
             continue
 
+    runs = []
+    metrics_computer = MetricsCompute()
     max_workers = min(8, multiprocessing.cpu_count())
     with Pool(processes=max_workers) as pool:
         results = [
@@ -74,22 +100,16 @@ if __name__ == '__main__':
             portfolio = res.get()
             if portfolio is None:
                 continue
+        
+        run_id = str(uuid.uuid4())
+        backtest_result = metrics_computer.compute(rebalance_problems[strategy_type], portfolio, market_store)
+        metadata = {
+            "timestamp": datetime.now(), 
+            "username": "bkovalick", 
+            "engine_version": "1.0.0"
+        }
+        runs.append(StrategyRun(run_id, rebalance_problems[strategy_type], backtest_result, metadata))
 
-            metric = ReportingSystem.calculate_performance_metrics(rebalance_problems[strategy_type], portfolio)
-            combined_metrics.append((metric, strategy_type))
-
-    summary_df, portfolio_metrics_df, rolling_metrics_df = \
-        ReportingSystem.aggregate_performance_metrics(combined_metrics)
+    experiment = Experiment(str(experiment_id = uuid.uuid4()), base_config=market_store, runs = runs, created_at="")
     
-    folder_name = "backtest_results/" + date.today().isoformat()
-    path = Path(folder_name)
-    path.mkdir(parents=True, exist_ok=True)
-    ReportingSystem.generate_report(\
-        f"{folder_name}/backtest_report_{config['start_date']}_{config['end_date']}_{datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.xlsx", 
-    {
-        "summary": summary_df,
-        "time_series": portfolio_metrics_df if len(portfolio_metrics_df) > 0 else None,
-        "rolling_time_series": rolling_metrics_df if len(rolling_metrics_df) > 0 else None
-    })
-
     print("Backtesting complete.")
