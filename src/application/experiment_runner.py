@@ -1,4 +1,3 @@
-
 from models.experiment import Experiment
 from domain.portfolio.portfolio import Portfolio
 from reporting.reporting_module import MetricsCompute
@@ -12,6 +11,8 @@ from models.strategy_run import StrategyRun
 from models.backtest_result import BacktestResult
 from models.market_config import MarketStoreConfig, MarketStateConfig
 from models.signals_config import SignalsConfig
+from models.rebalance_problem import RebalanceProblem
+from config.lookback_windows import LOOKBACK_WINDOWS
 from data.market_data_gateway import MarketDataStore
 
 import uuid
@@ -21,8 +22,9 @@ class ExperimentRunner:
     def __init__(self, config):
         self.config = config
 
-    def run(self):
-        market_store = self._build_market_store()
+    def run(self) -> Experiment:
+        market_store_cfg = self.config["market_store_config"]
+        market_store = self._build_market_store(market_store_cfg)
         experiment = self._create_experiment()
 
         for strategy_cfg in self.config["strategies"]:
@@ -31,7 +33,7 @@ class ExperimentRunner:
 
         return experiment
 
-    def _run_strategy(self, strategy_cfg, market_store):
+    def _run_strategy(self, strategy_cfg: dict, market_store: MarketDataStore) -> StrategyRun:
         run_id = str(uuid.uuid4())
         signal_config = self._build_signal_config(strategy_cfg)
         state = self._build_market_state(strategy_cfg, market_store)
@@ -52,28 +54,27 @@ class ExperimentRunner:
 
         return StrategyRun(run_id, rebalance_problem, result, self._build_metadata())
     
-    def _create_experiment(self, market_store_cfg):
+    def _create_experiment(self, market_store_cfg: dict) -> Experiment:
         return Experiment(
             experiment_id = str(uuid.uuid4()), 
             created_at = datetime.now(),
             market_config = market_store_cfg 
         )
 
-    def _build_market_store(self):
-        pass
+    def _build_market_store(self, market_store_cfg: dict) -> MarketDataStore:
+        return MarketDataStore(market_store_cfg)
 
     def _build_market_state(self, strategy_cfg: dict, market_store: MarketDataStore):
         market_state_config = strategy_cfg["market_state_config"]
-        mkt_state = MarketState(market_store, market_state_config)
-        # return MarketStateConfig(market_frequency=market_frequency,
-        #                   lookback_window=LOOKBACK_WINDOWS[market_frequency][lookback_window_key],
-        #                   annual_trading_days=LOOKBACK_WINDOWS[market_frequency]["1y"]
-        #                   universe_tickers=tickers_with_cash),
+        market_state_config.annual_trading_days = LOOKBACK_WINDOWS[market_state_config.market_frequency]["1y"]
+        tickers_with_cash = []
+        market_state_config.universe_tickers = tickers_with_cash
+        return MarketState(market_store, market_state_config)
 
-    def _build_signal_config(self, strategy_cfg: dict):
-        return 
+    def _build_signal_config(self, strategy_cfg: dict) -> SignalsConfig:
+        return SignalsConfig(strategy_cfg["signals_config"]) 
 
-    def _build_rebalance_problem(self, strategy_cfg: dict):
+    def _build_rebalance_problem(self, strategy_cfg: dict) -> RebalanceProblem:
         builder = RebalanceProblemBuilder(strategy_cfg)
         try:
             rebalance_problem = builder.build()
@@ -81,7 +82,7 @@ class ExperimentRunner:
         except ValueError as e:
             print(f"Error building rebalance problem for {strategy_cfg['strategy_type']}: {e}")
 
-    def _build_metadata(self):
+    def _build_metadata(self) -> dict:
         return {
             "timestamp": datetime.now(), 
             "username": "bkovalick", 
