@@ -1,18 +1,36 @@
 import numpy as np
-import pandas as pd
+from models.signals_config import SignalsConfig
+from models.market_config import MarketStateConfig
 
 class Signals:
-    def __init__(self, market_state, ann_factor: int = 252):
+    def __init__(self, market_state, signals_cfg: SignalsConfig, ann_factor: int = 252):
         self.market_state = market_state
         self.ann_factor = market_state.annual_trading_days
+        self.signals_cfg = signals_cfg
+        self.apply_winsorizing = signals_cfg.apply_winsorizing
+        self.windsor_percentiles = signals_cfg.windsor_percentiles
 
+    @property
+    def lookback_prices(self):
+        if not self.apply_winsorizing:
+            return self.market_state.lookback_prices
+        
+        lower_bound = self.market_state.lookback_prices.quantile(self.windsor_percentiles["lower"])
+        upper_bound = self.market_state.lookback_prices.quantile(self.windsor_percentiles["upper"])
+        return self.market_state.lookback_prices.clip(lower=lower_bound, upper=upper_bound, axis = 1)        
+
+    @property
+    def lookback_returns(self):
+        return self.lookback_prices.pct_change().iloc[-1]
+
+    # point all signals to these internal prices/returns
     @property
     def mean_returns(self) -> np.ndarray:
         return self.market_state.lookback_returns().mean().values * self.ann_factor
 
     @property
     def covariance_matrix(self) -> np.ndarray:
-        r = self.market_state.lookback_returns().iloc[1:].values
+        r = self.market_state.lookback_returns().values
         cov = np.cov(r, rowvar=False) * self.ann_factor
         cov = 0.5 * (cov + cov.T)
         return cov

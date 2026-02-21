@@ -6,8 +6,6 @@ class MarketStateConfig:
     lookback_window: str
     market_frequency: str
     annual_trading_days: int
-    apply_winsorizing: bool
-    windsor_percentiles: Dict
     universe_tickers: List[str]
 
 @dataclass(frozen=True)

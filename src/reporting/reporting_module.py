@@ -14,13 +14,10 @@ from models.experiment import Experiment
 from models.rebalance_problem import RebalanceProblem
 from models.market_config import MarketStoreConfig
 
-# split out excel report generation.
-# create a MetricsComputer class that returns a BacktestResult
-
 class ExcelGenerator:
     def __init__(self, experiment: Experiment, folder_name: str):
         self.experiment = experiment
-        self.config = experiment.base_config
+        self.config = experiment.market_config
         self.folder_name = folder_name
         self.create_folder_path(folder_name)
 
@@ -34,7 +31,7 @@ class ExcelGenerator:
             f"{self.config['start_date']}_{self.config['end_date']}_"
             f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
         )
-        results = self.aggregate_performance_metrics()
+        results = self.aggregate_performance_metrics([])
 
         wb = Workbook()
         default_sheet = wb.active
@@ -68,6 +65,10 @@ class ExcelGenerator:
         summary_rows = []
         portfolio_dfs = []
         rolling_dfs = []
+
+        for strategy_runs in self.experiment.strategy_runs:
+            strategy_runs.result.series[""]
+
         for metrics, label in all_metrics:
             row = {"strategy": label}
             for k, v in metrics.items():

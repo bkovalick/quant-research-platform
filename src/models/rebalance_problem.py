@@ -119,7 +119,3 @@ class RebalanceProblem:
     @property
     def concentration_strength(self) -> int:
         return self._data.get("concentration_strength", 1)
-    
-    @property
-    def market_state_config(self) -> MarketStateConfig:
-        return self._data.get("market_state_config", MarketStateConfig)

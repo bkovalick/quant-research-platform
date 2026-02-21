@@ -5,6 +5,7 @@ from domain.portfolio.iportfolio import PortfolioInterface
 from domain.strategies.istrategy import StrategyInterface
 from domain.signals.signals import Signals
 from models.rebalance_problem import RebalanceProblem
+from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
 from config.rebalance_steps import FREQ_TO_STEPS
 
@@ -19,10 +20,12 @@ class BacktestingEngine(BacktestingEngineInterface):
     def __init__(self, 
                  portfolio: PortfolioInterface, 
                  strategy: StrategyInterface,
-                 market_state: MarketState):
+                 market_state: MarketState,
+                 signals_cfg: SignalsConfig):
         self.portfolio = portfolio
         self.strategy = strategy
         self.market_state = market_state
+        self.signals_cfg = signals_cfg
 
     def run_backtest(self, rebalance_problem: RebalanceProblem):
         """Run backtest on the given rebalance problem."""
@@ -54,7 +57,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             if not self._is_rebalance_step(cursor):
                 continue
 
-            signals = Signals(self.market_state)
+            signals = Signals(self.market_state, self.signals_cfg)
 
             target_weights = self.strategy.rebalance(signals, prev_weights)
 
