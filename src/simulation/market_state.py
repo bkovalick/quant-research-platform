@@ -11,15 +11,16 @@ class MarketState:
         self.lookback = state_config.lookback_window
         self.market_frequency = state_config.market_frequency
         self.apply_winsorizing = state_config.apply_winsorizing
-        self.windsor_percentiles = state_config.windsor_percentiles        
-        self.universe_tickers = state_config.universe_tickers 
+        self.windsor_percentiles = state_config.windsor_percentiles
+        self.universe_tickers = state_config.universe_tickers
+        self.annual_trading_days = state_config.annual_trading_days
         self.cursor = 0
         self.parsed_prices = self._parse_universe(self.universe_tickers)
         self.prices = self._resample(self.market_frequency)
         self.returns = self.prices.pct_change()
     
     def _parse_universe(self, universe_tickers):
-        return self.store.prices[[universe_tickers]]
+        return self.store.prices[universe_tickers]
     
     def _resample(self, trading_frequency) -> pd.DataFrame:
         if trading_frequency == "d":

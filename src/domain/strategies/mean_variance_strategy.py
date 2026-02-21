@@ -11,4 +11,10 @@ class MeanVarianceStrategy(StrategyInterface):
 
     def rebalance(self, signals, current_weights):
         """Calculate rebalance weights"""
+        # target_vol = 0.10
+        # raw_weights = self.optimizer.optimize(self.rebalance_problem, signals, current_weights)
+        # realized_vol = signals.portfolio_vol(raw_weights)
+        # scale = target_vol / realized_vol
+        # final_weights = raw_weights * scale
+        # return final_weights
         return self.optimizer.optimize(self.rebalance_problem, signals, current_weights)

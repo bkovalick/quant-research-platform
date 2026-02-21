@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 from datetime import datetime
+from pathlib import Path
 
 from domain.portfolio.portfolio import Portfolio
 from config.lookback_windows import LOOKBACK_WINDOWS
@@ -17,12 +18,23 @@ from models.market_config import MarketStoreConfig
 # create a MetricsComputer class that returns a BacktestResult
 
 class ExcelGenerator:
-    def __init__(self, experiment: Experiment):
+    def __init__(self, experiment: Experiment, folder_name: str):
         self.experiment = experiment
-        self.aggregated_metrics = []
-    
-    def generate_report(self, filename: str, results: dict):
-        results = self.aggregate_performance_metrics([])
+        self.config = experiment.base_config
+        self.folder_name = folder_name
+        self.create_folder_path(folder_name)
+
+    def create_folder_path(self, folder_name: str):
+        path = Path(folder_name)
+        path.mkdir(parents=True, exist_ok=True)
+
+    def generate_report(self, filename: str):
+        full_filename = (
+            f"{filename}/backtest_report_"
+            f"{self.config['start_date']}_{self.config['end_date']}_"
+            f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+        )
+        results = self.aggregate_performance_metrics()
 
         wb = Workbook()
         default_sheet = wb.active
@@ -48,7 +60,7 @@ class ExcelGenerator:
                 for c_idx, value in enumerate(row, 1):
                     ts_ws.cell(row=r_idx, column=c_idx, value=value)              
 
-        wb.save(filename)
+        wb.save(full_filename)
         wb.close()
 
     def aggregate_performance_metrics(self, all_metrics):
@@ -113,8 +125,7 @@ class MetricsCompute:
         self.rebalance_problem = rebalance_problem
         self.market_frequency = self.rebalance_problem.market_frequency
         self.lookback_window_key = self.rebalance_problem.lookback_window_key
-        self.annual_trading_days = LOOKBACK_WINDOWS[self.market_frequency]
-        self.weeks_per_year = self.annual_trading_days[self.lookback_window_key]
+        self.weeks_per_year = LOOKBACK_WINDOWS[self.market_frequency][self.lookback_window_key]
         performance_metrics = self._calculate_performance_metrics(portfolio, market_str_cfg)
         performance_series = self._build_performance_series(performance_metrics)
         summary = self._build_summary(performance_metrics)

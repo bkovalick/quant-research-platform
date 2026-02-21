@@ -2,9 +2,7 @@
     "strategy_type": "mean_variance_strategy",
     "optimizer_type": "portfolio_optimizer",
     "benchmark_universe": "SPY",
-    "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-        "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA"
-    ],
+    "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX", "HY"],
     "cash_allocation": 0.05,
     "rebalance_frequency": {"from": "w", "to": "w", "steps": 1},
     "market_state_config": {

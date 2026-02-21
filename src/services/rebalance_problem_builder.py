@@ -63,6 +63,7 @@ class RebalanceProblemBuilder:
             "rebalance_frequency": self.config.get("rebalance_frequency", None),
             "market_state_config": MarketStateConfig(market_frequency=market_frequency,
                                                      lookback_window=LOOKBACK_WINDOWS[market_frequency][lookback_window_key],
+                                                     annual_trading_days=LOOKBACK_WINDOWS[market_frequency]["1y"],
                                                      apply_winsorizing= apply_winsorizing,
                                                      windsor_percentiles=windsor_percentiles,
                                                      universe_tickers=tickers_with_cash),
