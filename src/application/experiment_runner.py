@@ -67,14 +67,14 @@ class ExperimentRunner:
     def _build_market_state(self, strategy_cfg: dict, market_store: MarketDataStore):
         market_state_config = strategy_cfg["market_state_config"]
         market_state_config.annual_trading_days = LOOKBACK_WINDOWS[market_state_config.market_frequency]["1y"]
-        market_state_config.universe_tickers = market_state_config.universe_tickers + + ["CASH"]
+        market_state_config.universe_tickers = market_state_config.universe_tickers + ["CASH"]
         return MarketState(market_store, market_state_config)
 
     def _build_signal_config(self, strategy_cfg: dict) -> SignalsConfig:
         return SignalsConfig(strategy_cfg["signals_config"]) 
 
     def _build_rebalance_problem(self, strategy_cfg: dict) -> RebalanceProblem:
-        builder = RebalanceProblemBuilder(strategy_cfg)
+        builder = RebalanceProblemBuilder(strategy_cfg["rebalance_problem"])
         try:
             rebalance_problem = builder.build()
             return rebalance_problem
