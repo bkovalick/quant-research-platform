@@ -71,7 +71,7 @@ class ExperimentRunner:
         return MarketState(market_store, market_state_config)
 
     def _build_signal_config(self, strategy_cfg: dict) -> SignalsConfig:
-        return SignalsConfig(strategy_cfg["signals_config"]) 
+        return SignalsConfig.from_dict((strategy_cfg["signals_config"])) 
 
     def _build_rebalance_problem(self, strategy_cfg: dict) -> RebalanceProblem:
         builder = RebalanceProblemBuilder(strategy_cfg["rebalance_problem"])
