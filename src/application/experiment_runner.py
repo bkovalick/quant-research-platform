@@ -32,15 +32,14 @@ class ExperimentRunner:
 
     def _run_strategy(self, strategy_cfg: dict, market_store: MarketDataStore) -> StrategyRun:
         run_id = str(uuid.uuid4())
+        portfolio = Portfolio()
         state = self._build_market_state(strategy_cfg, market_store)
         universe_meta = self._build_universe_meta(state)
         rebalance_problem = self._build_rebalance_problem(strategy_cfg, universe_meta)
         signal_config = self._build_signal_config(strategy_cfg)
-        optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type)
-        
+        optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
         strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
 
-        portfolio = Portfolio()
         engine = BacktestingEngine(
             portfolio,
             strategy,
@@ -79,7 +78,7 @@ class ExperimentRunner:
         }        
 
     def _build_signal_config(self, strategy_cfg: dict) -> SignalsConfig:
-        return SignalsConfig.from_dict((strategy_cfg["signals_config"])) 
+        return SignalsConfig.from_dict(strategy_cfg["signals_config"])
 
     def _build_rebalance_problem(self, strategy_cfg: dict, universe_meta: dict) -> RebalanceProblem:
         builder = RebalanceProblemBuilder(strategy_cfg["rebalance_problem"], universe_meta)

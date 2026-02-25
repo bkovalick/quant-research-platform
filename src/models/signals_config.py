@@ -6,6 +6,7 @@ class SignalsConfig:
     apply_winsorizing: bool
     windsor_percentiles: Dict
     
+    @classmethod
     def from_dict(cls, d: dict):
         return cls(
             apply_winsorizing = d.get("apply_windsorizing", True),

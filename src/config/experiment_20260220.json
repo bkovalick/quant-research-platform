@@ -23,7 +23,6 @@
         "strategy_type": "fwp_strategy",
         "optimizer_type": "fwp_optimizer",
         "benchmark_universe": "SPY",
-        "num_assets": 7,
         "cash_allocation": 0.0,
         "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
       }
@@ -43,7 +42,6 @@
         "strategy_type": "fwp_strategy",
         "optimizer_type": "fwp_optimizer",
         "benchmark_universe": "SPY",
-        "num_assets": 7,
         "cash_allocation": 0.0,
         "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
       }
@@ -65,7 +63,6 @@
         "strategy_type": "mean_variance_strategy",
         "optimizer_type": "portfolio_optimizer",
         "benchmark_universe": "SPY",
-        "num_assets": 24,
         "cash_allocation": 0.05,
         "rebalance_frequency": {"from": "w", "to": "w", "steps": 1},
         "apply_max_return_objective": true,

@@ -11,9 +11,9 @@ class MarketStateConfig:
 
     @classmethod
     def from_dict(cls, d: dict):
-        lookback_window = d.get("lookback_window", "1y"),
-        market_frequency = d.get("market_frequency", "w"),
-        annual_trading_days = LOOKBACK_WINDOWS[market_frequency][lookback_window],
+        lookback_window = d.get("lookback_window_key", "1y")
+        market_frequency = d.get("market_frequency", "w")
+        annual_trading_days = LOOKBACK_WINDOWS[market_frequency][lookback_window]
         universe_tickers = list(d.get("universe_tickers", ["AAPL"])) + ["CASH"]        
         return cls(
             lookback_window = lookback_window,

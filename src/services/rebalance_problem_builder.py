@@ -11,7 +11,8 @@ class RebalanceProblemBuilder:
     def build(self) -> RebalanceProblem:
         """Build and return a RebalanceProblem instance."""
         cash_allocation = self.config.get("cash_allocation", 0.0)
-        n_assets = self.config.get("n_assets", 5)
+        tickers = self.universe_meta.get("tickers", ["AAPL"])
+        n_assets = len(tickers)
         initial_weights = [ 1 / n_assets for t in range(n_assets) ]
         if cash_allocation == 0:
             initial_weights += [cash_allocation] 
@@ -40,7 +41,7 @@ class RebalanceProblemBuilder:
             "concentration_strength": self.config.get("constraints", {}).get("concentration_strength", 1),
             "asset_class_map": self.universe_meta.get("asset_class_map", {}),
             "sector_map": self.universe_meta.get("sector_map", {}),
-            "tickers": self.universe_meta.get("tickers", ["AAPL"])
+            "tickers": tickers
         }
 
         return RebalanceProblem(prepared_data)
