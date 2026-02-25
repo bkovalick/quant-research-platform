@@ -15,6 +15,7 @@ class MarketState:
         self.lookback_window = state_config.lookback_window
         self.universe_tickers = state_config.universe_tickers
         self.cash_allocation = state_config.cash_allocation
+        self.annual_trading_days = state_config.annual_trading_days
         self.cursor = 0
         self.parsed_prices = self._parse_universe(self.universe_tickers)
         self.prices = self._resample(self.market_frequency)

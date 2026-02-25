@@ -124,7 +124,7 @@ class MetricsCompute:
         """ Build each piece of the backtest result """
         self.rebalance_problem = rebalance_problem
         self.market_state_config = market_state_config
-        self.annual_trading_days = self.market_state_config.lookback_window
+        self.annual_trading_days = market_state_config.annual_trading_days
         self.market_frequency = market_state_config.market_frequency
         performance_metrics = self._calculate_performance_metrics(portfolio, market_store_config)
         performance_series = self._build_performance_series(performance_metrics)

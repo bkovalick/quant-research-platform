@@ -15,10 +15,11 @@ class RebalanceProblemBuilder:
         n_assets = len(tickers)
         initial_weights = [ 1 / n_assets for t in range(n_assets) ]
         if cash_allocation > 0:
-            initial_weights = [ (1 - cash_allocation) / n_assets for t in range(n_assets) ] + [cash_allocation]
+            initial_weights = [ (1 - cash_allocation) / (n_assets - 1) for t in range(n_assets - 1) ]
+            initial_weights += [cash_allocation]
 
         prepared_data = {
-            "n_assets": self.config.get("n_assets", 5),
+            "n_assets": n_assets,
             "optimizer_type": self.config.get("optimizer_type"),
             "strategy_type": self.config.get("strategy_type"),
             "apply_max_return_objective": self.config.get("apply_max_return_objective", False),

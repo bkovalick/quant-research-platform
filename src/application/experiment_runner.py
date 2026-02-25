@@ -25,8 +25,9 @@ class ExperimentRunner:
         market_store = self._build_market_store(market_store_config)
         experiment = self._create_experiment(market_store_config)
         for strategy_cfg in self.config["strategies"]:
-            run = self._run_strategy(strategy_cfg, market_store, market_store_config)
-            experiment.add_run(run)
+            if strategy_cfg["name"] == "high_risk":
+                run = self._run_strategy(strategy_cfg, market_store, market_store_config)
+                experiment.add_run(run)
 
         return experiment
 

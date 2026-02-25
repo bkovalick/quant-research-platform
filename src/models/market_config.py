@@ -9,12 +9,14 @@ class MarketStateConfig:
     lookback_window: int
     cash_allocation: float
     universe_tickers: List[str]
+    annual_trading_days: int
 
     @classmethod
     def from_dict(cls, d: dict):
         lookback_window_key = d.get("lookback_window_key", "1y")
         market_frequency = d.get("market_frequency", "w")
         lookback_window = LOOKBACK_WINDOWS[market_frequency][lookback_window_key]
+        annual_trading_days = LOOKBACK_WINDOWS[market_frequency]["1y"]
         cash_allocation = d.get("cash_allocation", 0.0)
         universe_tickers = list(d.get("universe_tickers", ["AAPL"]))
         if cash_allocation > 0:
@@ -25,7 +27,8 @@ class MarketStateConfig:
             market_frequency = market_frequency,
             lookback_window = lookback_window,
             cash_allocation = cash_allocation,
-            universe_tickers = universe_tickers
+            universe_tickers = universe_tickers,
+            annual_trading_days = annual_trading_days
         )
 
 @dataclass(frozen=True)

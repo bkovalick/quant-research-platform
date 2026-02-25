@@ -41,7 +41,7 @@ class PortfolioOptimizer(IOptimizer):
 
 	def _setup_decision_variables(self, rebalance_problem: RebalanceProblem) -> dict:
 		"""Setup decision variables for the optimization problem."""
-		n_assets = len(rebalance_problem.n_constituents)
+		n_assets = rebalance_problem.n_constituents
 		portfolio_weights = cp.Variable(n_assets)
 		return {'portfolio_weights': portfolio_weights}
 
@@ -167,8 +167,8 @@ class PortfolioOptimizer(IOptimizer):
 		"""Set objective to maximize returns minus risk penalty."""
 		risk_tolerance = getattr(rebalance_problem, 'risk_tolerance', 1.0)
 		portfolio_weights = decision_variables.get('portfolio_weights')
-		mean_vector = signals.mean_returns
-		cov_matrix = signals.covariance_matrix
+		mean_vector = signals.mean_returns()
+		cov_matrix = signals.covariance_matrix()
 		portfolio_risk = cp.quad_form(portfolio_weights, cov_matrix)
 		concentration_objective = self._get_concentration_objective(decision_variables, rebalance_problem)
 		objective = cp.Maximize(mean_vector @ portfolio_weights - risk_tolerance * \
