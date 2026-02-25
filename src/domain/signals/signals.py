@@ -5,7 +5,7 @@ from simulation.market_state import MarketState
 class Signals:
     def __init__(self, market_state: MarketState, signals_cfg: SignalsConfig):
         self.market_state = market_state
-        self.ann_factor = market_state.annual_trading_days
+        self.ann_factor = market_state.lookback_window
         self.signals_cfg = signals_cfg
         self.apply_winsorizing = signals_cfg.apply_winsorizing
         self.windsor_percentiles = signals_cfg.windsor_percentiles

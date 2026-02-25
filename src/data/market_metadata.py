@@ -11,8 +11,10 @@ class MarketMetadata:
         asset_class_map = asset_class_df.groupby('asset_class')['ticker'].apply(
             lambda tickers: [(ticker_to_index[ticker], ticker) for ticker in tickers if ticker in ticker_to_index]
         ).to_dict()
-        cash_idx = tickers_with_cash.index("CASH")
-        asset_class_map.update({"Cash": (cash_idx, "CASH")})
+
+        if "CASH" in tickers_with_cash:
+            cash_idx = tickers_with_cash.index("CASH")
+            asset_class_map.update({"Cash": (cash_idx, "CASH")})
         return asset_class_map
     
     @staticmethod
@@ -24,8 +26,10 @@ class MarketMetadata:
         sector_map = sector_df.groupby('sector')['ticker'].apply(
             lambda tickers: [(ticker_to_index[ticker], ticker) for ticker in tickers if ticker in ticker_to_index]
         ).to_dict()
-        cash_idx = tickers_with_cash.index("CASH")
-        sector_map.update({"Cash": (cash_idx, "CASH")})
+        
+        if "CASH" in tickers_with_cash:
+            cash_idx = tickers_with_cash.index("CASH")
+            sector_map.update({"Cash": (cash_idx, "CASH")})
         return sector_map
         
     

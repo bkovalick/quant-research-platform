@@ -25,15 +25,16 @@ class ExperimentRunner:
         market_store = self._build_market_store(market_store_config)
         experiment = self._create_experiment(market_store_config)
         for strategy_cfg in self.config["strategies"]:
-            run = self._run_strategy(strategy_cfg, market_store)
+            run = self._run_strategy(strategy_cfg, market_store, market_store_config)
             experiment.add_run(run)
 
         return experiment
 
-    def _run_strategy(self, strategy_cfg: dict, market_store: MarketDataStore) -> StrategyRun:
+    def _run_strategy(self, strategy_cfg: dict, market_store: MarketDataStore, market_store_config: MarketStoreConfig) -> StrategyRun:
         run_id = str(uuid.uuid4())
         portfolio = Portfolio()
-        state = self._build_market_state(strategy_cfg, market_store)
+        state_config = self._build_market_state_config(strategy_cfg)
+        state = self._build_market_state(market_store, state_config)
         universe_meta = self._build_universe_meta(state)
         rebalance_problem = self._build_rebalance_problem(strategy_cfg, universe_meta)
         signal_config = self._build_signal_config(strategy_cfg)
@@ -49,7 +50,7 @@ class ExperimentRunner:
 
         portfolio = engine.run_backtest(rebalance_problem)
 
-        result = MetricsCompute.compute(rebalance_problem, portfolio, market_store)
+        result = MetricsCompute.compute(rebalance_problem, portfolio, market_store_config, state_config)
 
         return StrategyRun(run_id, rebalance_problem, result, self._build_metadata())
     
@@ -66,13 +67,16 @@ class ExperimentRunner:
     def _build_market_store(self, market_store_config: MarketStoreConfig) -> MarketDataStore:
         return MarketDataStore(market_store_config)
 
-    def _build_market_state(self, strategy_cfg: dict, market_store: MarketDataStore) -> MarketState:
-        market_state_config = MarketStateConfig.from_dict(strategy_cfg["market_state_config"])
+    def _build_market_state_config(self, strategy_cfg: dict) -> MarketStateConfig:
+        return MarketStateConfig.from_dict(strategy_cfg["market_state_config"])
+
+    def _build_market_state(self, market_store: MarketDataStore, market_state_config: MarketStateConfig) -> MarketState:
         return MarketState(market_store, market_state_config)
     
     def _build_universe_meta(self, market_state: MarketState) -> dict:
         return {
             "tickers": market_state.universe_tickers,
+            "cash_allocation": market_state.cash_allocation,
             "asset_class_map": market_state.asset_class_map,
             "sector_map": market_state.sector_map
         }        

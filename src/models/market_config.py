@@ -4,21 +4,27 @@ from config.lookback_windows import LOOKBACK_WINDOWS
 
 @dataclass(frozen=True)
 class MarketStateConfig:
-    lookback_window: str
+    lookback_window_key: str
     market_frequency: str
-    annual_trading_days: int
+    lookback_window: int
+    cash_allocation: float
     universe_tickers: List[str]
 
     @classmethod
     def from_dict(cls, d: dict):
-        lookback_window = d.get("lookback_window_key", "1y")
+        lookback_window_key = d.get("lookback_window_key", "1y")
         market_frequency = d.get("market_frequency", "w")
-        annual_trading_days = LOOKBACK_WINDOWS[market_frequency][lookback_window]
-        universe_tickers = list(d.get("universe_tickers", ["AAPL"])) + ["CASH"]        
+        lookback_window = LOOKBACK_WINDOWS[market_frequency][lookback_window_key]
+        cash_allocation = d.get("cash_allocation", 0.0)
+        universe_tickers = list(d.get("universe_tickers", ["AAPL"]))
+        if cash_allocation > 0:
+            universe_tickers = universe_tickers + ["CASH"] 
+
         return cls(
-            lookback_window = lookback_window,
+            lookback_window_key = lookback_window_key,
             market_frequency = market_frequency,
-            annual_trading_days = annual_trading_days,
+            lookback_window = lookback_window,
+            cash_allocation = cash_allocation,
             universe_tickers = universe_tickers
         )
 

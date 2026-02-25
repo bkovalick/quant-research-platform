@@ -51,7 +51,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             
             prev_weights = self.portfolio.drift(prev_weights, current_returns, cursor)
 
-            if cursor < self.market_state.lookback:
+            if cursor < self.market_state.lookback_window:
                 continue
 
             if not self._is_rebalance_step(cursor):

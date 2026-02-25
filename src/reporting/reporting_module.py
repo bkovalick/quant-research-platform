@@ -1,6 +1,5 @@
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
-import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -8,11 +7,10 @@ from datetime import datetime
 from pathlib import Path
 
 from domain.portfolio.portfolio import Portfolio
-from config.lookback_windows import LOOKBACK_WINDOWS
 from models.backtest_result import BacktestResult
 from models.experiment import Experiment
 from models.rebalance_problem import RebalanceProblem
-from models.market_config import MarketStoreConfig
+from models.market_config import MarketStoreConfig, MarketStateConfig
 
 class ExcelGenerator:
     def __init__(self, experiment: Experiment, folder_name: str):
@@ -121,13 +119,13 @@ class MetricsCompute:
     def compute(self, 
                 rebalance_problem: RebalanceProblem, 
                 portfolio: Portfolio, 
-                market_str_cfg: MarketStoreConfig) -> BacktestResult:
+                market_store_config: MarketStoreConfig,
+                market_state_config: MarketStateConfig) -> BacktestResult:
         """ Build each piece of the backtest result """
         self.rebalance_problem = rebalance_problem
-        self.market_frequency = self.rebalance_problem.market_frequency
-        self.lookback_window_key = self.rebalance_problem.lookback_window_key
-        self.weeks_per_year = LOOKBACK_WINDOWS[self.market_frequency][self.lookback_window_key]
-        performance_metrics = self._calculate_performance_metrics(portfolio, market_str_cfg)
+        self.market_state_config = market_state_config
+        self.annual_trading_days = self.market_state_config.lookback_window
+        performance_metrics = self._calculate_performance_metrics(portfolio, market_store_config)
         performance_series = self._build_performance_series(performance_metrics)
         summary = self._build_summary(performance_metrics)
         return BacktestResult(
@@ -145,22 +143,22 @@ class MetricsCompute:
         wealth_factors = (1 + portfolio_returns).cumprod()
         cumulative_returns = wealth_factors - 1
         num_periods = cumulative_returns.shape[0]
-        years = num_periods / self.weeks_per_year
+        years = num_periods / self.annual_trading_days
         annualized_return = wealth_factors.iloc[-1] ** (1 / years) - 1
-        annualized_volatility = portfolio_returns.std() * np.sqrt(self.weeks_per_year)
+        annualized_volatility = portfolio_returns.std() * np.sqrt(self.annual_trading_days)
 
         sharpe_ratio = (
             annualized_return / annualized_volatility 
             if annualized_volatility != 0 else 0.0
         )
 
-        if self.weeks_per_year > 0:
-            drawdown_returns = cumulative_returns.iloc[self.weeks_per_year:]
-            rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self.weeks_per_year)
+        if self.annual_trading_days > 0:
+            drawdown_returns = cumulative_returns.iloc[self.annual_trading_days:]
+            rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self.annual_trading_days)
             rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd)
         else:
             drawdown_returns = cumulative_returns
-            rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self.weeks_per_year)
+            rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self.annual_trading_days)
             rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd)
 
         performance_metrics = {
@@ -170,20 +168,20 @@ class MetricsCompute:
             "portfolio_turnover": portfolio_turnover,
             "cumulative_returns": cumulative_returns,            
             "rolling_returns": self._calculate_rolling_returns(
-                portfolio_returns, self.weeks_per_year),
+                portfolio_returns, self.annual_trading_days),
             "rolling_volatility": self._calculate_rolling_volatility(
-                portfolio_returns, self.weeks_per_year),
+                portfolio_returns, self.annual_trading_days),
             "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(
-                portfolio_returns, self.weeks_per_year),
+                portfolio_returns, self.annual_trading_days),
             "rolling_drawdown": rolling_dd,
             "rolling_turnover": self._calculate_rolling_turnover(
-                portfolio_turnover, self.weeks_per_year),
+                portfolio_turnover, self.annual_trading_days),
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
             "max_drawdown": abs(self._calculate_max_drawdown(drawdown_returns)),
-            "turnover": portfolio_turnover.mean() * self.weeks_per_year,
-            "alpha": self._calculate_alpha(portfolio_returns, self.weeks_per_year, market_str_cfg)
+            "turnover": portfolio_turnover.mean() * self.annual_trading_days,
+            "alpha": self._calculate_alpha(portfolio_returns, self.annual_trading_days, market_str_cfg)
         }
         return performance_metrics
 
@@ -247,17 +245,17 @@ class MetricsCompute:
         alpha = portfolio_annualized - benchmark_annualized
         return alpha
 
-    def _get_benchmark(self, 
-                       rebalance_problem: RebalanceProblem, 
-                       market_str_cfg: MarketStoreConfig):
-        benchmark_data = {}
-        freq = 'W' if self.market_frequency == 'w' else self.market_frequency
-        benchmark_universe = rebalance_problem.benchmark_universe
-        benchmark = yf.download(benchmark_universe, start=market_str_cfg.start_date, end=market_str_cfg.end_date)
-        benchmark = benchmark.asfreq(freq, method='ffill')
-        benchmark_data.update({"benchmark_returns": benchmark["Close"].pct_change().fillna(0)})
-        benchmark_data.update({"benchmark_wfs": benchmark / benchmark.iloc[0] })
-        return benchmark_data
+    # def _get_benchmark(self, 
+    #                    rebalance_problem: RebalanceProblem, 
+    #                    market_str_cfg: MarketStoreConfig):
+    #     benchmark_data = {}
+    #     freq = 'W' if self.market_frequency == 'w' else self.market_frequency
+    #     benchmark_universe = rebalance_problem.benchmark_universe
+    #     benchmark = yf.download(benchmark_universe, start=market_str_cfg.start_date, end=market_str_cfg.end_date)
+    #     benchmark = benchmark.asfreq(freq, method='ffill')
+    #     benchmark_data.update({"benchmark_returns": benchmark["Close"].pct_change().fillna(0)})
+    #     benchmark_data.update({"benchmark_wfs": benchmark / benchmark.iloc[0] })
+    #     return benchmark_data
     
     def _build_performance_series(self, performance_metrics: dict) -> dict:
         """Create performance series dictionary for BacktestResult dataclass"""

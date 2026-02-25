@@ -10,10 +10,11 @@ class MarketState:
         """ Stores the current state of the market """
         self.store = store
         self.state_config = state_config
-        self.lookback = state_config.lookback_window
+        self.lookback_window_key = state_config.lookback_window_key
         self.market_frequency = state_config.market_frequency
+        self.lookback_window = state_config.lookback_window
         self.universe_tickers = state_config.universe_tickers
-        self.annual_trading_days = state_config.annual_trading_days
+        self.cash_allocation = state_config.cash_allocation
         self.cursor = 0
         self.parsed_prices = self._parse_universe(self.universe_tickers)
         self.prices = self._resample(self.market_frequency)
@@ -53,7 +54,6 @@ class MarketState:
         return lookback_returns
     
     def normalized_prices(self) -> pd.DataFrame:
-        """ Normalize prices to start at 1 """
         w = self.lookback_prices()
         return w / w.iloc[0]
     

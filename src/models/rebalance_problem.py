@@ -10,10 +10,6 @@ class RebalanceProblem:
 
     def to_dict(self):
         return dict(self._data)
-    
-    @property
-    def benchmark_universe(self) -> str:
-        return self._data.get("benchmark_universe", "SPY")
         
     @property
     def n_constituents(self) -> int:

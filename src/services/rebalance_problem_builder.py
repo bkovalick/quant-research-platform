@@ -10,17 +10,14 @@ class RebalanceProblemBuilder:
     
     def build(self) -> RebalanceProblem:
         """Build and return a RebalanceProblem instance."""
-        cash_allocation = self.config.get("cash_allocation", 0.0)
+        cash_allocation = self.universe_meta.get("cash_allocation", 0.0)
         tickers = self.universe_meta.get("tickers", ["AAPL"])
         n_assets = len(tickers)
         initial_weights = [ 1 / n_assets for t in range(n_assets) ]
-        if cash_allocation == 0:
-            initial_weights += [cash_allocation] 
-        else:
+        if cash_allocation > 0:
             initial_weights = [ (1 - cash_allocation) / n_assets for t in range(n_assets) ] + [cash_allocation]
 
         prepared_data = {
-            "benchmark_universe": self.config.get("benchmark_universe", "SPY"),
             "n_assets": self.config.get("n_assets", 5),
             "optimizer_type": self.config.get("optimizer_type"),
             "strategy_type": self.config.get("strategy_type"),
