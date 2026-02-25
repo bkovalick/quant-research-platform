@@ -11,8 +11,8 @@
     {
       "name": "fixed_weight_portfolio",
       "market_state_config": {
-        "market_frequency": "w",
         "lookback_window_key": "1y",
+        "market_frequency": "w",
         "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX"]
       },
       "signals_config": {

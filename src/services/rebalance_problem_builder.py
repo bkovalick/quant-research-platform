@@ -1,53 +1,26 @@
-import numpy as np
 from models.rebalance_problem import RebalanceProblem
-from data.market_metadata import MarketMetadata
-from config.lookback_windows import LOOKBACK_WINDOWS
 
 class RebalanceProblemBuilder:
     """Orchestrates the pipeline to build a RebalanceProblem from input configuration."""
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, universe_meta: dict):
         """Initialize with configuration dictionary."""
         self.config = config
-
-    def build_asset_class_map(self, tickers_with_cash: list) -> dict:
-        """Build a mapping from asset class to list of indices in tickers_with_cash."""
-        full_mapping_df = MarketMetadata.get_full_mapping_universe()
-        asset_class_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers_with_cash)]
-        ticker_to_index = {ticker: idx for idx, ticker in enumerate(tickers_with_cash)}
-        asset_class_map = asset_class_df.groupby('asset_class')['ticker'].apply(
-            lambda tickers: [(ticker_to_index[ticker], ticker) for ticker in tickers if ticker in ticker_to_index]
-        ).to_dict()
-        cash_idx = tickers_with_cash.index("CASH")
-        asset_class_map.update({"Cash": (cash_idx, "CASH")})
-        return asset_class_map
-    
-    def build_sector_map(self, tickers_with_cash) -> dict:
-        """Build and asset/sector grouping related to the assets in the investable universe."""
-        full_mapping_df = MarketMetadata.get_full_mapping_universe()
-        sector_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers_with_cash)]
-        ticker_to_index = {ticker: idx for idx, ticker in enumerate(tickers_with_cash)}
-        sector_map = sector_df.groupby('sector')['ticker'].apply(
-            lambda tickers: [(ticker_to_index[ticker], ticker) for ticker in tickers if ticker in ticker_to_index]
-        ).to_dict()
-        cash_idx = tickers_with_cash.index("CASH")
-        sector_map.update({"Cash": (cash_idx, "CASH")})
-        return sector_map
+        self.universe_meta = universe_meta
     
     def build(self) -> RebalanceProblem:
         """Build and return a RebalanceProblem instance."""
         cash_allocation = self.config.get("cash_allocation", 0.0)
-        tickers = self.config.get("universe_tickers", ["AAPL"])
-        initial_weights = [ 1 / len(tickers) for t in tickers ]
+        n_assets = self.config.get("n_assets", 5)
+        initial_weights = [ 1 / n_assets for t in range(n_assets) ]
         if cash_allocation == 0:
             initial_weights += [cash_allocation] 
         else:
-            initial_weights = [ (1 - cash_allocation) / len(tickers) for t in tickers ] + [cash_allocation]
-
-        # tickers_with_cash = tickers + ["CASH"]         
+            initial_weights = [ (1 - cash_allocation) / n_assets for t in range(n_assets) ] + [cash_allocation]
 
         prepared_data = {
             "benchmark_universe": self.config.get("benchmark_universe", "SPY"),
+            "n_assets": self.config.get("n_assets", 5),
             "optimizer_type": self.config.get("optimizer_type"),
             "strategy_type": self.config.get("strategy_type"),
             "apply_max_return_objective": self.config.get("apply_max_return_objective", False),
@@ -64,9 +37,10 @@ class RebalanceProblemBuilder:
             "asset_class_constraints": self.config.get("constraints", {}).get("asset_class_constraints", None),
             "sector_constraints": self.config.get("constraints", {}).get("sector_constraints", None),
             "max_return": self.config.get("constraints", {}).get("max_return", 0.05),
-            "concentration_strength": self.config.get("constraints", {}).get("concentration_strength", 1)
-            # "asset_class_map": self.build_asset_class_map(tickers_with_cash),
-            # "sector_map": self.build_sector_map(tickers_with_cash),
+            "concentration_strength": self.config.get("constraints", {}).get("concentration_strength", 1),
+            "asset_class_map": self.universe_meta.get("asset_class_map", {}),
+            "sector_map": self.universe_meta.get("sector_map", {}),
+            "tickers": self.universe_meta.get("tickers", ["AAPL"])
         }
 
         return RebalanceProblem(prepared_data)

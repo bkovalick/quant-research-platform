@@ -1,4 +1,3 @@
-from models.market_config import MarketStateConfig
 
 class RebalanceProblem:    
     """
@@ -18,11 +17,7 @@ class RebalanceProblem:
         
     @property
     def n_constituents(self) -> int:
-        return len(self.tickers)
-
-    @property
-    def tickers(self) -> list:
-        return self._data.get("tickers", [])
+        return self._data.get("n_assets", 5)
     
     @property
     def optimizer_type(self) -> str:
@@ -53,32 +48,12 @@ class RebalanceProblem:
         return self._data.get("cash_allocation")
     
     @property
-    def market_frequency(self) -> str:
-        return self._data.get("market_frequency", "d")
-    
-    @property
     def rebalance_frequency(self) -> dict:
         return self._data.get("rebalance_frequency", {})
-
-    @property
-    def lookback_window_key(self) -> int:
-        return self._data.get("lookback_window_key", "1y")
-        
-    @property
-    def lookback_window(self) -> int:
-        return self._data.get("lookback_window", 252)
     
     @property
     def risk_tolerance(self) -> int:
         return self._data.get("risk_tolerance", 0)
-    
-    @property
-    def apply_winsorizing(self) -> bool:
-        return self._data.get("apply_winsorizing", True)
-    
-    @property
-    def windsor_percentiles(self) -> dict:
-        return self._data.get("windsor_percentiles", {"lower": 0.05, "upper": 0.95})
 
     @property
     def turnover_limit(self) -> float:
@@ -103,7 +78,15 @@ class RebalanceProblem:
     @property
     def sector_constraints(self) -> int:
         return self._data.get("sector_constraints", None)
-
+    
+    @property
+    def max_return(self) -> float:
+        return self._data.get("max_return", 0.05)
+    
+    @property
+    def concentration_strength(self) -> int:
+        return self._data.get("concentration_strength", 1)
+    
     @property
     def asset_class_map(self) -> dict:
         return self._data.get("asset_class_map", {})
@@ -113,9 +96,5 @@ class RebalanceProblem:
         return self._data.get("sector_map", {})
     
     @property
-    def max_return(self) -> float:
-        return self._data.get("max_return", 0.05)
-    
-    @property
-    def concentration_strength(self) -> int:
-        return self._data.get("concentration_strength", 1)
+    def tickers(self) -> dict:
+        return self._data.get("tickers", ["AAPL"])
