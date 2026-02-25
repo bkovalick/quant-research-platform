@@ -41,16 +41,12 @@ class BacktestingEngine(BacktestingEngineInterface):
         
         prev_weights = initial_weights
         while self.market_state.has_next():
+            print(f"Backtesting Date: {self.market_state.current_date()}")
+            cursor = self.market_state.cursor
+            current_returns = self.market_state.returns.iloc[cursor]
             self.market_state.advance()
 
-            print(f"Backtesting Date: {self.market_state.current_date()}")
-
-            cursor = self.market_state.cursor
-
-            current_returns = self.market_state.returns.iloc[cursor]
-            
             prev_weights = self.portfolio.drift(prev_weights, current_returns, cursor)
-
             if cursor < self.market_state.lookback_window:
                 continue
 
@@ -58,11 +54,8 @@ class BacktestingEngine(BacktestingEngineInterface):
                 continue
 
             signals = Signals(self.market_state, self.signals_cfg)
-
             target_weights = self.strategy.rebalance(signals, prev_weights)
-
             self.portfolio.apply(target_weights, prev_weights, cursor)
-
             prev_weights = target_weights
 
         print(f"Backtest duration: {time.time() - start_time} seconds")

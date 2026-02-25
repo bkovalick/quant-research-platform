@@ -33,6 +33,7 @@ class ExperimentRunner:
     def _run_strategy(self, strategy_cfg: dict, market_store: MarketDataStore, market_store_config: MarketStoreConfig) -> StrategyRun:
         run_id = str(uuid.uuid4())
         portfolio = Portfolio()
+        metrics_computer = MetricsCompute()
         state_config = self._build_market_state_config(strategy_cfg)
         state = self._build_market_state(market_store, state_config)
         universe_meta = self._build_universe_meta(state)
@@ -50,7 +51,7 @@ class ExperimentRunner:
 
         portfolio = engine.run_backtest(rebalance_problem)
 
-        result = MetricsCompute.compute(rebalance_problem, portfolio, market_store_config, state_config)
+        result = metrics_computer.compute(rebalance_problem, portfolio, market_store_config, state_config)
 
         return StrategyRun(run_id, rebalance_problem, result, self._build_metadata())
     

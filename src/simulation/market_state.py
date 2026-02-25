@@ -18,7 +18,7 @@ class MarketState:
         self.cursor = 0
         self.parsed_prices = self._parse_universe(self.universe_tickers)
         self.prices = self._resample(self.market_frequency)
-        self.returns = self.prices.pct_change().iloc[1:]
+        self.returns = self.prices.pct_change().fillna(0)
     
     @property
     def asset_class_map(self):
@@ -43,13 +43,13 @@ class MarketState:
 
     def lookback_prices(self) -> pd.DataFrame:
         window = self.prices.iloc[
-            self.cursor - self.lookback : self.cursor
+            self.cursor - self.lookback_window : self.cursor
         ]
         return window
 
     def lookback_returns(self) -> pd.DataFrame:
         lookback_returns = self.returns.iloc[
-            self.cursor - self.lookback : self.cursor
+            self.cursor - self.lookback_window : self.cursor
         ]
         return lookback_returns
     
@@ -61,4 +61,4 @@ class MarketState:
         return self.prices.index[self.cursor]
     
     def has_next(self) -> bool:
-        return self.cursor < len(self.prices) - 1
+        return self.cursor < len(self.prices)
