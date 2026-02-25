@@ -5,8 +5,9 @@ from domain.portfolio.iportfolio import PortfolioInterface
 from domain.strategies.istrategy import StrategyInterface
 from domain.signals.signals import Signals
 from models.rebalance_problem import RebalanceProblem
+from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
-from config.rebalance_steps import FREQ_TO_STEPS
+from utils.rebalance_steps import FREQ_TO_STEPS
 
 class BacktestingEngineInterface(abc.ABC):
     """Interface for backtesting engines."""
@@ -19,10 +20,12 @@ class BacktestingEngine(BacktestingEngineInterface):
     def __init__(self, 
                  portfolio: PortfolioInterface, 
                  strategy: StrategyInterface,
-                 market_state: MarketState):
+                 market_state: MarketState,
+                 signals_cfg: SignalsConfig):
         self.portfolio = portfolio
         self.strategy = strategy
         self.market_state = market_state
+        self.signals_cfg = signals_cfg
 
     def run_backtest(self, rebalance_problem: RebalanceProblem):
         """Run backtest on the given rebalance problem."""
@@ -38,28 +41,21 @@ class BacktestingEngine(BacktestingEngineInterface):
         
         prev_weights = initial_weights
         while self.market_state.has_next():
+            print(f"Backtesting Date: {self.market_state.current_date()}")
+            cursor = self.market_state.cursor
+            current_returns = self.market_state.returns.iloc[cursor]
             self.market_state.advance()
 
-            print(f"Backtesting Date: {self.market_state.current_date()}")
-
-            cursor = self.market_state.cursor
-
-            current_returns = self.market_state.returns.iloc[cursor]
-            
             prev_weights = self.portfolio.drift(prev_weights, current_returns, cursor)
-
-            if cursor < self.market_state.lookback:
+            if cursor < self.market_state.lookback_window:
                 continue
 
             if not self._is_rebalance_step(cursor):
                 continue
 
-            signals = Signals(self.market_state)
-
+            signals = Signals(self.market_state, self.signals_cfg)
             target_weights = self.strategy.rebalance(signals, prev_weights)
-
             self.portfolio.apply(target_weights, prev_weights, cursor)
-
             prev_weights = target_weights
 
         print(f"Backtest duration: {time.time() - start_time} seconds")

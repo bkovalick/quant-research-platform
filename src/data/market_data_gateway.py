@@ -1,7 +1,7 @@
 import yfinance as yf
 import pandas as pd
 from models.market_config import MarketStoreConfig
-from config.lookback_windows import LOOKBACK_WINDOWS
+from utils.lookback_windows import LOOKBACK_WINDOWS
 
 class MarketDataGateway:
     """ Data gateway for fetching market data using yfinance """
@@ -34,7 +34,6 @@ class MarketDataStore:
     def __init__(self, market_store_config: MarketStoreConfig):
         """ Initialize with market data gateway and parameters """
         self._prices = MarketDataGateway.get_price_data(market_store_config)
-
         self._prices = self._prices.sort_index()
         self._prices = self._prices.dropna(how='all')
         self._prices = self._prices.bfill().ffill()

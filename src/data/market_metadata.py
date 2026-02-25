@@ -1,8 +1,38 @@
 import pandas as pd
 from os import path
 
-class MarketMetadata:    
+class MarketMetadata:
     @staticmethod
+    def build_asset_class_map(tickers_with_cash: list) -> dict:
+        """Build a mapping from asset class to list of indices in tickers_with_cash."""
+        full_mapping_df = MarketMetadata.get_full_mapping_universe()
+        asset_class_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers_with_cash)]
+        ticker_to_index = {ticker: idx for idx, ticker in enumerate(tickers_with_cash)}
+        asset_class_map = asset_class_df.groupby('asset_class')['ticker'].apply(
+            lambda tickers: [(ticker_to_index[ticker], ticker) for ticker in tickers if ticker in ticker_to_index]
+        ).to_dict()
+
+        if "CASH" in tickers_with_cash:
+            cash_idx = tickers_with_cash.index("CASH")
+            asset_class_map.update({"Cash": (cash_idx, "CASH")})
+        return asset_class_map
+    
+    @staticmethod
+    def build_sector_map(tickers_with_cash) -> dict:
+        """Build and asset/sector grouping related to the assets in the investable universe."""
+        full_mapping_df = MarketMetadata.get_full_mapping_universe()
+        sector_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers_with_cash)]
+        ticker_to_index = {ticker: idx for idx, ticker in enumerate(tickers_with_cash)}
+        sector_map = sector_df.groupby('sector')['ticker'].apply(
+            lambda tickers: [(ticker_to_index[ticker], ticker) for ticker in tickers if ticker in ticker_to_index]
+        ).to_dict()
+        
+        if "CASH" in tickers_with_cash:
+            cash_idx = tickers_with_cash.index("CASH")
+            sector_map.update({"Cash": (cash_idx, "CASH")})
+        return sector_map
+        
+    
     def get_universe_tickers() -> list:
         """ Get combined universe tickers from fixed income and equity """
         fi_tickers = MarketMetadata.get_fixed_income_mapping_universe()['ticker'].tolist()

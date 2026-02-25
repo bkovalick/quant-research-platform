@@ -14,8 +14,11 @@ import uuid
 def run_backtesting_suite(config):
     market_store_config = config["market_store_config"]
     market_store = MarketDataStore(market_store_config)
-
-    runs = []
+    experiment = Experiment(
+        experiment_id = str(uuid.uuid4()), 
+        created_at = datetime.now(),
+        market_config = market_store 
+    )
     metrics_computer = MetricsCompute()
     for strat_cfg in config["strategies"]:
         run_id = str(uuid.uuid4())
@@ -28,8 +31,8 @@ def run_backtesting_suite(config):
         backtestingEngine = BacktestingEngine(portfolio, strategy, market_state)
         backtestedPortfolio = backtestingEngine.run_backtest(rebalance_problem)
         backtest_result = metrics_computer.compute(rebalance_problem, backtestedPortfolio)
-        runs.append(StrategyRun(run_id, rebalance_problem, backtest_result, build_metadata()))
-    experiment = Experiment(runs)
+        experiment.add_run(StrategyRun(run_id, rebalance_problem, backtest_result, build_metadata()))
+
     return experiment
 
 def build_metadata():
