@@ -55,7 +55,7 @@
             "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA"
         ]        
       },
-      "signal_config": {
+      "signals_config": {
         "apply_winsorizing": true,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95}
       },      

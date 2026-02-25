@@ -1,5 +1,5 @@
 from models.market_config import MarketStateConfig
-from config.lookback_windows import LOOKBACK_WINDOWS
+from utils.lookback_windows import LOOKBACK_WINDOWS
 from data.market_data_gateway import MarketDataStore
 from data.market_metadata import MarketMetadata
 import pandas as pd

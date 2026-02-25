@@ -7,7 +7,7 @@ from domain.signals.signals import Signals
 from models.rebalance_problem import RebalanceProblem
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
-from config.rebalance_steps import FREQ_TO_STEPS
+from utils.rebalance_steps import FREQ_TO_STEPS
 
 class BacktestingEngineInterface(abc.ABC):
     """Interface for backtesting engines."""

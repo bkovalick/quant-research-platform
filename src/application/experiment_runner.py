@@ -10,7 +10,7 @@ from models.strategy_run import StrategyRun
 from models.market_config import MarketStoreConfig, MarketStateConfig
 from models.signals_config import SignalsConfig
 from models.rebalance_problem import RebalanceProblem
-from config.lookback_windows import LOOKBACK_WINDOWS
+from utils.lookback_windows import LOOKBACK_WINDOWS
 from data.market_data_gateway import MarketDataStore
 
 import uuid

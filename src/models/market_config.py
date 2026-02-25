@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict, List, Any, Optional
-from config.lookback_windows import LOOKBACK_WINDOWS
+from utils.lookback_windows import LOOKBACK_WINDOWS
 
 @dataclass(frozen=True)
 class MarketStateConfig:

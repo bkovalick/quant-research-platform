@@ -1,7 +1,7 @@
 import yfinance as yf
 import pandas as pd
 from models.market_config import MarketStoreConfig
-from config.lookback_windows import LOOKBACK_WINDOWS
+from utils.lookback_windows import LOOKBACK_WINDOWS
 
 class MarketDataGateway:
     """ Data gateway for fetching market data using yfinance """
