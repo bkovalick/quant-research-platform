@@ -1,4 +1,3 @@
-from models.experiment import Experiment
 from domain.portfolio.portfolio import Portfolio
 from reporting.reporting_module import MetricsCompute
 from simulation.backtesting_engine import BacktestingEngine
@@ -10,15 +9,71 @@ from models.strategy_run import StrategyRun
 from models.market_config import MarketStoreConfig, MarketStateConfig
 from models.signals_config import SignalsConfig
 from models.rebalance_problem import RebalanceProblem
-from utils.lookback_windows import LOOKBACK_WINDOWS
+from models.experiment import Experiment
 from data.market_data_gateway import MarketDataStore
 
 import uuid
 from datetime import datetime
+import multiprocessing
+from concurrent.futures import ProcessPoolExecutor, as_completed
+
+def run_strategy_worker(strategy_cfg, market_store_config):
+    market_store = MarketDataStore(market_store_config)
+    portfolio = Portfolio()
+    metrics_computer = MetricsCompute()
+
+    state_config = MarketStateConfig.from_dict(strategy_cfg["market_state_config"])
+    state = MarketState(market_store, state_config)
+
+    universe_meta = {
+            "tickers": state.universe_tickers,
+            "cash_allocation": state.cash_allocation,
+            "asset_class_map": state.asset_class_map,
+            "sector_map": state.sector_map
+    }    
+
+    rebalance_problem = RebalanceProblemBuilder(
+        strategy_cfg["rebalance_problem"], 
+        universe_meta
+    ).build()
+
+    signal_config = SignalsConfig.from_dict(strategy_cfg["signals_config"])
+
+    optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
+    strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
+
+    engine = BacktestingEngine(
+        portfolio,
+        strategy,
+        state,
+        signal_config
+    )
+
+    portfolio = engine.run_backtest(rebalance_problem)
+
+    result = metrics_computer.compute(
+        rebalance_problem, 
+        portfolio, 
+        market_store_config, 
+        state_config
+    )
+
+    run_id = str(uuid.uuid4())
+    return StrategyRun(
+        run_id, 
+        rebalance_problem, 
+        result, 
+        {
+            "timestamp": datetime.now(), 
+            "username": "bkovalick", 
+            "engine_version": "1.0.0"
+        }
+    )    
 
 class ExperimentRunner:
     def __init__(self, config):
         self.config = config
+        self.max_workers = min(8, multiprocessing.cpu_count())
 
     def run(self) -> Experiment:
         market_store_config = self._build_market_store_config()
@@ -29,16 +84,41 @@ class ExperimentRunner:
             experiment.add_run(run)
 
         return experiment
+    
+    def run_parallel(self) -> Experiment:
+        market_store_config = self._build_market_store_config()
+        experiment = self._create_experiment(market_store_config)
+        strategies = self.config["strategies"]
+        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+            futures = [
+                executor.submit(run_strategy_worker,
+                                strategy_cfg, market_store_config
+                )
+                for strategy_cfg in strategies
+            ]
 
-    def _run_strategy(self, strategy_cfg: dict, market_store: MarketDataStore, market_store_config: MarketStoreConfig) -> StrategyRun:
-        run_id = str(uuid.uuid4())
+            for future in as_completed(futures):
+                run = future.result()
+                experiment.add_run(run)
+
+        return experiment
+    
+    def _run_strategy(self, 
+                      strategy_cfg: dict, 
+                      market_store: MarketDataStore, 
+                      market_store_config: MarketStoreConfig) -> StrategyRun:
         portfolio = Portfolio()
         metrics_computer = MetricsCompute()
+
         state_config = self._build_market_state_config(strategy_cfg)
         state = self._build_market_state(market_store, state_config)
+
         universe_meta = self._build_universe_meta(state)
+
         rebalance_problem = self._build_rebalance_problem(strategy_cfg, universe_meta)
+
         signal_config = self._build_signal_config(strategy_cfg)
+
         optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
         strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
 
@@ -51,9 +131,24 @@ class ExperimentRunner:
 
         portfolio = engine.run_backtest(rebalance_problem)
 
-        result = metrics_computer.compute(rebalance_problem, portfolio, market_store_config, state_config)
+        result = metrics_computer.compute(
+            rebalance_problem, 
+            portfolio, 
+            market_store_config, 
+            state_config
+        )
 
-        return StrategyRun(run_id, rebalance_problem, result, self._build_metadata())
+        run_id = str(uuid.uuid4())
+        return StrategyRun(
+            run_id, 
+            rebalance_problem, 
+            result, 
+            {
+                "timestamp": datetime.now(), 
+                "username": "bkovalick", 
+                "engine_version": "1.0.0"
+            }
+        )
     
     def _create_experiment(self, market_store_cfg: dict) -> Experiment:
         return Experiment(
@@ -65,16 +160,20 @@ class ExperimentRunner:
     def _build_market_store_config(self) -> MarketStoreConfig:
         return MarketStoreConfig.from_dict(self.config["market_store_config"])
 
-    def _build_market_store(self, market_store_config: MarketStoreConfig) -> MarketDataStore:
+    def _build_market_store(self, 
+                            market_store_config: MarketStoreConfig) -> MarketDataStore:
         return MarketDataStore(market_store_config)
 
     def _build_market_state_config(self, strategy_cfg: dict) -> MarketStateConfig:
         return MarketStateConfig.from_dict(strategy_cfg["market_state_config"])
 
-    def _build_market_state(self, market_store: MarketDataStore, market_state_config: MarketStateConfig) -> MarketState:
+    def _build_market_state(self, 
+                            market_store: MarketDataStore, 
+                            market_state_config: MarketStateConfig) -> MarketState:
         return MarketState(market_store, market_state_config)
     
-    def _build_universe_meta(self, market_state: MarketState) -> dict:
+    def _build_universe_meta(self, 
+                             market_state: MarketState) -> dict:
         return {
             "tickers": market_state.universe_tickers,
             "cash_allocation": market_state.cash_allocation,
@@ -82,10 +181,13 @@ class ExperimentRunner:
             "sector_map": market_state.sector_map
         }        
 
-    def _build_signal_config(self, strategy_cfg: dict) -> SignalsConfig:
+    def _build_signal_config(self, 
+                             strategy_cfg: dict) -> SignalsConfig:
         return SignalsConfig.from_dict(strategy_cfg["signals_config"])
 
-    def _build_rebalance_problem(self, strategy_cfg: dict, universe_meta: dict) -> RebalanceProblem:
+    def _build_rebalance_problem(self, 
+                                 strategy_cfg: dict, 
+                                 universe_meta: dict) -> RebalanceProblem:
         builder = RebalanceProblemBuilder(strategy_cfg["rebalance_problem"], universe_meta)
         try:
             rebalance_problem = builder.build()

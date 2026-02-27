@@ -1,78 +1,161 @@
-# portfolio-optimizer
+# Portfolio Optimizer
 
+## Overview
 
-Portfolio-optimizer is a modular toolkit for portfolio optimization and backtesting, supporting multiple strategies (fixed weights, mean-variance, sharpe maximization) and designed for extensibility and experimentation. It features a clean separation between market data, portfolio configuration, and optimization logic.
+Portfolio Optimizer is a modular Python toolkit for portfolio rebalancing, optimization, and backtesting. It supports experiment-driven workflows, strategy evaluation, and reporting, using CVXPY for optimization. The architecture is designed for extensibility, reproducibility, and clear separation of concerns.
 
-## System Overview
-This repository is a modular toolkit for portfolio optimization and backtesting. It supports multiple strategies (fixed weights, mean-variance, Sharpe maximization) and is designed for extensibility and experimentation.
+## Project Structure
 
+```
+src/
+├── main.py
+├── controller.py
+├── application/
+│   ├── experiment_runner.py
+├── config/
+│   ├── experiment_20260220.json
+├── data/
+│   ├── market_data_gateway.py
+│   ├── market_metadata.py
+├── domain/
+│   ├── optimizers/
+│   │   ├── ioptimizer.py
+│   │   ├── portfolio_optimizer.py
+│   ├── portfolio/
+│   │   ├── iportfolio.py
+│   │   ├── portfolio.py
+│   ├── signals/
+│   │   ├── signals.py
+│   ├── strategies/
+│   │   ├── equal_weight_strategy.py
+│   │   ├── fixed_weight_strategy.py
+│   │   ├── istrategy.py
+│   │   ├── mean_variance_strategy.py
+├── models/
+│   ├── backtest_result.py
+│   ├── experiment.py
+│   ├── market_config.py
+│   ├── rebalance_problem.py
+│   ├── rebalance_solution.py
+│   ├── signals_config.py
+│   ├── strategy_run.py
+├── reporting/
+│   ├── reporting_module.py
+├── services/
+│   ├── optimizer_factory.py
+│   ├── rebalance_problem_builder.py
+│   ├── strategy_factory.py
+├── simulation/
+│   ├── backtesting_engine.py
+│   ├── market_state.py
+├── utils/
+│   ├── lookback_windows.py
+│   ├── rebalance_steps.py
+```
 
-### Architecture
-- **Python Core:**
-   - Portfolio construction, optimization, and backtesting are implemented in Python.
-   - Market data is managed by a MarketEnvironment class, which is configured independently of portfolio logic and provides normalized prices and all derived statistics (returns, covariance, mean vector) as properties. These statistics always reflect the current normalized prices.
-   - A cash column (all 1s) is automatically added to price data, and a cash component is included in all portfolios with a starting weight of 0.
-   - Strategies are defined via configuration and run through a unified pipeline.
-   - Results are returned as pandas DataFrames and scalars for reporting and analysis.
-- **C++ Parallel Runner:**
-   - A C++ wrapper (using pybind11) can launch multiple Python strategy runs in parallel, enabling fast grid search or batch evaluation.
-   - The C++ runner calls a Python entry point (`src/strategy_runner.py`) for each strategy/configuration.
+## Key Modules & Their Purpose
 
-### Workflow
-1. **Data Preparation:**
-   - Market data is ingested and cleaned via MarketEnvironment, which fetches, normalizes, and exposes all statistics as properties.
-   - Portfolio statistics (mean, covariance, etc.) are always computed from the current normalized prices, and update automatically if normalized_prices is changed.
-   - A cash asset is always present in the data and portfolios.
-2. **Strategy Configuration:**
-   - Strategies are specified via config dictionaries (tickers, weights, risk parameters, etc.).
-3. **Optimization & Backtesting:**
-   - The optimizer is selected and run for each strategy.
-   - The backtesting engine simulates portfolio evolution over time, applying rebalancing logic.
-4. **Reporting:**
-   - Results (returns, weights, turnover, drawdown, etc.) are collected and exported for analysis.
-   - Optional: C++ runner aggregates results from parallel strategy runs.
+- **main.py**: Entry point for running experiments and orchestrating workflows.
+- **controller.py**: Coordinates application logic and flow.
+- **application/**: Contains experiment runner and application-level orchestration.
+- **config/**: Stores configuration files and settings for experiments.
+- **data/**: Handles market data ingestion and metadata management.
+- **domain/**:
+  - **optimizers/**: Defines optimizer interfaces and implementations.
+  - **portfolio/**: Portfolio abstractions and interfaces.
+  - **signals/**: Signal generation and processing.
+  - **strategies/**: Strategy interfaces and implementations (e.g., equal weight, fixed weight, mean-variance).
+- **models/**: Data models for experiments, backtests, market configs, signals, and solutions.
+- **reporting/**: Reporting and output formatting modules.
+- **services/**: Factories and builders for optimizers, strategies, and rebalance problems.
+- **simulation/**: Backtesting engine and market state simulation.
+- **utils/**: Utility functions for lookback windows, rebalance steps, etc.
 
+## Example Workflow
 
-### Extensibility
-- Add new strategies by implementing an optimizer and registering it in the factory.
-- Integrate with other languages or systems via the Python entry point and C++ wrapper.
-- Output is designed for easy reporting, visualization, and further research.
-- MarketEnvironment and portfolio logic are decoupled, so you can reuse the same data for multiple strategies or rebalancing problems.
+### 1. Experiment Setup
 
-## C++ Parallel Strategy Runner
+Configure your experiment in a JSON file (e.g., `config/experiment_20260220.json`).
 
-This project supports running Python strategies in parallel from C++ using pybind11.
+### 2. Running an Experiment
 
-### Requirements
-- Python 3.x (with all required packages: pandas, numpy, PyYAML, etc.)
-- pybind11 (install via pip: `pip install pybind11` or use your package manager)
-- CMake >= 3.14
-- C++17 compiler (MSVC, g++, clang++)
+```python
+from application.experiment_runner import ExperimentRunner
 
-### Build Instructions
-1. Open a terminal in the project root.
-2. Run:
-   ```sh
-   mkdir build
-   cd build
-   cmake ..
-   cmake --build .
+runner = ExperimentRunner(config_path="config/experiment_20260220.json")
+runner.run()
+```
+
+### 3. Building a Rebalance Problem
+
+```python
+from services.rebalance_problem_builder import RebalanceProblemBuilder
+
+builder = RebalanceProblemBuilder(config)
+rebalance_problem = builder.build()
+```
+
+### 4. Optimizing a Portfolio
+
+```python
+from services.optimizer_factory import get_optimizer
+
+optimizer = get_optimizer("mean_variance")
+solution = optimizer.optimize(rebalance_problem)
+```
+
+### 5. Backtesting
+
+```python
+from simulation.backtesting_engine import BacktestingEngine
+
+engine = BacktestingEngine()
+results = engine.run_backtest(strategy, market_data)
+```
+
+### 6. Reporting
+
+```python
+from reporting.reporting_module import generate_report
+
+generate_report(results)
+```
+
+## Adding a New Strategy or Optimizer
+
+- Implement your strategy in `domain/strategies/` or optimizer in `domain/optimizers/`.
+- Register it in the appropriate factory in `services/`.
+- Use interfaces (`istrategy.py`, `ioptimizer.py`) for consistency.
+
+## Project Conventions
+
+- **Modular design:** Each component lives in its own folder.
+- **Pure data models:** No business logic in models; calculations in builders/services.
+- **Absolute imports:** Always import from the `src` root.
+- **Extensible:** Add new strategies, optimizers, or reporting modules easily.
+
+## Dependencies
+
+- Python 3.8+
+- CVXPY (for optimization)
+- See `requirements.txt` for full list
+
+## Setup
+
+1. Create and activate a virtual environment:
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate
    ```
-   This will produce `cpp_strategy_runner.exe` (Windows) or `cpp_strategy_runner` (Linux/Mac) in the build directory.
-
-### Run Instructions
-1. Ensure your Python environment is activated and `src/` is in your `PYTHONPATH`.
-2. Run the executable:
-   ```sh
-   ./cpp_strategy_runner
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
    ```
-   The program will launch the Python interpreter, feed strategies, and print results in parallel.
 
+## License
 
-### Troubleshooting
-- If you get import errors, ensure `src/` is in `PYTHONPATH` and all Python dependencies are installed.
-- You may need to adjust the `CMakeLists.txt` or environment variables if Python or pybind11 are not found automatically.
-- If portfolio statistics do not update as expected, check that you are accessing them via MarketEnvironment properties and that normalized_prices is up to date.
+See CVXPY and other library documentation for licensing.
 
-See `cpp_strategy_runner.cpp` and `src/strategy_runner.py` for example usage and integration details.
+---
 
+For more details, see the source code and configuration files in the `src/` directory.

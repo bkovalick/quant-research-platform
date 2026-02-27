@@ -1,7 +1,7 @@
 from models.market_config import MarketStateConfig
-from utils.lookback_windows import LOOKBACK_WINDOWS
 from data.market_data_gateway import MarketDataStore
 from data.market_metadata import MarketMetadata
+
 import pandas as pd
 from datetime import datetime
 
@@ -62,4 +62,4 @@ class MarketState:
         return self.prices.index[self.cursor]
     
     def has_next(self) -> bool:
-        return self.cursor < len(self.prices)
+        return self.cursor < len(self.prices) - 1
