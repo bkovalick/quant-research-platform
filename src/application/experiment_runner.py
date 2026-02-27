@@ -37,7 +37,7 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         universe_meta
     ).build()
 
-    signal_config = SignalsConfig.from_dict(signal_config)
+    signal_config = SignalsConfig.from_dict(strategy_cfg)
 
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
@@ -92,7 +92,7 @@ class ExperimentRunner:
         with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
             futures = [
                 executor.submit(run_strategy_worker,
-                                (strategy_cfg, market_store_config)
+                                strategy_cfg, market_store_config
                 )
                 for strategy_cfg in strategies
             ]
