@@ -6,8 +6,6 @@ if __name__ == '__main__':
         config = json.load(f)
 
     config = config.copy()
-    # config["strategies"] = [config["strategies"][0]]  # Run only the first strategy for testing
     experiment_run = ExperimentRunner(config)
-    # experiment_results = experiment_run.run()
     experiment_results = experiment_run.run_parallel()
     print(experiment_results)
