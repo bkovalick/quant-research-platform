@@ -10,19 +10,15 @@ class Signals:
         self.signals_cfg = signals_cfg
         self.apply_winsorizing = signals_cfg.apply_winsorizing
         self.windsor_percentiles = signals_cfg.windsor_percentiles
-
-    def lookback_prices(self) -> pd.DataFrame:
-        lookback_prices = self.market_state.lookback_prices()
-        if not self.apply_winsorizing:
-            return lookback_prices
-        
-        lower_bound = lookback_prices.quantile(self.windsor_percentiles["lower"])
-        upper_bound = lookback_prices.quantile(self.windsor_percentiles["upper"])
-        return lookback_prices.clip(lower=lower_bound, upper=upper_bound, axis = 1) 
            
     def lookback_returns(self) -> pd.DataFrame:
-        lookback_prices = self.lookback_prices()
-        return lookback_prices.pct_change().dropna()
+        r = self.market_state.lookback_returns()
+        if not self.apply_winsorizing:
+            return r
+
+        lower_bound = r.quantile(self.windsor_percentiles["lower"])
+        upper_bound = r.quantile(self.windsor_percentiles["upper"])
+        return r.clip(lower=lower_bound, upper=upper_bound, axis = 1) 
 
     def mean_returns(self) -> np.ndarray:
         lookback_returns = self.lookback_returns()
@@ -45,5 +41,5 @@ class Signals:
         return np.sqrt(curr_weights.T @ cov @ curr_weights)
 
     def momentum_signal(self) -> np.ndarray:
-        p = self.lookback_prices()
+        p = self.market_state.lookback_prices()
         return (p.iloc[-1] / p.iloc[0] - 1).values
