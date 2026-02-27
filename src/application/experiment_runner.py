@@ -22,7 +22,7 @@ def run_strategy_worker(strategy_cfg, market_store_config):
     portfolio = Portfolio()
     metrics_computer = MetricsCompute()
 
-    state_config = MarketStateConfig.from_dict(strategy_cfg)
+    state_config = MarketStateConfig.from_dict(strategy_cfg["market_state_config"])
     state = MarketState(market_store, state_config)
 
     universe_meta = {
@@ -37,7 +37,7 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         universe_meta
     ).build()
 
-    signal_config = SignalsConfig.from_dict(strategy_cfg)
+    signal_config = SignalsConfig.from_dict(strategy_cfg["signals_config"])
 
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
