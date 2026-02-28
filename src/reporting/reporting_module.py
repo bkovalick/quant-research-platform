@@ -295,9 +295,23 @@ class MetricsCompute:
             "return": performance_metrics["return"],
             "volatility": performance_metrics["volatility"],
             "sharpe_ratio": performance_metrics["sharpe_ratio"],
+            "sortino_ratio": performance_metrics["sortino_ratio"],
             "max_drawdown": performance_metrics["max_drawdown"],
             "turnover": performance_metrics["turnover"],
-            "alpha": performance_metrics["alpha"]
+            "alpha": performance_metrics["alpha"],
+            "calmar_ratio": performance_metrics["calmar_ratio"],
+            "tracking_error": performance_metrics["tracking_error"],
+            "win_rate": performance_metrics["win_rate"],
+            "loss_rate": performance_metrics["loss_rate"],
+            "average_win": performance_metrics["average_win"],
+            "average_loss": performance_metrics["average_loss"],
+            "value_at_risk_95": performance_metrics["value_at_risk_95"],
+            "value_at_risk_97.5": performance_metrics["value_at_risk_97.5"],
+            "value_at_risk_99": performance_metrics["value_at_risk_99"],
+            "conditional_value_at_risk_95": performance_metrics["conditional_value_at_risk_95"],
+            "conditional_value_at_risk_97.5": performance_metrics["conditional_value_at_risk_97.5"],
+            "conditional_value_at_risk_99": performance_metrics["conditional_value_at_risk_99"],
+            "alpha_decay": performance_metrics["alpha_decay"]         
         }
         return performance_summary
 
