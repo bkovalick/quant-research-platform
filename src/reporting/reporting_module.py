@@ -16,20 +16,20 @@ class ExcelGenerator:
     def __init__(self, experiment: Experiment, folder_name: str):
         self.experiment = experiment
         self.config = experiment.market_config
-        self.folder_name = folder_name
-        self.create_folder_path(folder_name)
+        self.folder_name = folder_name + "/" + datetime.now().strftime('%Y-%m-%d')
+        self.create_folder_path(self.folder_name)
 
     def create_folder_path(self, folder_name: str):
         path = Path(folder_name)
         path.mkdir(parents=True, exist_ok=True)
 
-    def generate_report(self, filename: str):
+    def generate_report(self):
         full_filename = (
-            f"{filename}/backtest_report_"
-            f"{self.config['start_date']}_{self.config['end_date']}_"
+            f"{self.folder_name}/backtest_report_"
+            f"{self.config.start_date}_{self.config.end_date}_"
             f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
         )
-        results = self.aggregate_performance_metrics([])
+        results = self.aggregate_performance_metrics()
 
         wb = Workbook()
         default_sheet = wb.active
@@ -53,46 +53,44 @@ class ExcelGenerator:
             ts_rows = dataframe_to_rows(results["rolling_time_series"], header=True, index=False)
             for r_idx, row in enumerate(ts_rows, 1):
                 for c_idx, value in enumerate(row, 1):
-                    ts_ws.cell(row=r_idx, column=c_idx, value=value)              
+                    ts_ws.cell(row=r_idx, column=c_idx, value=value)
 
         wb.save(full_filename)
         wb.close()
 
-    def aggregate_performance_metrics(self, all_metrics):
+    def aggregate_performance_metrics(self):
         """Aggregate performance metrics from multiple strategies into summary and time series DataFrames."""
         summary_rows = []
         portfolio_dfs = []
         rolling_dfs = []
 
-        for strategy_runs in self.experiment.strategy_runs:
-            strategy_runs.result.series[""]
-
-        for metrics, label in all_metrics:
-            row = {"strategy": label}
-            for k, v in metrics.items():
+        for strategy_run in self.experiment.strategy_runs:
+            strategy_name = strategy_run.strategy_name
+            row = {"strategy": strategy_name}
+            for k, v in strategy_run.result.summary.items():
                 if isinstance(v, (pd.Series, pd.DataFrame)):
-                    continue 
+                    continue
                 row[k] = v
             summary_rows.append(row)
 
-            if "portfolio_weights" in metrics:
-                weights_df = pd.DataFrame(metrics["portfolio_weights"].values, columns=metrics["portfolio_weights"].columns)
-                weights_df.insert(0, "Date", pd.to_datetime(metrics["portfolio_wealth_factors"].index))
-                weights_df.insert(1, "Strategy", label)
-                weights_df.insert(2, "WealthFactor", metrics["portfolio_wealth_factors"].values)
-                weights_df.insert(3, "PortfolioReturns", metrics["portfolio_returns"].values)
-                weights_df.insert(4, "PortfolioTurnover", metrics["portfolio_turnover"].values)
+            if "portfolio_weights" in strategy_run.result.series:
+                weights_df = pd.DataFrame(strategy_run.result.series["portfolio_weights"].values, columns=strategy_run.result.series["portfolio_weights"].columns)
+                weights_df.insert(0, "Date", pd.to_datetime(strategy_run.result.series["portfolio_wealth_factors"].index))
+                weights_df.insert(1, "Strategy", strategy_name)
+                weights_df.insert(2, "WealthFactor", strategy_run.result.series["portfolio_wealth_factors"].values)
+                weights_df.insert(3, "PortfolioReturns", strategy_run.result.series["portfolio_returns"].values)
+                weights_df.insert(4, "PortfolioTurnover", strategy_run.result.series["portfolio_turnover"].values)
                 portfolio_dfs.append(weights_df)
 
-            if "rolling_returns" in metrics:
+            if "rolling_returns" in strategy_run.result.series:
                 rolling_df = pd.DataFrame({
-                    "Date": pd.to_datetime(metrics["rolling_returns"].index),
-                    "Strategy": label,
-                    "RollingReturns": metrics["rolling_returns"].values,
-                    "RollingVolatility": metrics["rolling_volatility"].values,
-                    "RollingSharpe": metrics["rolling_sharpe_ratio"].values,
-                    "RollingDrawdown": metrics["rolling_drawdown"].values,
-                    "RollingTurnover": metrics["rolling_turnover"].values                    
+                    "Date": pd.to_datetime(strategy_run.result.series["rolling_returns"].index),
+                    "Strategy": strategy_name,
+                    "RollingReturns": strategy_run.result.series["rolling_returns"].values,
+                    "RollingVolatility": strategy_run.result.series["rolling_volatility"].values,
+                    "RollingSharpe": strategy_run.result.series["rolling_sharpe_ratio"].values,
+                    "RollingDrawdown": strategy_run.result.series["rolling_drawdown"].values,
+                    "RollingTurnover": strategy_run.result.series["rolling_turnover"].values                    
                 })
                 rolling_dfs.append(rolling_df)
 
@@ -107,10 +105,11 @@ class ExcelGenerator:
         else:
             rolling_metrics_df = None
 
-        return summary_df, portfolio_metrics_df, rolling_metrics_df        
-
-class JsonGenerator():
-    pass
+        return {
+            "summary": summary_df,
+            "time_series": portfolio_metrics_df, 
+            "rolling_time_series": rolling_metrics_df
+        }
 
 class MetricsCompute:
     def __init__(self):
@@ -120,13 +119,14 @@ class MetricsCompute:
                 rebalance_problem: RebalanceProblem, 
                 portfolio: Portfolio, 
                 market_store_config: MarketStoreConfig,
-                market_state_config: MarketStateConfig) -> BacktestResult:
+                market_state_config: MarketStateConfig,
+                benchmark_index: pd.Series) -> BacktestResult:
         """ Build each piece of the backtest result """
         self.rebalance_problem = rebalance_problem
         self.market_state_config = market_state_config
         self.annual_trading_days = market_state_config.annual_trading_days
         self.market_frequency = market_state_config.market_frequency
-        performance_metrics = self._calculate_performance_metrics(portfolio, market_store_config)
+        performance_metrics = self._calculate_performance_metrics(portfolio, market_store_config, benchmark_index)
         performance_series = self._build_performance_series(performance_metrics)
         summary = self._build_summary(performance_metrics)
         return BacktestResult(
@@ -136,7 +136,8 @@ class MetricsCompute:
 
     def _calculate_performance_metrics(self, 
                                        portfolio: Portfolio, 
-                                       market_str_cfg: MarketStoreConfig) -> dict:
+                                       market_str_cfg: MarketStoreConfig,
+                                       benchmark_index: pd.Series) -> dict:
         """Calculate performance metrics for the portfolio."""
         portfolio_weights = portfolio.weights
         portfolio_returns = portfolio.returns
@@ -182,7 +183,7 @@ class MetricsCompute:
             "sharpe_ratio": sharpe_ratio,
             "max_drawdown": abs(self._calculate_max_drawdown(drawdown_returns)),
             "turnover": portfolio_turnover.mean() * self.annual_trading_days,
-            "alpha": self._calculate_alpha(portfolio_returns, self.annual_trading_days, market_str_cfg)
+            "alpha": self._calculate_alpha(portfolio_returns, self.annual_trading_days, market_str_cfg, benchmark_index)
         }
         return performance_metrics
 
@@ -225,15 +226,13 @@ class MetricsCompute:
 
     def _calculate_alpha(self, 
                          portfolio_returns: pd.Series, 
-                         window: int,
-                         market_str_cfg: MarketStoreConfig):
+                         annualization_factor: int,
+                         market_str_cfg: MarketStoreConfig,
+                         benchmark_index: pd.Series):
         """Calculate alpha of the portfolio against a benchmark (S&P 500)."""
-        annualization_factor = window
-        benchmark = yf.download("^GSPC", \
-                        start=market_str_cfg.start_date, end=market_str_cfg.end_date)
-        freq = 'W' if self.market_frequency == 'w' else self.market_frequency
-        benchmark = benchmark.asfreq(freq, method='ffill')
-        benchmark_returns = benchmark["Close"].pct_change().fillna(0)
+        rule = {"w": "W-FRI", "m": "M"}[self.market_frequency]
+        benchmark = benchmark_index.resample(rule).last()
+        benchmark_returns = benchmark.pct_change().fillna(0)
 
         if(len(benchmark_returns) != len(portfolio_returns)):
             return
@@ -246,18 +245,6 @@ class MetricsCompute:
         alpha = portfolio_annualized - benchmark_annualized
         return alpha
 
-    # def _get_benchmark(self, 
-    #                    rebalance_problem: RebalanceProblem, 
-    #                    market_str_cfg: MarketStoreConfig):
-    #     benchmark_data = {}
-    #     freq = 'W' if self.market_frequency == 'w' else self.market_frequency
-    #     benchmark_universe = rebalance_problem.benchmark_universe
-    #     benchmark = yf.download(benchmark_universe, start=market_str_cfg.start_date, end=market_str_cfg.end_date)
-    #     benchmark = benchmark.asfreq(freq, method='ffill')
-    #     benchmark_data.update({"benchmark_returns": benchmark["Close"].pct_change().fillna(0)})
-    #     benchmark_data.update({"benchmark_wfs": benchmark / benchmark.iloc[0] })
-    #     return benchmark_data
-    
     def _build_performance_series(self, performance_metrics: dict) -> dict:
         """Create performance series dictionary for BacktestResult dataclass"""
         if performance_metrics is None:
@@ -292,7 +279,7 @@ class MetricsCompute:
         }
         return performance_summary
 
-def align_series_to_dataframe(df, series):
+def align_series_to_dataframe(df: pd.DataFrame, series: pd.Series) -> pd.Series:
     n = len(df) - len(series)
     nan_part = pd.Series([np.nan]*n, index=df.index[:n])
     aligned = pd.concat([nan_part, series])

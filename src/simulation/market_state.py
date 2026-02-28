@@ -32,11 +32,11 @@ class MarketState:
     def _parse_universe(self, universe_tickers) -> pd.DataFrame:
         return self.store.prices[universe_tickers]
     
-    def _resample(self, trading_frequency) -> pd.DataFrame:
-        if trading_frequency == "d":
+    def _resample(self, market_frequency) -> pd.DataFrame:
+        if market_frequency == "d":
             return self.parsed_prices
         
-        rule = {"w": "W-FRI", "m": "M"}[trading_frequency]
+        rule = {"w": "W-FRI", "m": "M"}[market_frequency]
         return self.parsed_prices.resample(rule).last()
     
     def advance(self):

@@ -55,12 +55,14 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         rebalance_problem, 
         portfolio, 
         market_store_config, 
-        state_config
+        state_config,
+        market_store.prices[market_store_config.benchmark]
     )
 
     run_id = str(uuid.uuid4())
     return StrategyRun(
         run_id, 
+        strategy_cfg["name"],
         rebalance_problem, 
         result, 
         {
@@ -141,6 +143,7 @@ class ExperimentRunner:
         run_id = str(uuid.uuid4())
         return StrategyRun(
             run_id, 
+            strategy_cfg["name"],
             rebalance_problem, 
             result, 
             {

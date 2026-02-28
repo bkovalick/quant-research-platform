@@ -1,4 +1,5 @@
 from application.experiment_runner import ExperimentRunner
+from reporting.reporting_module import ExcelGenerator
 import json
 
 if __name__ == '__main__':
@@ -8,4 +9,5 @@ if __name__ == '__main__':
     config = config.copy()
     experiment_run = ExperimentRunner(config)
     experiment_results = experiment_run.run_parallel()
-    print(experiment_results)
+    reporting_module = ExcelGenerator(experiment_results, "backtest_results")
+    reporting_module.generate_report() 
