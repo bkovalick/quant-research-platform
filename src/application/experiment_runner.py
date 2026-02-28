@@ -137,7 +137,8 @@ class ExperimentRunner:
             rebalance_problem, 
             portfolio, 
             market_store_config, 
-            state_config
+            state_config,
+            market_store.prices[market_store_config.benchmark]
         )
 
         run_id = str(uuid.uuid4())
