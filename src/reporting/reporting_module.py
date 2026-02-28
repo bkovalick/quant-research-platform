@@ -162,6 +162,7 @@ class MetricsCompute:
             drawdown_returns = cumulative_returns
             rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self.annual_trading_days)
             rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd)
+        max_drawdown = abs(self._calculate_max_drawdown(drawdown_returns))
 
         performance_metrics = {
             "portfolio_wealth_factors": wealth_factors,
@@ -181,9 +182,30 @@ class MetricsCompute:
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
-            "max_drawdown": abs(self._calculate_max_drawdown(drawdown_returns)),
+            "sortino_ratio": (annualized_return / portfolio_returns[portfolio_returns < 0].std() * \
+                np.sqrt(self.annual_trading_days)) if portfolio_returns[portfolio_returns < 0].std() != 0 else 0,
+            "max_drawdown": max_drawdown,
             "turnover": portfolio_turnover.mean() * self.annual_trading_days,
-            "alpha": self._calculate_alpha(portfolio_returns, self.annual_trading_days, market_str_cfg, benchmark_index)
+            "alpha": self._calculate_alpha(portfolio_returns, self.annual_trading_days, market_str_cfg, benchmark_index),
+            "calmar_ratio": annualized_return / max_drawdown if max_drawdown != 0 else 0.0,
+            "tracking_error": np.sqrt(((portfolio_returns - benchmark_index.pct_change().fillna(0)) ** 2).mean()) * \
+                np.sqrt(self.annual_trading_days),
+            "win_rate": (portfolio_returns > 0).mean(),
+            "loss_rate": (portfolio_returns < 0).mean(),
+            "average_win": portfolio_returns[portfolio_returns > 0].mean() if (portfolio_returns > 0).any() else 0.0,
+            "average_loss": portfolio_returns[portfolio_returns < 0].mean() if (portfolio_returns < 0).any() else 0.0,
+            "value_at_risk_95": portfolio_returns.quantile(0.05),
+            "value_at_risk_97.5": portfolio_returns.quantile(0.025),
+            "value_at_risk_99": portfolio_returns.quantile(0.01),
+            "conditional_value_at_risk_95": portfolio_returns[portfolio_returns < \
+                portfolio_returns.quantile(0.05)].mean() if len(portfolio_returns) > 0 else 0.0,
+            "conditional_value_at_risk_97.5": portfolio_returns[portfolio_returns < \
+                portfolio_returns.quantile(0.025)].mean() if len(portfolio_returns) > 0 else 0.0,
+            "conditional_value_at_risk_99": portfolio_returns[portfolio_returns < \
+                portfolio_returns.quantile(0.01)].mean() if len(portfolio_returns) > 0 else 0.0,
+            "alpha_decay": self._calculate_alpha(portfolio_returns[-self.annual_trading_days:], \
+                self.annual_trading_days, market_str_cfg, benchmark_index[-self.annual_trading_days:]) \
+                    if len(portfolio_returns) >= self.annual_trading_days else None
         }
         return performance_metrics
 
