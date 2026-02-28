@@ -34,6 +34,7 @@ class MarketStateConfig:
 @dataclass(frozen=True)
 class MarketStoreConfig:
     tickers: List[Any]
+    benchmark: Optional[str]
     start_date: str
     end_date: str
     data_source: Dict
@@ -42,6 +43,7 @@ class MarketStoreConfig:
     def from_dict(cls, d: dict):
         return cls(
             tickers = d.get("tickers", ["AAPL"]),
+            benchmark = d.get("benchmark", "SPY"),
             start_date = d.get("start_date", "2005-01-01"),
             end_date = d.get("end_date", "2026-02-19"),
             data_source = d.get("data_source", { "yfinance": None })  

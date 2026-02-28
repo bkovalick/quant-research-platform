@@ -1,6 +1,7 @@
 import abc
 from domain.strategies.mean_variance_strategy import MeanVarianceStrategy
 from domain.strategies.fixed_weight_strategy import FixedWeightStrategy
+from domain.strategies.equal_weight_strategy import EqualWeightStrategy
 
 class IStrategyFactory(abc.ABC):
     """Interface for optimizer factories."""
@@ -12,7 +13,8 @@ class StrategyFactory(IStrategyFactory):
 
     _strategies = {
         "mean_variance_strategy": MeanVarianceStrategy,
-        "fwp_strategy": FixedWeightStrategy
+        "fwp_strategy": FixedWeightStrategy,
+        "ewp_strategy": EqualWeightStrategy
     }
 
     """Concrete implementation of an optimizer factory."""

@@ -6,9 +6,23 @@
     "start_date": "2005-01-01",
     "end_date": "2026-02-19",
     "data_source": { "yfinance": null },
-    "benchmark_universe": "SPY"
+    "benchmark": "SPY"
   },
   "strategies": [
+    {
+      "name": "benchmark_portfolio",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "w",
+        "universe_tickers": ["SPY"]
+      },
+      "signals_config": {},
+      "rebalance_problem": {
+        "strategy_type": "fwp_strategy",
+        "optimizer_type": "fwp_optimizer",
+        "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
+      }
+    },
     {
       "name": "fixed_weight_portfolio",
       "market_state_config": {
@@ -40,11 +54,11 @@
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95}
       },
       "rebalance_problem": {
-        "strategy_type": "fwp_strategy",
+        "strategy_type": "ewp_strategy",
         "optimizer_type": "fwp_optimizer",
         "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
       }
-    },    
+    },
     {
       "name": "high_risk",
       "market_state_config": {

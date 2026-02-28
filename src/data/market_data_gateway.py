@@ -1,14 +1,16 @@
 import yfinance as yf
 import pandas as pd
 from models.market_config import MarketStoreConfig
-from utils.lookback_windows import LOOKBACK_WINDOWS
 
 class MarketDataGateway:
     """ Data gateway for fetching market data using yfinance """
     @staticmethod
     def get_price_data(market_store_config: MarketStoreConfig):
-        data_source = market_store_config.data_source
         tickers = market_store_config.tickers
+        benchmark_ticker = market_store_config.benchmark
+        if benchmark_ticker not in tickers:
+            tickers.append(benchmark_ticker)
+        data_source = market_store_config.data_source
         start_date = market_store_config.start_date
         end_date = market_store_config.end_date
 

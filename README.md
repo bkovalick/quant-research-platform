@@ -56,7 +56,6 @@ src/
 ## Key Modules & Their Purpose
 
 - **main.py**: Entry point for running experiments and orchestrating workflows.
-- **controller.py**: Coordinates application logic and flow.
 - **application/**: Contains experiment runner and application-level orchestration.
 - **config/**: Stores configuration files and settings for experiments.
 - **data/**: Handles market data ingestion and metadata management.
