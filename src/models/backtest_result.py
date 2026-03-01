@@ -1,6 +1,14 @@
 from dataclasses import dataclass
 from typing import Dict, List, Any
 import pandas as pd
+import numpy as np
+
+def _sanitize_list(values):
+    return [
+        None if (isinstance(v, float) and (np.isnan(v) or np.isinf(v)))
+        else v
+        for v in values
+    ]    
 
 @dataclass(frozen=True)
 class BacktestResult:
@@ -18,14 +26,17 @@ class BacktestResult:
     
     def _serialize(self, obj):
         if isinstance(obj, pd.Series):
+            values = obj.values.tolist()
             return {
                 "index": obj.index.astype(str).tolist(),
-                "values": obj.values.tolist()
+                "values": _sanitize_list(values)
             }
         if isinstance(obj, pd.DataFrame):
+            values = obj.values.tolist()
+            sanitized = [ _sanitize_list(row) for row in values ]            
             return {
                 "index": obj.index.astype(str).tolist(),
                 "columns": obj.columns.tolist(),
-                "values": obj.values.tolist()
+                "values": sanitized
             }
         return obj

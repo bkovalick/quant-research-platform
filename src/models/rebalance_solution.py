@@ -23,7 +23,7 @@ class RebalanceSolution:
             portfolio_weights=self.decision_variables['portfolio_weights']
         )
 
-@dataclass
+@dataclass(frozen=True)
 class RebalanceSubSolution:
     """
     Data class representing a rebalanced portfolio solution
