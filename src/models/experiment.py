@@ -22,3 +22,11 @@ class Experiment:
             }
             for run in self.strategy_runs
         ]
+    
+    def to_dict(self):
+        return {
+            "summary": self.experiment_id,
+            "created_at": self.created_at.isoformat(),
+            "market_config": self.market_config,
+            "strategy_runs": [ run.to_dict() for run in self.strategy_runs ]
+        }

@@ -1,4 +1,4 @@
-from data.market_data_gateway import MarketDataStore
+from infrastructure.market_data_gateway import MarketDataStore
 from models.experiment import Experiment
 from models.strategy_run import StrategyRun
 from domain.portfolio.portfolio import Portfolio

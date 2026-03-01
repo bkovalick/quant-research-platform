@@ -1,6 +1,6 @@
 from models.market_config import MarketStateConfig
-from data.market_data_gateway import MarketDataStore
-from data.market_metadata import MarketMetadata
+from infrastructure.market_data_gateway import MarketDataStore
+from reference.market_metadata import MarketMetadata
 
 import pandas as pd
 from datetime import datetime

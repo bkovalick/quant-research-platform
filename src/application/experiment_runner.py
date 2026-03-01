@@ -10,7 +10,7 @@ from models.market_config import MarketStoreConfig, MarketStateConfig
 from models.signals_config import SignalsConfig
 from models.rebalance_problem import RebalanceProblem
 from models.experiment import Experiment
-from data.market_data_gateway import MarketDataStore
+from infrastructure.market_data_gateway import MarketDataStore
 
 import uuid
 from datetime import datetime
