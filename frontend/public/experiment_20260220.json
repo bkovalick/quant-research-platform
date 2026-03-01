@@ -1,0 +1,115 @@
+{
+  "market_store_config": {
+	"tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
+                "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA"
+            ],
+    "start_date": "2005-01-01",
+    "end_date": "2026-02-19",
+    "data_source": { "yfinance": null },
+    "benchmark": "SPY"
+  },
+  "strategies": [
+    {
+      "name": "benchmark_portfolio",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "w",
+        "universe_tickers": ["SPY"]
+      },
+      "signals_config": {},
+      "rebalance_problem": {
+        "strategy_type": "fwp_strategy",
+        "optimizer_type": "fwp_optimizer",
+        "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
+      }
+    },
+    {
+      "name": "fixed_weight_portfolio",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "w",
+        "cash_allocation": 0.0,        
+        "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX"]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {"lower": 0.05, "upper": 0.95}
+      },      
+      "rebalance_problem": {
+        "strategy_type": "fwp_strategy",
+        "optimizer_type": "fwp_optimizer",
+        "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
+      }
+    },
+    {
+      "name": "equal_weight_portfolio",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "w",
+        "cash_allocation": 0.0,
+        "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX"]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {"lower": 0.05, "upper": 0.95}
+      },
+      "rebalance_problem": {
+        "strategy_type": "ewp_strategy",
+        "optimizer_type": "fwp_optimizer",
+        "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
+      }
+    },
+    {
+      "name": "high_risk",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "w",
+        "cash_allocation": 0.05,
+        "universe_tickers": ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
+            "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA"
+        ]        
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {"lower": 0.05, "upper": 0.95}
+      },      
+      "rebalance_problem": {
+        "strategy_type": "mean_variance_strategy",
+        "optimizer_type": "portfolio_optimizer",
+        "benchmark_universe": "SPY",
+        "rebalance_frequency": {"from": "w", "to": "w", "steps": 1},
+        "apply_max_return_objective": true,
+        "apply_sharpe_objective": false,
+        "constraints": {
+            "risk_tolerance": 0.10,
+            "risk_free_rate": 0.03,
+            "concentration_strength": 1,
+            "max_return": 0.25,
+            "turnover_limit": 0.30,
+            "min_position_size": 0.0,
+            "max_position_size": 0.35,  
+            "max_positions": 50,
+            "asset_class_constraints": { 
+                "Equity": [0.70, 0.90], 
+                "Fixed Income": [0.05, 0.25], 
+                "Cash": [0.0, 0.025] 
+            },
+            "sector_constraints": {
+                "Information Technology": [0.25, 0.45], 
+                "US Aggregate": [0.05, 0.25],
+                "Communication Services": [0.10, 0.20],
+                "Financials": [0.10, 0.20],
+                "Consumer Discretionary": [0.10, 0.15], 
+                "Consumer Staples": [0.075, 0.15],
+                "Health Care": [0.10, 0.15],
+                "Materials": [0.0, 0.05],
+                "Energy": [0.0, 0.04],
+                "Real Estate": [0.0, 0.025],
+                "Utilities": [0.0, 0.02],
+                "Industrials": [0.0, 0.02]
+            }
+        }        
+      }
+    }
+  ]
+}
