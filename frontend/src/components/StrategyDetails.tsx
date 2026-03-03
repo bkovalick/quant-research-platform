@@ -7,32 +7,151 @@ import {
   ResponsiveContainer
 } from "recharts"
 
-export default function StrategyDetails({ run }: any) {
-  const series = run.result.series.cumulative_returns
+import type { CSSProperties } from "react"
 
-  const data = series.index.map((date: string, i: number) => ({
-    date,
-    value: series.values[i]
-  }))
+const colors = [
+  "#3fb950",
+  "#1f6feb",
+  "#d29922",
+  "#f85149",
+  "#a371f7",
+  "#56d364"
+]
+
+export default function StrategyDetails({ runs }: any) {
+  if (!runs || runs.length === 0) return null
+
+  // Assume all strategies share same index
+  const baseSeries = runs[0].result.series.portfolio_wealth_factors
+  if (!baseSeries) return null
+
+  const data = baseSeries.index.map((date: string, i: number) => {
+    const row: any = { date }
+
+    runs.forEach((run: any) => {
+      const wealth =
+        run.result.series.portfolio_wealth_factors?.values[i]
+
+      row[run.strategy_name] = wealth
+    })
+
+    return row
+  })
 
   return (
-    <div>
-      <h3>Equity Curve</h3>
-      <div style={{ height: 300 }}>
+    <div style={container}>
+      <h3 style={title}>Cumulative Performance (Log Scale)</h3>
+
+      <div style={{ height: 400 }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
-            <XAxis dataKey="date" hide />
-            <YAxis />
-            <Tooltip />
-            <Line
-              type="monotone"
-              dataKey="value"
-              stroke="#1f6feb"
-              dot={false}
+            <XAxis
+                dataKey="date"
+                tickFormatter={(date: string | number) => {
+                const d = new Date(date)
+                return d.getFullYear().toString()
+                }}
+                interval="preserveStartEnd"
+                tick={{ fill: "#8b949e", fontSize: 12 }}
+                minTickGap={50}
             />
+
+            <YAxis
+                scale="log"
+                domain={["auto", "auto"]}
+                tickFormatter={(val) => val.toFixed(0)}
+                tick={{ fill: "#8b949e", fontSize: 12 }}
+            />
+
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#161b22",
+                border: "1px solid #2a2f3a"
+              }}
+            />
+
+            {runs.map((run: any, i: number) => (
+              <Line
+                key={run.run_id}
+                type="monotone"
+                dataKey={run.strategy_name}
+                stroke={colors[i % colors.length]}
+                strokeWidth={2}
+                dot={false}
+              />
+            ))}
           </LineChart>
         </ResponsiveContainer>
+
+        <div style={legendContainer}>
+        {runs.map((run: any, i: number) => (
+            <div key={run.run_id} style={legendItem}>
+            <span
+                style={{
+                ...legendDot,
+                backgroundColor: colors[i % colors.length]
+                }}
+            />
+            <span style={legendText}>
+                {formatStrategyName(run.strategy_name)}
+            </span>
+            </div>
+        ))}
+        </div>        
       </div>
     </div>
   )
+}
+
+
+function formatStrategyName(name: string) {
+  return name
+    .replace("_portfolio", "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+const legendContainer: CSSProperties = {
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  gap: 32,
+  marginBottom: 16,
+  flexWrap: "nowrap",
+  overflowX: "auto"
+}
+
+const legendItem: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  whiteSpace: "nowrap"
+}
+
+const legendDot: CSSProperties = {
+  width: 10,
+  height: 10,
+  borderRadius: "50%"
+}
+
+const legendText: CSSProperties = {
+  fontSize: 13,
+  color: "#8b949e",
+  fontWeight: 500
+}
+
+const container = {
+  marginTop: 40,
+  background: "#161b22",
+  padding: 20,
+  borderRadius: 10,
+  border: "1px solid #2a2f3a"
+}
+
+const title: CSSProperties = {
+  marginBottom: 20,
+  fontWeight: 600,
+  fontSize: 18,
+  textAlign: "center",
+  letterSpacing: "0.5px"
 }

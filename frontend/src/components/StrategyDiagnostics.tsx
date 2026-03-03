@@ -1,19 +1,19 @@
 import { useState, useMemo } from "react"
 import type { CSSProperties } from "react"
 
-type SortKey =
+type PerformanceSortKey =
   | "strategy_name"
   | "return"
-  | "volatility"
+  | "alpha"
   | "sharpe_ratio"
-  | "max_drawdown"
-  | "turnover"
+  | "sortino_ratio"
+  | "calmar_ratio"
 
-export default function StrategyGrid({ runs, onSelect }: any) {
-  const [sortKey, setSortKey] = useState<SortKey>("sharpe_ratio")
+export default function Performance({ runs, onSelect }: any) {
+  const [sortKey, setSortKey] = useState<PerformanceSortKey>("sharpe_ratio")
   const [ascending, setAscending] = useState(false)
 
-  const handleSort = (key: SortKey) => {
+  const handleSort = (key: PerformanceSortKey) => {
     if (sortKey === key) {
       setAscending(!ascending)
     } else {
@@ -45,20 +45,19 @@ export default function StrategyGrid({ runs, onSelect }: any) {
 
       return ascending ? valA - valB : valB - valA
     })
-  }, [runs, sortKey, ascending])
-
+  }, [runs, sortKey, ascending])    
   return (
     <div style={container}>
-      <h3 style={sectionTitle}>Strategy Overview</h3>
+      <h3 style={sectionTitle}>Performance Diagnostics</h3>
       <table style={table}>
         <thead>
           <tr style={headerRow}>
             <HeaderCell label="Strategy" onClick={() => handleSort("strategy_name")} />
             <HeaderCell label="Return" onClick={() => handleSort("return")} />
-            <HeaderCell label="Vol" onClick={() => handleSort("volatility")} />
+            <HeaderCell label="Alpha" onClick={() => handleSort("alpha")} />
             <HeaderCell label="Sharpe" onClick={() => handleSort("sharpe_ratio")} />
-            <HeaderCell label="Max DD" onClick={() => handleSort("max_drawdown")} />
-            <HeaderCell label="Turnover" onClick={() => handleSort("turnover")} />
+            <HeaderCell label="Sortino" onClick={() => handleSort("sortino_ratio")} />
+            <HeaderCell label="Calmar" onClick={() => handleSort("calmar_ratio")} />
           </tr>
         </thead>
 
@@ -77,16 +76,16 @@ export default function StrategyGrid({ runs, onSelect }: any) {
                   {formatPct(s.return)}
                 </td>
                 <td style={rightCell}>
-                  {formatPct(s.volatility)}
+                  {formatNumber(s.alpha)}
                 </td>
                 <td style={rightCell}>
                   {formatNumber(s.sharpe_ratio)}
                 </td>
-                <td style={rightCellRed(s.max_drawdown)}>
-                  {formatPct(s.max_drawdown)}
+                <td style={rightCell}>
+                  {formatNumber(s.sortino_ratio)}
                 </td>
                 <td style={rightCell}>
-                  {formatNumber(s.turnover)}
+                  {formatNumber(s.calmar_ratio)}
                 </td>
               </tr>
             )
@@ -94,17 +93,22 @@ export default function StrategyGrid({ runs, onSelect }: any) {
         </tbody>
       </table>
     </div>
-  )
+  )    
 }
+
+// export default function Risk({ runs, onSelect }: any) {
+
+// }
+
+// export default function TailRisk({ runs, onSelect }: any) {
+
+// }
+
+// export default function TradeStats({ runs, onSelect }: any) {
+
+// }
 
 /* ---------- Helpers ---------- */
-function formatStrategyName(name: string) {
-  return name
-    .replace("_portfolio", "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
 function keyIsSummary(key: string) {
   return key !== "strategy_name"
 }
@@ -125,6 +129,13 @@ function HeaderCell({ label, onClick }: any) {
       {label}
     </th>
   )
+}
+
+function formatStrategyName(name: string) {
+  return name
+    .replace("_portfolio", "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 /* ---------- Styles ---------- */

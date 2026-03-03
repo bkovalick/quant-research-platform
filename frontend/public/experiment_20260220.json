@@ -19,7 +19,7 @@
       "signals_config": {},
       "rebalance_problem": {
         "strategy_type": "fwp_strategy",
-        "optimizer_type": "fwp_optimizer",
+        "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
       }
     },
@@ -37,8 +37,9 @@
       },      
       "rebalance_problem": {
         "strategy_type": "fwp_strategy",
-        "optimizer_type": "fwp_optimizer",
-        "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": {"from": "w", "to": "w", "steps": 1},
+        "initial_weights": [0.20, 0.20, 0.15, 0.15, 0.10, 0.025, 0.125]
       }
     },
     {
@@ -55,7 +56,7 @@
       },
       "rebalance_problem": {
         "strategy_type": "ewp_strategy",
-        "optimizer_type": "fwp_optimizer",
+        "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": {"from": "w", "to": "w", "steps": 1}
       }
     },

@@ -3,10 +3,11 @@ import type { CSSProperties } from "react"
 import Sidebar from "./components/Sidebar"
 import StrategyGrid from "./components/StrategyGrid"
 import StrategyDetails from "./components/StrategyDetails"
+import StrategyDiagnostics from "./components/StrategyDiagnostics"
 
 export default function App() {
   const [experiment, setExperiment] = useState<any>(null)
-  const [selectedRun, setSelectedRun] = useState<any>(null)
+  const [setSelectedRun] = useState<any>(null)
 
   return (
     <div style={styles.app}>
@@ -16,21 +17,29 @@ export default function App() {
 
       <div style={styles.main}>
         <h2 style={{ marginBottom: 20 }}>Research Cockpit</h2>
+          {experiment && (
+            <>
+              <StrategyGrid
+                runs={experiment.strategy_runs}
+                onSelect={setSelectedRun}
+              />
 
-        {experiment && (
-          <>
-            <StrategyGrid
-              runs={experiment.strategy_runs}
-              onSelect={setSelectedRun}
-            />
-            {selectedRun && (
-              <StrategyDetails run={selectedRun} />
-            )}
-          </>
-        )}
+              <StrategyDetails
+                runs={experiment.strategy_runs}
+              />
+
+              <div style={sectionSpacing}>
+                <StrategyDiagnostics runs={experiment.strategy_runs} />
+              </div>
+            </>
+          )}
       </div>
     </div>
   )
+}
+
+const sectionSpacing: CSSProperties = {
+  marginTop: 50
 }
 
 const styles: { [key: string]: CSSProperties } = {
@@ -48,7 +57,9 @@ const styles: { [key: string]: CSSProperties } = {
   },
   main: {
     flex: 1,
-    padding: 24,
-    overflowY: "auto"
+    padding: "32px 48px",
+    overflowY: "auto",  
+    maxWidth: 1600,
+    margin: "0 auto"
   }
 }

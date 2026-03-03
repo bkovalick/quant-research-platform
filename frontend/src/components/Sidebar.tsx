@@ -3,12 +3,10 @@ import axios from "axios"
 export default function Sidebar({ setExperiment }: any) {
   const runExperiment = async () => {
     const config = await fetch("/experiment_20260220.json").then(res => res.json())
-
     const res = await axios.post(
         "http://localhost:8000/run-experiment",
         config
     )
-
     setExperiment(res.data)
   }
 

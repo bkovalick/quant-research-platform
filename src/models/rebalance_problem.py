@@ -12,7 +12,7 @@ class RebalanceProblem:
         return dict(self._data)
         
     @property
-    def n_constituents(self) -> int:
+    def n_assets(self) -> int:
         return self._data.get("n_assets", 5)
     
     @property

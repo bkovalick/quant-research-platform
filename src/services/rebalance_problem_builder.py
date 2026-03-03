@@ -13,7 +13,7 @@ class RebalanceProblemBuilder:
         cash_allocation = self.universe_meta.get("cash_allocation", 0.0)
         tickers = self.universe_meta.get("tickers", ["AAPL"])
         n_assets = len(tickers)
-        initial_weights = [ 1 / n_assets for t in range(n_assets) ]
+        initial_weights = self.config.get("initial_weights", [ 1 / n_assets for t in range(n_assets) ])
         if cash_allocation > 0:
             initial_weights = [ (1 - cash_allocation) / (n_assets - 1) for t in range(n_assets - 1) ]
             initial_weights += [cash_allocation]

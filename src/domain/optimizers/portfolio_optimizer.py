@@ -41,7 +41,7 @@ class PortfolioOptimizer(IOptimizer):
 
 	def _setup_decision_variables(self, rebalance_problem: RebalanceProblem) -> dict:
 		"""Setup decision variables for the optimization problem."""
-		n_assets = rebalance_problem.n_constituents
+		n_assets = rebalance_problem.n_assets
 		portfolio_weights = cp.Variable(n_assets)
 		return {'portfolio_weights': portfolio_weights}
 

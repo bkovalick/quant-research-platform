@@ -6,14 +6,14 @@ from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
 
 def local_run():
-    with open(f"src/config/experiment_20260220.json", 'r') as f:
+    with open(f"src/config/experiment_fwp.json", 'r') as f:
         config = json.load(f)
 
     config = config.copy()
     runner = ExperimentRunner(config)
     experiment_results = runner.run_parallel()
     reporting_module = ExcelGenerator(experiment_results, "backtest_results")
-    reporting_module.generate_report()     
+    reporting_module.generate_report()
 
 app = FastAPI()
 
@@ -45,6 +45,7 @@ def list_experiments(config: dict):
 if __name__ == '__main__':
     import os
     run_mode = os.environ.get("RUN_MODE", "api").lower()
+    run_mode = "local"
     if run_mode == "local":
         local_run()
     else:
