@@ -43,7 +43,7 @@ class BacktestingEngine(BacktestingEngineInterface):
         while self.market_state.has_next():
             self.market_state.advance()
 
-            print(f"Backtesting Date: {self.market_state.current_date()}")
+            print(f"Backtesting Date: {self.market_state.current_date().strftime("%Y-%m-%d")}")
             cursor = self.market_state.cursor
             
             current_returns = self.market_state.returns.iloc[cursor]
@@ -69,3 +69,20 @@ class BacktestingEngine(BacktestingEngineInterface):
     def _get_steps(self, freq_param):
         key = (freq_param['from'], freq_param['to'])
         return FREQ_TO_STEPS.get(key)
+    
+class SignalsFactory:
+    def __init__(self, config):
+        self.config = config
+        self.signals = dict()
+        
+    def build_signals_factory(self) -> dict:
+        pass
+
+    def _add_base_signals(self):
+        pass
+
+    def _add_moving_average_signals(self):
+        pass
+
+    def _add_volatility_signals(self):
+        pass

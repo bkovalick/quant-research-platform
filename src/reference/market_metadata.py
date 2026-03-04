@@ -1,5 +1,14 @@
+import os
 import pandas as pd
 from os import path
+
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = BASE_DIR / "data"
+
+FIXED_INCOME_FILE = DATA_DIR / "fixed_income_universe.csv"
+EQUITY_FILE = DATA_DIR / "equity_universe.csv"
 
 class MarketMetadata:
     @staticmethod
@@ -18,7 +27,7 @@ class MarketMetadata:
         return asset_class_map
     
     @staticmethod
-    def build_sector_map(tickers_with_cash) -> dict:
+    def build_sector_map(tickers_with_cash: list) -> dict:
         """Build and asset/sector grouping related to the assets in the investable universe."""
         full_mapping_df = MarketMetadata.get_full_mapping_universe()
         sector_df = full_mapping_df[full_mapping_df['ticker'].isin(tickers_with_cash)]
@@ -49,10 +58,10 @@ class MarketMetadata:
     @staticmethod
     def get_fixed_income_mapping_universe() -> pd.DataFrame:
         """ Get fixed income universe dataframe """
-        if not path.exists("data/fixed_income_universe.csv"):
+        if not FIXED_INCOME_FILE.exists():
             raise FileNotFoundError("Fixed income universe file not found.")
-        return pd.read_csv("data/fixed_income_universe.csv")
-        
+        return pd.read_csv(FIXED_INCOME_FILE)
+                
     @staticmethod
     def get_fixed_income_sector_mapping() -> dict:
         """ Get sector mapping for fixed income """
@@ -70,9 +79,9 @@ class MarketMetadata:
     @staticmethod
     def get_equity_mapping_universe() -> pd.DataFrame:
         """ Get equity universe dataframe """
-        if not path.exists("data/equity_universe.csv"):
-            raise FileNotFoundError("Equity universe file not found.")
-        return pd.read_csv("data/equity_universe.csv")    
+        if not EQUITY_FILE.exists():
+            raise FileNotFoundError("Fixed income universe file not found.")
+        return pd.read_csv(EQUITY_FILE)
 
     @staticmethod
     def get_equity_sector_mapping() -> dict:

@@ -48,3 +48,13 @@ class MarketStoreConfig:
             end_date = d.get("end_date", "2026-02-19"),
             data_source = d.get("data_source", { "yfinance": None })  
         )
+    
+    def to_dict(self):
+        return {
+            "tickers": self.tickers,
+            "benchmark": self.benchmark,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
+            "data_source": self.data_source                 
+        }
+    

@@ -311,7 +311,7 @@ class MetricsCompute:
             "conditional_value_at_risk_95": performance_metrics["conditional_value_at_risk_95"],
             "conditional_value_at_risk_97.5": performance_metrics["conditional_value_at_risk_97.5"],
             "conditional_value_at_risk_99": performance_metrics["conditional_value_at_risk_99"],
-            "alpha_decay": performance_metrics["alpha_decay"]         
+            "alpha_decay": performance_metrics["alpha_decay"]
         }
         return performance_summary
 
