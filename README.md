@@ -1,3 +1,34 @@
+# Running the UI (Frontend & Backend)
+
+## Backend
+1. Create and activate your virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Start the backend server (adjust as needed for your backend framework):
+   ```bash
+   python -m src.main
+   ```
+
+## Frontend
+1. Navigate to the frontend directory (e.g., `ui/` or `frontend/`).
+2. Install frontend dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the frontend development server:
+   ```bash
+   npm start
+   ```
+4. The frontend will typically run on `http://localhost:3000` (check your framework's default).
+
+## Accessing the App
+Open your browser and go to `http://localhost:3000` to use the UI. Ensure the backend is running for full functionality.
 # Portfolio Optimizer
 
 ## Overview
@@ -139,22 +170,33 @@ generate_report(results)
 - CVXPY (for optimization)
 - See `requirements.txt` for full list
 
-## Setup
+**Setup:**
+   - Create and activate a virtualenv in root: `.venv/`
+   - Install dependencies: `pip install -r requirements.txt`
+   - MOSEK and Gurobi require licenses (see vendor docs; set env vars as needed).
 
-1. Create and activate a virtual environment:
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+**Run:**
+   - Entry point: [src/main.py](src/main.py)
+   - Typical pattern: build config dict → use `RebalanceProblemBuilder` → pass to strategy layer → pass to optimizer → run backtest.
+   - Example:
+      ```python
+      builder = RebalanceProblemBuilder(config)
+      problem = builder.build()
+      strategy = MyStrategy()
+      problem = strategy.apply(problem)  # Strategy modifies or selects aspects of the problem
+      optimizer.optimize(problem)
+      ```
 
-## License
+**Adding a strategy:**
+   - Create a new class in `src/domain/strategies/`, inheriting from a base strategy interface.
+   - Implement the `apply()` or `rebalance()` method to select signals, constraints, or objectives.
+   - Integrate with the workflow above.
 
-See CVXPY and other library documentation for licensing.
+**Adding an optimizer:**
+   - Create a new subdir in `src/core/optimizers/`, implement class inheriting `IOptimizer`.
+   - Register in `optimizer_factory._optimizers`.
+   - Use MOSEK Fusion idioms as above.
 
----
-
-For more details, see the source code and configuration files in the `src/` directory.
+**Data ingestion:**
+   - Update both `marketdatagateway.py` and `RebalanceProblemBuilder` if changing data sources or formats.
+   - Builders expect cleaned numpy arrays for all statistics.
