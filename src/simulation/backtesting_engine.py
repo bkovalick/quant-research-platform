@@ -3,7 +3,7 @@ import time
 
 from domain.portfolio.iportfolio import PortfolioInterface
 from domain.strategies.istrategy import StrategyInterface
-from domain.signals.signals import Signals
+from domain.signals.signals import Signals, MovingAverageSignals, VolatilityForecastingSignals
 from models.rebalance_problem import RebalanceProblem
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
@@ -70,19 +70,9 @@ class BacktestingEngine(BacktestingEngineInterface):
         key = (freq_param['from'], freq_param['to'])
         return FREQ_TO_STEPS.get(key)
     
-class SignalsFactory:
-    def __init__(self, config):
-        self.config = config
-        self.signals = dict()
-        
-    def build_signals_factory(self) -> dict:
-        pass
-
-    def _add_base_signals(self):
-        pass
-
-    def _add_moving_average_signals(self):
-        pass
-
-    def _add_volatility_signals(self):
-        pass
+    def _build_signals(market_state, signals_config):
+        return {
+            "base": Signals(market_state, signals_config),
+            "moving_average": MovingAverageSignals(market_state, signals_config),
+            "volatility": VolatilityForecastingSignals(market_state, signals_config)
+        }    

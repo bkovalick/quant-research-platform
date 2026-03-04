@@ -89,4 +89,4 @@ class VolatilityForecastingSignals(Signals):
             am = arch_model(p[col].dropna(), vol='Garch', p=1, q=1)
             res = am.fit(disp='off')
             vols.append(res.conditional_volatility[-1] * np.sqrt(self.ann_factor))
-        return pd.Series(vols, index=p.columns)        
+        return pd.Series(vols, index=p.columns)
