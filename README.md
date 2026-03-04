@@ -177,23 +177,25 @@ generate_report(results)
 
 **Run:**
    - Entry point: [src/main.py](src/main.py)
-   - Typical pattern: build config dict → use `RebalanceProblemBuilder` → pass to strategy layer → pass to optimizer → run backtest.
+   - Typical pattern: build config dict → use `RebalanceProblemBuilder` → pass to optimizer layer → pass to problem and optimizer to strategy layer → run backtest.
    - Example:
       ```python
       builder = RebalanceProblemBuilder(config)
       problem = builder.build()
-      strategy = MyStrategy()
-      problem = strategy.apply(problem)  # Strategy modifies or selects aspects of the problem
-      optimizer.optimize(problem)
+      portfolio = Portfolio(...)  # Create portfolio instance
+      optimizer = MyOptimizer(problem) # Initialize optimizer with problem
+      strategy = MyStrategy(problem, optimizer) # Initialize strategy with problem and optimizer
+      signals = SignalsConfig(...)  # Define signals configuration
+      problem = strategy.rebalance(signals, portfolio.weights.iloc[current_date])  # Strategy modifies or selects aspects of the problem
       ```
 
 **Adding a strategy:**
    - Create a new class in `src/domain/strategies/`, inheriting from a base strategy interface.
-   - Implement the `apply()` or `rebalance()` method to select signals, constraints, or objectives.
+   - Implement the `rebalance()` method by passing signals and the current portfolio.
    - Integrate with the workflow above.
 
 **Adding an optimizer:**
-   - Create a new subdir in `src/core/optimizers/`, implement class inheriting `IOptimizer`.
+   - Create a new class in `src/domain/optimizers/`, implement class inheriting `IOptimizer`.
    - Register in `optimizer_factory._optimizers`.
    - Use MOSEK Fusion idioms as above.
 
