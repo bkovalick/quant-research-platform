@@ -96,13 +96,21 @@ builder = RebalanceProblemBuilder(config)
 rebalance_problem = builder.build()
 ```
 
-### 4. Optimizing a Portfolio
+### 4. Configuring a Strategy
 
 ```python
+from services.strategy_factory import get_strategy
 from services.optimizer_factory import get_optimizer
 
 optimizer = get_optimizer("mean_variance")
-solution = optimizer.optimize(rebalance_problem)
+strategy = get_strategy("mean_variance", rebalance_problem, optimizer)
+
+# On each rebalance date the strategy:
+#   1. Receives signals (mean returns, covariance) from the Signals object
+#   2. Calls optimizer.optimize(rebalance_problem, signals, current_weights)
+#   3. Applies post-optimisation rules (e.g. vol targeting, cash residual)
+#   4. Returns a new np.ndarray of portfolio weights
+new_weights = strategy.rebalance(signals, current_weights)
 ```
 
 ### 5. Backtesting
