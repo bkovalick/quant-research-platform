@@ -275,6 +275,7 @@ class MetricsCompute:
                 
         performance_series = {
             "portfolio_wealth_factors": performance_metrics["portfolio_wealth_factors"],
+            "portfolio_trades": performance_metrics["portfolio_trades"],
             "portfolio_weights": performance_metrics["portfolio_weights"],
             "portfolio_returns": performance_metrics["portfolio_returns"],
             "portfolio_turnover": performance_metrics["portfolio_turnover"],
