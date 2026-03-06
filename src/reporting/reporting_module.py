@@ -142,9 +142,8 @@ class MetricsCompute:
         portfolio_weights = portfolio.weights
         portfolio_trades = portfolio.weights.diff().fillna(0)
         if isinstance(portfolio_trades, pd.DataFrame):
-            portfolio_trades = portfolio_trades.sum(axis=1).values
-        else:
-            portfolio_trades = portfolio_trades.values
+            portfolio_trades = portfolio_trades.sum(axis=1)
+
         portfolio_returns = portfolio.returns
         portfolio_turnover = portfolio.turnover
         wealth_factors = (1 + portfolio_returns).cumprod()
