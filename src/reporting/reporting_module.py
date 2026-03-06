@@ -79,6 +79,7 @@ class ExcelGenerator:
                 weights_df.insert(2, "WealthFactor", strategy_run.result.series["portfolio_wealth_factors"].values)
                 weights_df.insert(3, "PortfolioReturns", strategy_run.result.series["portfolio_returns"].values)
                 weights_df.insert(4, "PortfolioTurnover", strategy_run.result.series["portfolio_turnover"].values)
+                weights_df.insert(5, "PortfolioTrades", strategy_run.result.series["portfolio_trades"].values)
                 portfolio_dfs.append(weights_df)
 
             if "rolling_returns" in strategy_run.result.series:
