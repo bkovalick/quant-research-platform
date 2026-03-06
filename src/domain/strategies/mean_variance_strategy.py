@@ -23,19 +23,19 @@ class MeanVarianceStrategy(StrategyInterface):
 
         if getattr(self.rebalance_problem, 'vol_target', None):
             self._apply_vol_targeting(risk_return_signals, optimized_weights)
-            
+
         return optimized_weights
     
     def _apply_vol_targeting(self, 
                              risk_return_signals: Signals, 
-                             current_weights: np.ndarray) -> np.ndarray:
+                             optimized_weights: np.ndarray) -> np.ndarray:
         vol_target = getattr(self.rebalance_problem, "vol_target")
         vol_max_leverage = getattr(self.rebalance_problem, "vol_max_leverage")
-        realized_vol = risk_return_signals.portfolio_vol(current_weights)
+        realized_vol = risk_return_signals.portfolio_vol(optimized_weights)
         scaling_factor = min(vol_target / realized_vol, vol_max_leverage) if realized_vol > 0 else 1.0
 
-        adjusted_weights = current_weights.copy()
-        adjusted_weights[:-1] = current_weights[:-1] * scaling_factor
+        adjusted_weights = optimized_weights.copy()
+        adjusted_weights[:-1] = optimized_weights[:-1] * scaling_factor
         adjusted_weights[-1] = 1.0 - np.sum(adjusted_weights[:-1])
 
         return adjusted_weights

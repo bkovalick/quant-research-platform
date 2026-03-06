@@ -40,8 +40,8 @@ class RebalanceProblem:
         return self._data.get("cash_allocation")
     
     @property
-    def rebalance_frequency(self) -> dict:
-        return self._data.get("rebalance_frequency", {})
+    def rebalance_frequency(self) -> str:
+        return self._data.get("rebalance_frequency", "weekly")
     
     @property
     def risk_aversion(self) -> int:
