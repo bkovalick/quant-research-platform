@@ -55,7 +55,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             if not self._is_rebalance_step(cursor):
                 continue
 
-            signals = Signals(self.market_state, self.signals_cfg)
+            signals = self._build_signals(self.market_state, self.signals_cfg)
             target_weights = self.strategy.rebalance(signals, prev_weights)
             self.portfolio.apply(target_weights, prev_weights, cursor)
             prev_weights = target_weights
@@ -70,9 +70,9 @@ class BacktestingEngine(BacktestingEngineInterface):
         key = (freq_param['from'], freq_param['to'])
         return FREQ_TO_STEPS.get(key)
     
-    def _build_signals(market_state, signals_config):
+    def _build_signals(self, market_state: MarketState, signals_config: SignalsConfig) -> dict:
         return {
             "base": Signals(market_state, signals_config),
             "moving_average": MovingAverageSignals(market_state, signals_config),
             "volatility": VolatilityForecastingSignals(market_state, signals_config)
-        }    
+        } 

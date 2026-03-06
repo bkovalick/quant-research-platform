@@ -13,11 +13,16 @@ class RebalanceProblemBuilder:
         cash_allocation = self.universe_meta.get("cash_allocation", 0.0)
         tickers = self.universe_meta.get("tickers", ["AAPL"])
         n_assets = len(tickers)
-        initial_weights = self.config.get("initial_weights", [ 1 / n_assets for t in range(n_assets) ])
-        if cash_allocation > 0:
-            initial_weights = [ (1 - cash_allocation) / (n_assets - 1) for t in range(n_assets - 1) ]
-            initial_weights += [cash_allocation]
+        explicit_weights = self.config.get("initial_weights", None)
+        if explicit_weights:
+            initial_weights = explicit_weights
+        elif cash_allocation > 0:
+            initial_weights = [(1 - cash_allocation) / (n_assets - 1)] * (n_assets - 1) + [cash_allocation]
+        else:
+            initial_weights = [1 / n_assets] * n_assets
 
+        constraints = self.config.get("constraints", {})
+        strategy_rules = self.config.get("strategy_rules", {}) 
         prepared_data = {
             "n_assets": n_assets,
             "optimizer_type": self.config.get("optimizer_type"),
@@ -27,19 +32,22 @@ class RebalanceProblemBuilder:
             "initial_weights": initial_weights,
             "cash_allocation": cash_allocation,
             "rebalance_frequency": self.config.get("rebalance_frequency", None),
-            "risk_tolerance": self.config.get("constraints", {}).get("risk_tolerance", 0.05),
-            "risk_free_rate": self.config.get("constraints", {}).get("risk_free_rate", 0.03),
-            "turnover_limit": self.config.get("constraints", {}).get("turnover_limit", None),
-            "min_position_size": self.config.get("constraints", {}).get("min_position_size", None),
-            "max_position_size": self.config.get("constraints", {}).get("max_position_size", None),
-            "max_number_of_positions": self.config.get("constraints", {}).get("max_number_of_positions", None),
-            "asset_class_constraints": self.config.get("constraints", {}).get("asset_class_constraints", None),
-            "sector_constraints": self.config.get("constraints", {}).get("sector_constraints", None),
-            "max_return": self.config.get("constraints", {}).get("max_return", 0.05),
-            "concentration_strength": self.config.get("constraints", {}).get("concentration_strength", 1),
+            "risk_aversion": constraints.get("risk_aversion", 1),
+            "turnover_limit": constraints.get("turnover_limit", None),
+            "min_position_size": constraints.get("min_position_size", None),
+            "max_position_size": constraints.get("max_position_size", None),
+            "max_number_of_positions": constraints.get("max_number_of_positions", None),
+            "asset_class_constraints": constraints.get("asset_class_constraints", None),
+            "sector_constraints": constraints.get("sector_constraints", None),
+            "max_return": constraints.get("max_return", 0.05),
+            "concentration_strength": constraints.get("concentration_strength", 1),
             "asset_class_map": self.universe_meta.get("asset_class_map", {}),
             "sector_map": self.universe_meta.get("sector_map", {}),
-            "tickers": tickers
+            "tickers": tickers,
+            "optimizer_vol_constraint": constraints.get("optimizer_vol_constraint", None),
+            "vol_target": strategy_rules.get("vol_target", None),
+            "vol_lookback_days": strategy_rules.get("vol_lookback_days", 21),
+            "vol_max_leverage": strategy_rules.get("vol_max_leverage", 1.5)
         }
 
         return RebalanceProblem(prepared_data)

@@ -40,7 +40,9 @@ class MarketDataStore:
         self._prices = self._prices.dropna(how='all')
         self._prices = self._prices.bfill().ffill()
         if "CASH" not in self._prices.columns:
-            self._prices["CASH"] = 1.0
+            daily_rate = market_store_config.risk_free_rate / 252
+            n = len(self._prices)
+            self._prices["CASH"] = (1 + daily_rate) ** pd.Series(range(n), index=self._prices.index)
 
         if len(self._prices) == 0:
             raise ValueError("Market Data Store not created properly, please check inputs.")

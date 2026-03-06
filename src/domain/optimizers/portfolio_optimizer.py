@@ -24,13 +24,15 @@ class PortfolioOptimizer(IOptimizer):
 		objective = self._set_objective(decision_variables, rebalance_problem, signals)
 		prob = cp.Problem(objective, constraints)
 
-		try:
-			prob.solve(solver=cp.ECOS, verbose=False)
-		except cp.SolverError as e:
+		for solver in [cp.CLARABEL, cp.ECOS, cp.SCS, cp.OSQP]:
 			try:
-				prob.solve(solver=cp.OSQP, verbose=False)
-			except cp.SolverError as e:
-				raise RuntimeError(f"Optimization failed: {str(e)}")
+				prob.solve(solver=solver, verbose=False)
+				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
+					break
+			except (cp.SolverError, Exception):
+				continue
+		else:
+			raise RuntimeError("Optimization failed: all solvers failed")
 			
 		if prob.status not in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
 			print(f"Optimization failed: Problem status {prob.status} {rebalance_problem.max_return}")
@@ -56,6 +58,9 @@ class PortfolioOptimizer(IOptimizer):
 			self._setup_portfolio_constraints(decision_variables, rebalance_problem)
 		)
 		constraints.extend(
+			self._setup_volatility_constraints(decision_variables, rebalance_problem, signals)
+		)
+		constraints.extend(
 			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
 		)
 		constraints.extend(
@@ -78,6 +83,20 @@ class PortfolioOptimizer(IOptimizer):
 				portfolio_weights >= min_position_size,
 				portfolio_weights <= max_position_size
 			]
+	
+	def _setup_volatility_constraints(self, 
+								   decision_variables: dict,
+								   rebalance_problem: RebalanceProblem,
+								   signals: Signals) -> list:
+		optimizer_vol_constraint = getattr(rebalance_problem, 'optimizer_vol_constraint', None)
+		if optimizer_vol_constraint is None:
+			return []
+		portfolio_weights = decision_variables.get('portfolio_weights')
+		cov_matrix = signals.covariance_matrix()
+		portfolio_risk = cp.quad_form(portfolio_weights, cov_matrix)
+		return [
+			portfolio_risk <= optimizer_vol_constraint ** 2
+		]
 
 	def _setup_turnover_constraints(self, 
 								    decision_variables: dict,
@@ -165,13 +184,13 @@ class PortfolioOptimizer(IOptimizer):
 									   rebalance_problem: RebalanceProblem, 
 									   signals: Signals) -> callable:
 		"""Set objective to maximize returns minus risk penalty."""
-		risk_tolerance = getattr(rebalance_problem, 'risk_tolerance', 1.0)
+		risk_aversion = getattr(rebalance_problem, 'risk_aversion', 1.0)
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		mean_vector = signals.mean_returns()
 		cov_matrix = signals.covariance_matrix()
 		portfolio_risk = cp.quad_form(portfolio_weights, cov_matrix)
 		concentration_objective = self._get_concentration_objective(decision_variables, rebalance_problem)
-		objective = cp.Maximize(mean_vector @ portfolio_weights - risk_tolerance * \
+		objective = cp.Maximize(mean_vector @ portfolio_weights - risk_aversion * \
 						  portfolio_risk - concentration_objective)
 		return objective
 	

@@ -2,7 +2,6 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 import pandas as pd
 import numpy as np
-import yfinance as yf
 from datetime import datetime
 from pathlib import Path
 
@@ -140,6 +139,7 @@ class MetricsCompute:
                                        benchmark_index: pd.Series) -> dict:
         """Calculate performance metrics for the portfolio."""
         portfolio_weights = portfolio.weights
+        portfolio_trades = portfolio.weights.diff().fillna(0)
         portfolio_returns = portfolio.returns
         portfolio_turnover = portfolio.turnover
         wealth_factors = (1 + portfolio_returns).cumprod()
@@ -166,6 +166,7 @@ class MetricsCompute:
 
         performance_metrics = {
             "portfolio_wealth_factors": wealth_factors,
+            "portfolio_trades": portfolio_trades,
             "portfolio_weights": portfolio_weights,
             "portfolio_returns": portfolio_returns,
             "portfolio_turnover": portfolio_turnover,
