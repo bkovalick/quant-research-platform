@@ -28,7 +28,7 @@
         "strategy_type": "mean_variance_strategy",
         "optimizer_type": "portfolio_optimizer",
         "benchmark_universe": "SPY",
-        "rebalance_frequency": {"from": "w", "to": "w", "steps": 1},
+        "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
         "apply_sharpe_objective": false,
         "strategy_rules": {

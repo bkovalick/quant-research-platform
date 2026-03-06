@@ -67,8 +67,8 @@ class BacktestingEngine(BacktestingEngineInterface):
         return step % self.rebalance_every == 0
     
     def _get_steps(self, freq_param):
-        key = (freq_param['from'], freq_param['to'])
-        return FREQ_TO_STEPS.get(key)
+        key = (self.market_state.market_frequency, freq_param)
+        return FREQ_TO_STEPS.get(key, 1)
     
     def _build_signals(self, market_state: MarketState, signals_config: SignalsConfig) -> dict:
         return {
