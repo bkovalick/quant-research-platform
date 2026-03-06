@@ -12,7 +12,7 @@
    ```
 3. Start the backend server (adjust as needed for your backend framework):
    ```bash
-   python -m src.main
+   uvicorn main:app --reload
    ```
 
 ## Frontend
@@ -23,12 +23,12 @@
    ```
 3. Start the frontend development server:
    ```bash
-   npm start
+   npm run dev
    ```
-4. The frontend will typically run on `http://localhost:3000` (check your framework's default).
+4. The frontend will typically run on `http://localhost:5173` (check your framework's default).
 
 ## Accessing the App
-Open your browser and go to `http://localhost:3000` to use the UI. Ensure the backend is running for full functionality.
+Open your browser and go to `http://localhost:5173` to use the UI. Ensure the backend is running for full functionality.
 # Portfolio Optimizer
 
 ## Overview

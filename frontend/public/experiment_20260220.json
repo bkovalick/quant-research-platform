@@ -1,12 +1,13 @@
 {
   "market_store_config": {
 	"tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-                "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA"
+                "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX"
             ],
     "start_date": "2005-01-01",
     "end_date": "2026-02-19",
     "data_source": { "yfinance": null },
-    "benchmark": "SPY"
+    "benchmark": "SPY",
+    "risk_free_rate": 0.03
   },
   "strategies": [
     {
@@ -81,11 +82,16 @@
         "rebalance_frequency": {"from": "w", "to": "w", "steps": 1},
         "apply_max_return_objective": true,
         "apply_sharpe_objective": false,
+        "strategy_rules": {
+            "vol_target": 0.15,
+            "vol_lookback_days": 21,
+            "vol_max_leverage": 1.5
+        },        
         "constraints": {
-            "risk_tolerance": 0.10,
-            "risk_free_rate": 0.03,
             "concentration_strength": 1,
             "max_return": 0.25,
+            "risk_aversion": 0.10,
+            "optimizer_vol_constraint": 0.20,
             "turnover_limit": 0.30,
             "min_position_size": 0.0,
             "max_position_size": 0.35,  
