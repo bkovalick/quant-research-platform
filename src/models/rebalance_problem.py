@@ -93,16 +93,16 @@ class RebalanceProblem:
     
     @property
     def optimizer_vol_constraint(self) -> float:
-        return self._data.get("optimizer_vol_constraint", 0.20)
+        return self._data.get("optimizer_vol_constraint", None)
     
     @property
     def vol_target(self) -> float:
-        return self._data.get("vol_target", 0.10)
+        return self._data.get("vol_target", None)
     
     @property
     def vol_lookback_days(self) -> float:
-        return self._data.get("vol_lookback_days", 21)
+        return self._data.get("vol_lookback_days", None)
     
     @property
     def vol_max_leverage(self) -> float:
-        return self._data.get("vol_max_leverage", 1.5)    
+        return self._data.get("vol_max_leverage", None)    

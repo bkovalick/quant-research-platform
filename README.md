@@ -10,9 +10,10 @@
    ```bash
    pip install -r requirements.txt
    ```
-3. Start the backend server (adjust as needed for your backend framework):
+3. Navigate to the backend directory (e.g., `src/`).
+4. Start the backend server (adjust as needed for your backend framework):
    ```bash
-   uvicorn main:app --reload
+   uvicorn src.main:app --reload
    ```
 
 ## Frontend
@@ -173,7 +174,7 @@ generate_report(results)
 **Setup:**
    - Create and activate a virtualenv in root: `.venv/`
    - Install dependencies: `pip install -r requirements.txt`
-   - MOSEK and Gurobi require licenses (see vendor docs; set env vars as needed).
+
 
 **Run:**
    - Entry point: [src/main.py](src/main.py)
@@ -183,10 +184,10 @@ generate_report(results)
       builder = RebalanceProblemBuilder(config)
       problem = builder.build()
       portfolio = Portfolio(...)  # Create portfolio instance
-      optimizer = MyOptimizer(problem) # Initialize optimizer with problem
-      strategy = MyStrategy(problem, optimizer) # Initialize strategy with problem and optimizer
+      optimizer = MyOptimizer()  # Initialize optimizer (problem passed to optimize(), not __init__)
+      strategy = MyStrategy(optimizer)  # Initialize strategy with optimizer
       signals = SignalsConfig(...)  # Define signals configuration
-      problem = strategy.rebalance(signals, portfolio.weights.iloc[current_date])  # Strategy modifies or selects aspects of the problem
+      weights = strategy.rebalance(signals, portfolio.weights.iloc[current_date])  # Strategy returns new portfolio weights (e.g., np.ndarray)
       ```
 
 **Adding a strategy:**
@@ -197,7 +198,6 @@ generate_report(results)
 **Adding an optimizer:**
    - Create a new class in `src/domain/optimizers/`, implement class inheriting `IOptimizer`.
    - Register in `optimizer_factory._optimizers`.
-   - Use MOSEK Fusion idioms as above.
 
 **Data ingestion:**
    - Update both `marketdatagateway.py` and `RebalanceProblemBuilder` if changing data sources or formats.

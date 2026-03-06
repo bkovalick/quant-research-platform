@@ -46,8 +46,8 @@ class RebalanceProblemBuilder:
             "tickers": tickers,
             "optimizer_vol_constraint": constraints.get("optimizer_vol_constraint", None),
             "vol_target": strategy_rules.get("vol_target", None),
-            "vol_lookback_days": strategy_rules.get("vol_lookback_days", 21),
-            "vol_max_leverage": strategy_rules.get("vol_max_leverage", 1.5)
+            "vol_lookback_days": strategy_rules.get("vol_lookback_days", None),
+            "vol_max_leverage": strategy_rules.get("vol_max_leverage", None)
         }
 
         return RebalanceProblem(prepared_data)
