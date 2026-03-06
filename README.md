@@ -1,35 +1,3 @@
-# Running the UI (Frontend & Backend)
-
-## Backend
-1. Create and activate your virtual environment:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Navigate to the backend directory (e.g., `src/`).
-4. Start the backend server (adjust as needed for your backend framework):
-   ```bash
-   uvicorn src.main:app --reload
-   ```
-
-## Frontend
-1. Navigate to the frontend directory (e.g., `ui/` or `frontend/`).
-2. Install frontend dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the frontend development server:
-   ```bash
-   npm run dev
-   ```
-4. The frontend will typically run on `http://localhost:5173` (check your framework's default).
-
-## Accessing the App
-Open your browser and go to `http://localhost:5173` to use the UI. Ensure the backend is running for full functionality.
 # Portfolio Optimizer
 
 ## Overview
@@ -45,9 +13,10 @@ src/
 ├── application/
 │   ├── experiment_runner.py
 ├── config/
-│   ├── experiment_20260220.json
-├── data/
+│   ├── experiment_config.json
+├── infrastructure/
 │   ├── market_data_gateway.py
+├── reference/
 │   ├── market_metadata.py
 ├── domain/
 │   ├── optimizers/
@@ -90,7 +59,8 @@ src/
 - **main.py**: Entry point for running experiments and orchestrating workflows.
 - **application/**: Contains experiment runner and application-level orchestration.
 - **config/**: Stores configuration files and settings for experiments.
-- **data/**: Handles market data ingestion and metadata management.
+- **infrastructure/**: Market data ingestion (yfinance, CSV).
+- **reference/**: Static market metadata (universe, asset class maps).
 - **domain/**:
   - **optimizers/**: Defines optimizer interfaces and implementations.
   - **portfolio/**: Portfolio abstractions and interfaces.
@@ -106,14 +76,14 @@ src/
 
 ### 1. Experiment Setup
 
-Configure your experiment in a JSON file (e.g., `config/experiment_20260220.json`).
+Configure your experiment in a JSON file (e.g., `config/experiment_config.json`).
 
 ### 2. Running an Experiment
 
 ```python
 from application.experiment_runner import ExperimentRunner
 
-runner = ExperimentRunner(config_path="config/experiment_20260220.json")
+runner = ExperimentRunner(config_path="config/experiment_config.json")
 runner.run()
 ```
 
@@ -175,7 +145,6 @@ generate_report(results)
    - Create and activate a virtualenv in root: `.venv/`
    - Install dependencies: `pip install -r requirements.txt`
 
-
 **Run:**
    - Entry point: [src/main.py](src/main.py)
    - Typical pattern: build config dict → use `RebalanceProblemBuilder` → pass to optimizer layer → pass to problem and optimizer to strategy layer → run backtest.
@@ -202,3 +171,37 @@ generate_report(results)
 **Data ingestion:**
    - Update both `marketdatagateway.py` and `RebalanceProblemBuilder` if changing data sources or formats.
    - Builders expect cleaned numpy arrays for all statistics.
+
+---
+
+# Running the UI (Frontend & Backend)
+
+## Backend
+1. Create and activate your virtual environment:
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Navigate to `src/` and start the backend server:
+   ```bash
+   uvicorn main:app --reload
+   ```
+
+## Frontend
+1. Navigate to the frontend directory.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+4. The frontend runs on `http://localhost:5173` by default.
+
+## Accessing the App
+Open `http://localhost:5173` in your browser. Ensure the backend is running for full functionality.
