@@ -24,21 +24,27 @@ class Optimizer(IOptimizer):
 		objective = self._set_objective(decision_variables, rebalance_problem, signals)
 		prob = cp.Problem(objective, constraints)
 
+		best_result = None
 		for solver in [cp.CLARABEL, cp.ECOS, cp.SCS, cp.OSQP]:
 			try:
 				prob.solve(solver=solver, verbose=False)
-				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
+				if prob.status == cp.OPTIMAL:
 					break
+				if prob.status == cp.OPTIMAL_INACCURATE and best_result is None:
+					best_result = (prob.status, decision_variables['portfolio_weights'].value)
 			except (cp.SolverError, Exception):
 				continue
 		else:
-			raise RuntimeError("Optimization failed: all solvers failed")
+			if best_result is None:
+				raise RuntimeError("Optimization failed: all solvers failed")
 			
 		if prob.status not in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
-			print(f"Optimization failed: Problem status {prob.status} {rebalance_problem.max_return}")
-			return current_weights
+			if best_result is None:
+				print(f"Optimization failed: Problem status {prob.status}")
+				return current_weights
 
-		optimal_weights = decision_variables['portfolio_weights'].value
+		optimal_weights = decision_variables['portfolio_weights'].value if prob.status == cp.OPTIMAL \
+			else (best_result[1] if best_result else current_weights)
 		return optimal_weights	
 
 	def _setup_decision_variables(self, rebalance_problem: RebalanceProblem) -> dict:
@@ -107,8 +113,13 @@ class Optimizer(IOptimizer):
 			return []
 		
 		portfolio_weights = decision_variables.get('portfolio_weights')	
+		risky_current = current_weights[:-1].copy()
+		risky_sum = risky_current.sum()
+		if risky_sum > 0:
+			risky_current = risky_current / risky_sum
+
 		return [
-			cp.norm1(portfolio_weights[:-1] - current_weights[:-1]) <= rebalance_problem.turnover_limit
+			cp.norm1(portfolio_weights[:-1] - risky_current) <= rebalance_problem.turnover_limit
 		]
 
 	def _setup_asset_class_constraints(self, 
@@ -196,9 +207,9 @@ class Optimizer(IOptimizer):
 		mean_vector = mean_vector[:-1]
 		cov_matrix = cov_matrix[:-1, :-1]
 
-		portfolio_risk = cp.quad_form(portfolio_weights, cov_matrix)
+		portfolio_risk = cp.quad_form(risky_weights, cov_matrix)
 		concentration_objective = self._get_concentration_objective(risky_weights, rebalance_problem)
-		objective = cp.Maximize(mean_vector @ portfolio_weights - risk_aversion * \
+		objective = cp.Maximize(mean_vector @ risky_weights - risk_aversion * \
 						  portfolio_risk - concentration_objective)
 		return objective
 	
