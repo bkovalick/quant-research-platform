@@ -6,7 +6,7 @@ from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
 from domain.signals.signals import Signals
 
-class PortfolioOptimizer(IOptimizer):
+class Optimizer(IOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
 	def __init__(self):
 		super().__init__()

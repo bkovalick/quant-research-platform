@@ -2,14 +2,14 @@ import abc
 import numpy as np
 from models.rebalance_problem import RebalanceProblem
 from domain.signals.signals import RiskReturnSignals
-from domain.optimizers.portfolio_optimizer import PortfolioOptimizer
+from domain.optimizers.portfolio_optimizer import Optimizer
 
 class StrategyInterface(abc.ABC):
     """Base interface for all portfolio strategies.
     """
     def __init__(self, rebalance_problem: RebalanceProblem, optimizer=None):
         self.rebalance_problem = rebalance_problem
-        self.optimizer = optimizer or PortfolioOptimizer()
+        self.optimizer = optimizer or Optimizer()
 
     @abc.abstractmethod
     def rebalance(self, signals, current_weights):

@@ -1,4 +1,4 @@
-from domain.optimizers.portfolio_optimizer import PortfolioOptimizer
+from domain.optimizers.portfolio_optimizer import Optimizer
 from domain.strategies.istrategy import StrategyInterface
 from models.rebalance_problem import RebalanceProblem
 
@@ -15,7 +15,7 @@ class MeanVarianceStrategy(StrategyInterface):
                  rebalance_problem: RebalanceProblem, 
                  optimizer=None):
         super().__init__(rebalance_problem, optimizer)
-        self.optimizer = optimizer or PortfolioOptimizer()
+        self.optimizer = optimizer or Optimizer()
 
     def rebalance(self, 
                   signals: dict, 

@@ -70,7 +70,7 @@ class MeanReversionSignals(RiskReturnSignals):
                  signals_cfg: SignalsConfig):
         super().__init__(market_state, signals_cfg)
 
-    def mean_returns(self):
+    def mean_returns(self) -> np.ndarray:
         mean_reversion_window = getattr(self.signals_cfg, "mean_reversion_window", None)
         if mean_reversion_window is None:
             return super().mean_returns()        
