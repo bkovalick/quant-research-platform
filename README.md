@@ -175,7 +175,7 @@ report.generate_report()
       problem = builder.build()
       portfolio = Portfolio(...)  # Create portfolio instance
       optimizer = MyOptimizer()  # Initialize optimizer (problem passed to optimize(), not __init__)
-      strategy = MyStrategy(optimizer)  # Initialize strategy with optimizer
+      strategy = MyStrategy(problem, optimizer)  # Initialize strategy with rebalance problem and optimizer
       signals = SignalsConfig(...)  # Define signals configuration
       weights = strategy.rebalance(signals, portfolio.weights.iloc[current_date])  # Strategy returns new portfolio weights (e.g., np.ndarray)
       ```
