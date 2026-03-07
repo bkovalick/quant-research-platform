@@ -32,10 +32,7 @@
         "cash_allocation": 0.0,        
         "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX"]
       },
-      "signals_config": {
-        "apply_winsorizing": true,
-        "windsor_percentiles": {"lower": 0.05, "upper": 0.95}
-      },      
+      "signals_config": {},      
       "rebalance_problem": {
         "strategy_type": "fwp_strategy",
         "optimizer_type": "portfolio_optimizer",
@@ -73,7 +70,8 @@
       },
       "signals_config": {
         "apply_winsorizing": true,
-        "windsor_percentiles": {"lower": 0.05, "upper": 0.95}
+        "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
+        "momentum_skip_periods": 4
       },      
       "rebalance_problem": {
         "strategy_type": "mean_variance_strategy",
@@ -131,7 +129,8 @@
       "signals_config": {
         "apply_winsorizing": true,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
-        "mean_reversion_window": 4
+        "mean_reversion_window": 4,
+        "momentum_skip_periods": 4
       },      
       "rebalance_problem": {
         "strategy_type": "mean_reversion_strategy",

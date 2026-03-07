@@ -22,7 +22,8 @@
       },
       "signals_config": {
         "apply_winsorizing": true,
-        "windsor_percentiles": {"lower": 0.05, "upper": 0.95}
+        "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
+        "momentum_skip_periods": 4
       },      
       "rebalance_problem": {
         "strategy_type": "mean_variance_strategy",

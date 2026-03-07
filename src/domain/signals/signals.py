@@ -51,17 +51,19 @@ class RiskReturnSignals(Signals):
         cov = self.covariance_matrix()
         return np.sqrt(curr_weights.T @ cov @ curr_weights)
 
-class MomentumSignals(Signals):
+class MomentumSignals(RiskReturnSignals):
     def __init__(self, 
                 market_state: MarketState, 
                 signals_cfg: SignalsConfig):
         super().__init__(market_state, signals_cfg)
 
-    def momentum_12_1(self) -> np.ndarray:
-        """12-1 month total return"""
+    def mean_returns(self) -> np.ndarray:
         p = self.market_state.lookback_prices()
-        return (p.iloc[-1] / p.iloc[0] - 1).values
-    
+        skip = getattr(self.signals_cfg, "momentum_skip_periods", 4)
+        total_return = (p.iloc[-(skip + 1)] / p.iloc[0] - 1).values
+        annualized = total_return * (self.ann_factor / (len(p) - skip))
+        return annualized
+        
 class MeanReversionSignals(RiskReturnSignals):
     def __init__(self, 
                  market_state: MarketState, 
@@ -78,11 +80,15 @@ class MeanReversionSignals(RiskReturnSignals):
         annualized = -short_returns.values * (self.ann_factor/mean_reversion_window)
         return annualized
         
-class MovingAverageSignals(Signals):
+class MovingAverageSignals:
     def __init__(self, 
                  market_state: MarketState, 
                  signals_cfg: SignalsConfig):
-        super().__init__(market_state, signals_cfg)
+        self.market_state = market_state
+        self.ann_factor = market_state.annual_trading_days
+        self.signals_cfg = signals_cfg
+        self.apply_winsorizing = signals_cfg.apply_winsorizing
+        self.windsor_percentiles = signals_cfg.windsor_percentiles
 
     def simple_moving_average(self, window: int) -> float:
         p = self.market_state.lookback_prices()
@@ -100,11 +106,15 @@ class MovingAverageSignals(Signals):
         lower_band = sma - num_std * rolling_std
         return { 'middle': sma, 'upper': upper_band, 'lower': lower_band }
 
-class VolatilityForecastingSignals(Signals):
+class VolatilityForecastingSignals:
     def __init__(self, 
                  market_state: MarketState, 
                  signals_cfg: SignalsConfig):
-        super().__init__(market_state, signals_cfg)
+        self.market_state = market_state
+        self.ann_factor = market_state.annual_trading_days
+        self.signals_cfg = signals_cfg
+        self.apply_winsorizing = signals_cfg.apply_winsorizing
+        self.windsor_percentiles = signals_cfg.windsor_percentiles
 
     def rolling_realized_vol(self, window = 20):
         p = self.market_state.lookback_returns()
