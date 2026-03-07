@@ -7,7 +7,7 @@ import StrategyDiagnostics from "./components/StrategyDiagnostics"
 
 export default function App() {
   const [experiment, setExperiment] = useState<any>(null)
-  const [setSelectedRun] = useState<any>(null)
+  const [selectedRun, setSelectedRun] = useState<any>(null)
   const [timeWindow, setTimeWindow] = useState<{
   start: string | null
   end: string | null
