@@ -1,6 +1,5 @@
 from domain.optimizers.portfolio_optimizer import PortfolioOptimizer
 from domain.strategies.istrategy import StrategyInterface
-from domain.signals.signals import RiskReturnSignals, MovingAverageSignals, VolatilityForecastingSignals
 from models.rebalance_problem import RebalanceProblem
 
 import numpy as np
@@ -28,6 +27,6 @@ class MeanVarianceStrategy(StrategyInterface):
         )
 
         if getattr(self.rebalance_problem, 'vol_target', None):
-            self._apply_vol_targeting(risk_return_signals, optimized_weights)
+            return self._apply_vol_targeting(risk_return_signals, optimized_weights)
         return optimized_weights
     

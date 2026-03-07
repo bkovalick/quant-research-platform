@@ -1,5 +1,4 @@
 from domain.strategies.istrategy import StrategyInterface
-
 from models.rebalance_problem import RebalanceProblem
 
 import numpy as np
@@ -21,5 +20,5 @@ class MeanReversionStrategy(StrategyInterface):
         )
 
         if getattr(self.rebalance_problem, 'vol_target', None):
-            self._apply_vol_targeting(reversion_signals, optimized_weights)
+            return self._apply_vol_targeting(reversion_signals, optimized_weights)
         return optimized_weights

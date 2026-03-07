@@ -51,7 +51,13 @@ class RiskReturnSignals(Signals):
         cov = self.covariance_matrix()
         return np.sqrt(curr_weights.T @ cov @ curr_weights)
 
-    def momentum_signal(self) -> np.ndarray:
+class MomentumSignals(Signals):
+    def __init__(self, 
+                market_state: MarketState, 
+                signals_cfg: SignalsConfig):
+        super().__init__(market_state, signals_cfg)
+
+    def momentum_12_1(self) -> np.ndarray:
         """12-1 month total return"""
         p = self.market_state.lookback_prices()
         return (p.iloc[-1] / p.iloc[0] - 1).values
@@ -72,7 +78,7 @@ class MeanReversionSignals(RiskReturnSignals):
         annualized = -short_returns.values * (self.ann_factor/mean_reversion_window)
         return annualized
         
-class MovingAverageSignals(RiskReturnSignals):
+class MovingAverageSignals(Signals):
     def __init__(self, 
                  market_state: MarketState, 
                  signals_cfg: SignalsConfig):
@@ -94,7 +100,7 @@ class MovingAverageSignals(RiskReturnSignals):
         lower_band = sma - num_std * rolling_std
         return { 'middle': sma, 'upper': upper_band, 'lower': lower_band }
 
-class VolatilityForecastingSignals(RiskReturnSignals):
+class VolatilityForecastingSignals(Signals):
     def __init__(self, 
                  market_state: MarketState, 
                  signals_cfg: SignalsConfig):
