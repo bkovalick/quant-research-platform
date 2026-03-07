@@ -1,5 +1,5 @@
 import abc
-from domain.optimizers.portfolio_optimizer import Optimizer
+from src.domain.optimizers.optimizer import Optimizer
 from domain.optimizers.ioptimizer import IOptimizer
 
 class IOptimizerFactory(abc.ABC):

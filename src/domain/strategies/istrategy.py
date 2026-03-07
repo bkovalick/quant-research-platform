@@ -2,7 +2,7 @@ import abc
 import numpy as np
 from models.rebalance_problem import RebalanceProblem
 from domain.signals.signals import RiskReturnSignals
-from domain.optimizers.portfolio_optimizer import Optimizer
+from domain.optimizers.optimizer import Optimizer
 
 class StrategyInterface(abc.ABC):
     """Base interface for all portfolio strategies.
