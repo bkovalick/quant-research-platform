@@ -1,8 +1,7 @@
-import axios from "axios"
 import { useState } from "react"
 import type { CSSProperties } from "react"
 
-export default function Sidebar({ setExperiment }: any) {
+export default function Sidebar({ setExperimentConfig }: any) {
 
   const [startDate, setStartDate] = useState("2005-01-01")
   const [endDate, setEndDate] = useState("2020-12-31")
@@ -17,14 +16,21 @@ export default function Sidebar({ setExperiment }: any) {
     setStrategySet(json)
   }
 
-  const runExperiment = async () => {
-    const config = await fetch("/experiment_20260220.json").then(res => res.json())
-    const res = await axios.post(
-        "http://localhost:8000/run-experiment",
-        config
-    )
-    setExperiment(res.data)
-  }
+  const runExperiment = () => {
+
+    if (!strategySet) return
+
+    setExperimentConfig({
+      market_config: {
+        start_date: startDate,
+        end_date: endDate,
+        rebalance_frequency: rebalance,
+        transaction_cost: transactionCost
+      },
+      strategies: strategySet.strategies
+    })
+  }  
+
   return (
     <div style={container}>
 

@@ -4,7 +4,11 @@ import numpy as np
 
 from domain.portfolio.iportfolio import PortfolioInterface
 from domain.strategies.istrategy import StrategyInterface
-from domain.signals.signals import RiskReturnSignals, MovingAverageSignals, VolatilityForecastingSignals, MeanReversionSignals
+from domain.signals.risk_return_signals import RiskReturnSignals 
+from domain.signals.moving_average_signals import MovingAverageSignals
+from domain.signals.volatility_forecasting_signals import VolatilityForecastingSignals
+from domain.signals.mean_reversion_signals import MeanReversionSignals
+from domain.signals.momentum_signals import MomentumSignals
 from models.rebalance_problem import RebalanceProblem
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
@@ -76,5 +80,6 @@ class BacktestingEngine(BacktestingEngineInterface):
             "risk_return": RiskReturnSignals(market_state, signals_config),
             "mean_reversion": MeanReversionSignals(market_state, signals_config),
             "moving_average": MovingAverageSignals(market_state, signals_config),
-            "volatility_forecast": VolatilityForecastingSignals(market_state, signals_config)
+            "volatility_forecast": VolatilityForecastingSignals(market_state, signals_config),
+            "momentum": MomentumSignals(market_state, signals_config)
         } 
