@@ -79,18 +79,13 @@ class MeanReversionSignals(RiskReturnSignals):
         
         lookback_prices = self.market_state.lookback_prices()
         short_returns = lookback_prices.pct_change(mean_reversion_window).iloc[-1]
-        if not self.apply_winsorizing:
-            return short_returns
-
-        lower_bound = short_returns.quantile(self.windsor_percentiles["lower"])
-        upper_bound = short_returns.quantile(self.windsor_percentiles["upper"])
-        short_returns = short_returns.clip(lower=lower_bound, upper=upper_bound)
-        annualized = -short_returns.values * (self.ann_factor/mean_reversion_window)
-        return annualized
-
-    def ranked_mean_returns(self, short_returns: pd.Series, scaling_factor: int) -> np.ndarray:
-        ranked = rankdata(short_returns.values) / len(short_returns)
-        return -(ranked - 0.5) * scaling_factor
+        if self.apply_winsorizing:
+            lower_bound = short_returns.quantile(self.windsor_percentiles["lower"])
+            upper_bound = short_returns.quantile(self.windsor_percentiles["upper"])
+            short_returns = short_returns.clip(lower=lower_bound, upper=upper_bound)
+            
+        ranked = rankdata(-short_returns.values) / len(short_returns) - 0.5
+        return ranked
         
 class MovingAverageSignals:
     def __init__(self, 
