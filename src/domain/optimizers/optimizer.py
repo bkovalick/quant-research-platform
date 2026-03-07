@@ -191,18 +191,21 @@ class Optimizer(IOptimizer):
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		mean_vector = signals.mean_returns()
 		cov_matrix = signals.covariance_matrix()
+
+		risky_weights = portfolio_weights[:-1]
+		mean_vector = mean_vector[:-1]
+		cov_matrix = cov_matrix[:-1, :-1]
+
 		portfolio_risk = cp.quad_form(portfolio_weights, cov_matrix)
-		concentration_objective = self._get_concentration_objective(decision_variables, rebalance_problem)
+		concentration_objective = self._get_concentration_objective(risky_weights, rebalance_problem)
 		objective = cp.Maximize(mean_vector @ portfolio_weights - risk_aversion * \
 						  portfolio_risk - concentration_objective)
 		return objective
 	
 	def _get_concentration_objective(self, 
-								  	 decision_variables: dict,
+								  	 risky_weights,
 									 rebalance_problem: RebalanceProblem):
 		"""Set concentration objective that will penalize large weights."""
-		portfolio_weights = decision_variables.get('portfolio_weights')
-		concentration_penalty = cp.sum_squares(portfolio_weights)
+		concentration_penalty = cp.sum_squares(risky_weights)
 		concentration_strength = getattr(rebalance_problem, "concentration_strength")
-		concentration_objective = concentration_penalty * concentration_strength
-		return concentration_objective
+		return concentration_penalty * concentration_strength
