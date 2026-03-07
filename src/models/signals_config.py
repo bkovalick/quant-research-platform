@@ -5,6 +5,7 @@ from typing import Dict
 class SignalsConfig:
     apply_winsorizing: bool
     windsor_percentiles: Dict
+    mean_reversion_window: int
     
     @classmethod
     def from_dict(cls, d: dict):
@@ -13,6 +14,7 @@ class SignalsConfig:
             windsor_percentiles = d.get(
                 "windsor_percentiles",
                 {"lower": 0.05, "upper": 0.95}
-            )
+            ),
+            mean_reversion_window = d.get("mean_reversion_window", 4)
         )
         

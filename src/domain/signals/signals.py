@@ -4,15 +4,16 @@ from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
 
 from arch import arch_model
+from abc import ABC, abstractmethod
 
-class Signals:
+class Signals(ABC):
     def __init__(self, market_state: MarketState, signals_cfg: SignalsConfig):
         self.market_state = market_state
         self.ann_factor = market_state.annual_trading_days
         self.signals_cfg = signals_cfg
         self.apply_winsorizing = signals_cfg.apply_winsorizing
         self.windsor_percentiles = signals_cfg.windsor_percentiles
-           
+
     def lookback_returns(self) -> pd.DataFrame:
         r = self.market_state.lookback_returns()
         if not self.apply_winsorizing:
@@ -20,7 +21,20 @@ class Signals:
 
         lower_bound = r.quantile(self.windsor_percentiles["lower"])
         upper_bound = r.quantile(self.windsor_percentiles["upper"])
-        return r.clip(lower=lower_bound, upper=upper_bound, axis = 1) 
+        return r.clip(lower=lower_bound, upper=upper_bound, axis = 1)
+
+    @abstractmethod
+    def mean_returns(self) -> np.ndarray: ...
+
+    @abstractmethod
+    def covariance_matrix(self) -> np.ndarray: ...
+
+    @abstractmethod
+    def portfolio_vol(self, weights: np.ndarray) -> float: ...    
+
+class RiskReturnSignals(Signals):
+    def __init__(self, market_state: MarketState, signals_cfg: SignalsConfig):
+        super().__init__(market_state, signals_cfg)
 
     def mean_returns(self) -> np.ndarray:
         lookback_returns = self.lookback_returns()
@@ -36,17 +50,29 @@ class Signals:
     def portfolio_vol(self, curr_weights: np.ndarray) -> float:
         cov = self.covariance_matrix()
         return np.sqrt(curr_weights.T @ cov @ curr_weights)
-    
-    def rolling_realized_vol(self, window: int = 20) -> float:
-        lookback_returns = self.lookback_returns()
-        vol = lookback_returns.rolling(window).std().iloc[-1]
-        return vol.values * np.sqrt(self.ann_factor)
 
     def momentum_signal(self) -> np.ndarray:
+        """12-1 month total return"""
         p = self.market_state.lookback_prices()
         return (p.iloc[-1] / p.iloc[0] - 1).values
+    
+class MeanReversionSignals(RiskReturnSignals):
+    def __init__(self, 
+                 market_state: MarketState, 
+                 signals_cfg: SignalsConfig):
+        super().__init__(market_state, signals_cfg)
 
-class MovingAverageSignals(Signals):
+    def mean_returns(self):
+        mean_reversion_window = getattr(self.signals_cfg, "mean_reversion_window", None)
+        if mean_reversion_window is None:
+            return super().mean_returns()        
+        
+        lookback_prices = self.market_state.lookback_prices()
+        short_returns = lookback_prices.pct_change(mean_reversion_window).iloc[-1]
+        annualized = -short_returns.values * (self.ann_factor/mean_reversion_window)
+        return annualized
+        
+class MovingAverageSignals(RiskReturnSignals):
     def __init__(self, 
                  market_state: MarketState, 
                  signals_cfg: SignalsConfig):
@@ -68,7 +94,7 @@ class MovingAverageSignals(Signals):
         lower_band = sma - num_std * rolling_std
         return { 'middle': sma, 'upper': upper_band, 'lower': lower_band }
 
-class VolatilityForecastingSignals(Signals):
+class VolatilityForecastingSignals(RiskReturnSignals):
     def __init__(self, 
                  market_state: MarketState, 
                  signals_cfg: SignalsConfig):

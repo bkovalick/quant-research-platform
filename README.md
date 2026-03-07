@@ -80,11 +80,18 @@ Configure your experiment in a JSON file (e.g., `config/experiment_config.json`)
 
 ### 2. Running an Experiment
 
+The simplest entry point — `ExperimentRunner` reads the config and orchestrates the full pipeline:
+
 ```python
+import json
 from application.experiment_runner import ExperimentRunner
 
-runner = ExperimentRunner(config_path="config/experiment_config.json")
-runner.run()
+with open("config/experiment_config.json") as f:
+    config = json.load(f)
+
+runner = ExperimentRunner(config)
+experiment = runner.run()           # single-threaded
+# experiment = runner.run_parallel()  # multi-threaded
 ```
 
 ### 3. Building a Rebalance Problem
@@ -92,18 +99,18 @@ runner.run()
 ```python
 from services.rebalance_problem_builder import RebalanceProblemBuilder
 
-builder = RebalanceProblemBuilder(config)
+builder = RebalanceProblemBuilder(config=strategy_config, universe_meta=universe_meta)
 rebalance_problem = builder.build()
 ```
 
 ### 4. Configuring a Strategy
 
 ```python
-from services.strategy_factory import get_strategy
-from services.optimizer_factory import get_optimizer
+from services.optimizer_factory import OptimizerFactory
+from services.strategy_factory import StrategyFactory
 
-optimizer = get_optimizer("mean_variance")
-strategy = get_strategy("mean_variance", rebalance_problem, optimizer)
+optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type)
+strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
 
 # On each rebalance date the strategy:
 #   1. Receives signals (mean returns, covariance) from the Signals object
@@ -118,16 +125,22 @@ new_weights = strategy.rebalance(signals, current_weights)
 ```python
 from simulation.backtesting_engine import BacktestingEngine
 
-engine = BacktestingEngine()
-results = engine.run_backtest(strategy, market_data)
+engine = BacktestingEngine(
+    portfolio=portfolio,
+    strategy=strategy,
+    market_state=market_state,
+    signals_cfg=signals_cfg
+)
+portfolio = engine.run_backtest(rebalance_problem)
 ```
 
 ### 6. Reporting
 
 ```python
-from reporting.reporting_module import generate_report
+from reporting.reporting_module import ExcelGenerator
 
-generate_report(results)
+report = ExcelGenerator(experiment, output_path="backtest_results")
+report.generate_report()
 ```
 
 ## Adding a New Strategy or Optimizer

@@ -89,7 +89,7 @@ class PortfolioOptimizer(IOptimizer):
 								   rebalance_problem: RebalanceProblem,
 								   signals: Signals) -> list:
 		optimizer_vol_constraint = getattr(rebalance_problem, 'optimizer_vol_constraint', None)
-		if optimizer_vol_constraint is None:
+		if optimizer_vol_constraint is None or signals is None:
 			return []
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		cov_matrix = signals.covariance_matrix()

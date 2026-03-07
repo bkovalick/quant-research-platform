@@ -3,7 +3,7 @@ import time
 
 from domain.portfolio.iportfolio import PortfolioInterface
 from domain.strategies.istrategy import StrategyInterface
-from domain.signals.signals import Signals, MovingAverageSignals, VolatilityForecastingSignals
+from domain.signals.signals import RiskReturnSignals, MovingAverageSignals, VolatilityForecastingSignals, MeanReversionSignals
 from models.rebalance_problem import RebalanceProblem
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
@@ -72,7 +72,8 @@ class BacktestingEngine(BacktestingEngineInterface):
     
     def _build_signals(self, market_state: MarketState, signals_config: SignalsConfig) -> dict:
         return {
-            "base": Signals(market_state, signals_config),
+            "risk_return": RiskReturnSignals(market_state, signals_config),
+            "mean_reversion": MeanReversionSignals(market_state, signals_config),
             "moving_average": MovingAverageSignals(market_state, signals_config),
-            "volatility": VolatilityForecastingSignals(market_state, signals_config)
+            "volatility_forecast": VolatilityForecastingSignals(market_state, signals_config)
         } 

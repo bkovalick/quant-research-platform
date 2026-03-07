@@ -140,7 +140,7 @@ class MetricsCompute:
                                        benchmark_index: pd.Series) -> dict:
         """Calculate performance metrics for the portfolio."""
         portfolio_weights = portfolio.weights
-        portfolio_trades = portfolio.weights.diff().fillna(0)
+        portfolio_trades = portfolio.weights.diff().abs().fillna(0)
         if isinstance(portfolio_trades, pd.DataFrame):
             portfolio_trades = portfolio_trades.sum(axis=1)
 
