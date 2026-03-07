@@ -2,20 +2,27 @@ import axios from "axios"
 import { useState } from "react"
 import type { CSSProperties } from "react"
 
-export default function Sidebar({ setExperiment }: any) {
+type Tab = "experiment" | "lab"
 
+export default function Sidebar({ setExperiment, experiment }: any) {
+  const [tab, setTab] = useState<Tab>("experiment")
   const [startDate, setStartDate] = useState("2005-01-01")
   const [endDate, setEndDate] = useState("2020-12-31")
-  const [rebalance, setRebalance] = useState("monthly")
   const [transactionCost, setTransactionCost] = useState(0)
   const [strategySet, setStrategySet] = useState<any>(null)
+  const [selectedIdx, setSelectedIdx] = useState(0)
+  const [editedStrategies, setEditedStrategies] = useState<any[]>([])
+  const [jsonMode, setJsonMode] = useState(false)
+  const [jsonText, setJsonText] = useState("")
+  const [jsonError, setJsonError] = useState<string | null>(null)
 
   const handleUpload = async (e: any) => {
     const file = e.target.files[0]
     const text = await file.text()
     const json = JSON.parse(text)
     setStrategySet(json)
-    // Pre-populate UI fields from the JSON
+    setEditedStrategies(JSON.parse(JSON.stringify(json.strategies)))
+    setSelectedIdx(0)
     if (json.market_store_config) {
       if (json.market_store_config.start_date) setStartDate(json.market_store_config.start_date)
       if (json.market_store_config.end_date) setEndDate(json.market_store_config.end_date)
@@ -24,104 +31,301 @@ export default function Sidebar({ setExperiment }: any) {
 
   const runExperiment = async () => {
     if (!strategySet) return
-
-    // Merge UI overrides into the full JSON config and POST to backend
     const config = {
       ...strategySet,
       market_store_config: {
         ...strategySet.market_store_config,
         start_date: startDate,
         end_date: endDate,
-        rebalance_frequency: rebalance,
         transaction_cost: transactionCost
-      }
+      },
+      strategies: editedStrategies.length ? editedStrategies : strategySet.strategies
     }
-
     const res = await axios.post("http://localhost:8000/run-experiment", config)
     setExperiment(res.data)
   }
 
+  const currentStrategy = editedStrategies[selectedIdx]
+
+  const updateField = (path: string[], value: any) => {
+    const updated = JSON.parse(JSON.stringify(editedStrategies))
+    let node = updated[selectedIdx]
+    for (let i = 0; i < path.length - 1; i++) node = node[path[i]]
+    node[path[path.length - 1]] = value
+    setEditedStrategies(updated)
+  }
+
+  const openJsonEditor = () => {
+    setJsonText(JSON.stringify(currentStrategy, null, 2))
+    setJsonError(null)
+    setJsonMode(true)
+  }
+
+  const applyJson = () => {
+    try {
+      const parsed = JSON.parse(jsonText)
+      const updated = JSON.parse(JSON.stringify(editedStrategies))
+      updated[selectedIdx] = parsed
+      setEditedStrategies(updated)
+      setJsonMode(false)
+      setJsonError(null)
+    } catch (e: any) {
+      setJsonError(e.message)
+    }
+  }
+
+  const quickStats = (() => {
+    if (!experiment?.strategy_runs?.length) return null
+    const runs = experiment.strategy_runs
+    const best = (key: string, higher = true) => {
+      const sorted = [...runs].sort((a, b) => {
+        const va = a.result.summary[key] ?? (higher ? -Infinity : Infinity)
+        const vb = b.result.summary[key] ?? (higher ? -Infinity : Infinity)
+        return higher ? vb - va : va - vb
+      })
+      return { name: formatName(sorted[0].strategy_name), value: sorted[0].result.summary[key] }
+    }
+    return {
+      sharpe:   best("sharpe_ratio"),
+      ret:      best("return"),
+      drawdown: best("max_drawdown", false),
+      vol:      best("volatility", false)
+    }
+  })()
+
+  const rebalanceOptions = ["daily", "weekly", "monthly", "quarterly"]
+
   return (
     <div style={container}>
+      <div style={tabBar}>
+        <button style={tab === "experiment" ? activeTab : inactiveTab} onClick={() => setTab("experiment")}>
+          Experiment
+        </button>
+        <button style={tab === "lab" ? activeTab : inactiveTab} onClick={() => setTab("lab")}>
+          Strategy Lab
+        </button>
+      </div>
 
-      <h2 style={title}>Research Cockpit</h2>
+      {tab === "experiment" && (
+        <>
+          <Section title="Strategy Set">
+            <input type="file" accept=".json" onChange={handleUpload} style={fileInput} />
+            {strategySet && <div style={pill}>{editedStrategies.length} strategies loaded</div>}
+          </Section>
 
-      <Section title="Experiment">
-        <label style={label}>Strategy Set</label>
-        <input type="file" onChange={handleUpload} />
-      </Section>
+          <Section title="Market Configuration">
+            <Row label="Start">
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} style={inputStyle} />
+            </Row>
+            <Row label="End">
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={inputStyle} />
+            </Row>
+            <Row label="Txn Cost">
+              <input type="number" value={transactionCost} step={0.001}
+                onChange={(e) => setTransactionCost(Number(e.target.value))} style={inputStyle} />
+            </Row>
+          </Section>
 
-      <Section title="Market Configuration">
+          <button style={runButton} onClick={runExperiment} disabled={!strategySet}>
+            {strategySet ? "Run Experiment" : "Load a Strategy Set"}
+          </button>
 
-        <label style={label}>Start</label>
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-        />
+          {quickStats && (
+            <>
+              <hr style={divider} />
+              <div style={quickStatsTitle}>Last Run · Best</div>
+              <div style={statsGrid}>
+                <StatCard label="Sharpe"   value={quickStats.sharpe.value?.toFixed(2)}   name={quickStats.sharpe.name} />
+                <StatCard label="Return"   value={(quickStats.ret.value != null ? (quickStats.ret.value * 100).toFixed(1) + "%" : "-")} name={quickStats.ret.name} positive />
+                <StatCard label="Min DD"   value={(quickStats.drawdown.value != null ? (quickStats.drawdown.value * 100).toFixed(1) + "%" : "-")} name={quickStats.drawdown.name} negative />
+                <StatCard label="Low Vol"  value={(quickStats.vol.value != null ? (quickStats.vol.value * 100).toFixed(1) + "%" : "-")} name={quickStats.vol.name} />
+              </div>
+            </>
+          )}
+        </>
+      )}
 
-        <label style={label}>End</label>
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-        />
+      {tab === "lab" && (
+        <>
+          {!strategySet ? (
+            <div style={emptyState}>Load a strategy set in the Experiment tab first.</div>
+          ) : (
+            <>
+              <div style={strategyNav}>
+                {editedStrategies.map((s: any, i: number) => (
+                  <button key={i}
+                    style={i === selectedIdx ? activeStrategyBtn : strategyBtn}
+                    onClick={() => { setSelectedIdx(i); setJsonMode(false) }}>
+                    {s.name}
+                  </button>
+                ))}
+              </div>
 
-        <label style={label}>Rebalance</label>
-        <select
-          value={rebalance}
-          onChange={(e) => setRebalance(e.target.value)}
-        >
-          <option value="monthly">Monthly</option>
-          <option value="weekly">Weekly</option>
-        </select>
+              {jsonMode ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <textarea value={jsonText} onChange={(e) => setJsonText(e.target.value)}
+                    style={jsonEditor} spellCheck={false} />
+                  {jsonError && <div style={errorMsg}>{jsonError}</div>}
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button style={applyBtn} onClick={applyJson}>Apply</button>
+                    <button style={cancelBtn} onClick={() => { setJsonMode(false); setJsonError(null) }}>Cancel</button>
+                  </div>
+                </div>
+              ) : currentStrategy ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <Section title="Identity">
+                    <Row label="Name">
+                      <input style={inputStyle} value={currentStrategy.name}
+                        onChange={(e) => updateField(["name"], e.target.value)} />
+                    </Row>
+                  </Section>
 
-        <label style={label}>Transaction Cost</label>
-        <input
-          type="number"
-          value={transactionCost}
-          onChange={(e) => setTransactionCost(Number(e.target.value))}
-        />
+                  <Section title="Market State">
+                    <Row label="Lookback">
+                      <input style={inputStyle} value={currentStrategy.market_state_config?.lookback_window_key ?? ""}
+                        onChange={(e) => updateField(["market_state_config", "lookback_window_key"], e.target.value)} />
+                    </Row>
+                    <Row label="Cash Alloc">
+                      <input type="number" step={0.01} style={inputStyle}
+                        value={currentStrategy.market_state_config?.cash_allocation ?? 0}
+                        onChange={(e) => updateField(["market_state_config", "cash_allocation"], Number(e.target.value))} />
+                    </Row>
+                    <label style={labelStyle}>Universe Tickers</label>
+                    <textarea
+                      style={{ ...inputStyle, height: 56, resize: "vertical", fontFamily: "monospace", fontSize: 10 }}
+                      value={(currentStrategy.market_state_config?.universe_tickers ?? []).join(", ")}
+                      onChange={(e) => updateField(["market_state_config", "universe_tickers"],
+                        e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean))} />
+                  </Section>
 
-      </Section>
+                  <Section title="Rebalance">
+                    <Row label="Frequency">
+                      <select style={inputStyle}
+                        value={currentStrategy.rebalance_problem?.rebalance_frequency ?? "weekly"}
+                        onChange={(e) => updateField(["rebalance_problem", "rebalance_frequency"], e.target.value)}>
+                        {rebalanceOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </Row>
+                    <Row label="Type">
+                      <input style={inputStyle} value={currentStrategy.rebalance_problem?.strategy_type ?? ""}
+                        onChange={(e) => updateField(["rebalance_problem", "strategy_type"], e.target.value)} />
+                    </Row>
+                  </Section>
 
-      <button style={runButton} onClick={runExperiment}>
-        Run Experiment
-      </button>
+                  {currentStrategy.rebalance_problem?.constraints && (
+                    <Section title="Constraints">
+                      {[
+                        ["Max Pos", "max_position_size"],
+                        ["Min Pos", "min_position_size"],
+                        ["Max #", "max_positions"],
+                        ["Turnover", "turnover_limit"],
+                        ["Risk Aversion", "risk_aversion"],
+                        ["Vol Limit", "optimizer_vol_constraint"],
+                      ].map(([labelText, key]) => (
+                        <Row key={key} label={labelText}>
+                          <input type="number" step={0.01} style={inputStyle}
+                            value={currentStrategy.rebalance_problem.constraints[key] ?? ""}
+                            onChange={(e) => updateField(["rebalance_problem", "constraints", key], Number(e.target.value))} />
+                        </Row>
+                      ))}
+                    </Section>
+                  )}
 
-      <hr style={divider} />
+                  {currentStrategy.signals_config && Object.keys(currentStrategy.signals_config).length > 0 && (
+                    <Section title="Signals">
+                      {currentStrategy.signals_config.momentum_skip_periods !== undefined && (
+                        <Row label="Mom Skip">
+                          <input type="number" style={inputStyle}
+                            value={currentStrategy.signals_config.momentum_skip_periods}
+                            onChange={(e) => updateField(["signals_config", "momentum_skip_periods"], Number(e.target.value))} />
+                        </Row>
+                      )}
+                      {currentStrategy.signals_config.mean_reversion_window !== undefined && (
+                        <Row label="MR Window">
+                          <input type="number" style={inputStyle}
+                            value={currentStrategy.signals_config.mean_reversion_window}
+                            onChange={(e) => updateField(["signals_config", "mean_reversion_window"], Number(e.target.value))} />
+                        </Row>
+                      )}
+                    </Section>
+                  )}
 
-      <button style={secondaryButton}>
-        Strategy Lab
-      </button>
+                  <button style={jsonToggleBtn} onClick={openJsonEditor}>Edit Raw JSON ↗</button>
+                </div>
+              ) : null}
+            </>
+          )}
 
+          <hr style={divider} />
+          <button style={runButton} onClick={runExperiment}>Run Experiment</button>
+        </>
+      )}
     </div>
   )
 }
 
-const btn = {
-  marginTop: 10,
-  padding: "8px 12px",
-  background: "#1f6feb",
-  border: "none",
-  color: "white",
-  cursor: "pointer"
+function StatCard({ label, name, value, positive, negative }: any) {
+  const valueColor = positive ? "#3fb950" : negative ? "#f85149" : "#e6edf3"
+  return (
+    <div style={statCard}>
+      <div style={statLabel}>{label}</div>
+      <div style={{ ...statValue, color: valueColor }}>{value ?? "-"}</div>
+      <div style={statName}>{name}</div>
+    </div>
+  )
 }
 
 function Section({ title, children }: any) {
   return (
-    <div style={section}>
+    <div style={sectionStyle}>
       <h4 style={sectionTitle}>{title}</h4>
       {children}
     </div>
   )
 }
 
-const container: CSSProperties = { display: "flex", flexDirection: "column", gap: 20 }
-const title: CSSProperties = { fontSize: 18, fontWeight: 600 }
-const section: CSSProperties = { display: "flex", flexDirection: "column", gap: 8 }
-const sectionTitle: CSSProperties = { fontSize: 13, textTransform: "uppercase", color: "#8b949e", letterSpacing: "0.5px" }
-const label: CSSProperties = { fontSize: 12, color: "#8b949e" }
-const runButton: CSSProperties = { marginTop: 10, padding: "10px 12px", background: "#238636", border: "none", color: "white", cursor: "pointer", borderRadius: 6, fontWeight: 600 }
-const secondaryButton: CSSProperties = { padding: "8px 12px", background: "#21262d", border: "1px solid #30363d", color: "#e6edf3", cursor: "pointer", borderRadius: 6 }
-const divider: CSSProperties = { borderColor: "#2a2f3a" }
+// Inline label+input row to halve vertical space vs stacked label/input
+function Row({ label, children }: any) {
+  return (
+    <div style={rowStyle}>
+      <span style={rowLabel}>{label}</span>
+      <div style={rowInput}>{children}</div>
+    </div>
+  )
+}
+
+function formatName(name: string) {
+  return name.replace("_portfolio", "").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+}
+
+const container: CSSProperties = { display: "flex", flexDirection: "column", gap: 10, height: "100%", overflowY: "auto" }
+const tabBar: CSSProperties = { display: "flex", borderBottom: "1px solid #2a2f3a", marginBottom: 2 }
+const baseTab: CSSProperties = { flex: 1, padding: "6px 0", background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, letterSpacing: "0.3px" }
+const activeTab: CSSProperties = { ...baseTab, color: "#e6edf3", borderBottom: "2px solid #238636" }
+const inactiveTab: CSSProperties = { ...baseTab, color: "#8b949e", borderBottom: "2px solid transparent" }
+const sectionStyle: CSSProperties = { display: "flex", flexDirection: "column", gap: 4 }
+const sectionTitle: CSSProperties = { fontSize: 10, textTransform: "uppercase", color: "#8b949e", letterSpacing: "0.6px", margin: 0, marginBottom: 1 }
+const labelStyle: CSSProperties = { fontSize: 10, color: "#8b949e" }
+const inputStyle: CSSProperties = { background: "#161b22", border: "1px solid #30363d", borderRadius: 4, color: "#e6edf3", padding: "3px 6px", fontSize: 11, width: "100%", boxSizing: "border-box" }
+const fileInput: CSSProperties = { fontSize: 11, color: "#8b949e" }
+const pill: CSSProperties = { fontSize: 10, color: "#3fb950", background: "#0f2b14", border: "1px solid #238636", borderRadius: 20, padding: "1px 8px", display: "inline-block" }
+const runButton: CSSProperties = { padding: "8px 12px", background: "#238636", border: "none", color: "white", cursor: "pointer", borderRadius: 6, fontWeight: 600, fontSize: 12, width: "100%" }
+const divider: CSSProperties = { borderColor: "#2a2f3a", margin: "2px 0" }
+const quickStatsTitle: CSSProperties = { fontSize: 10, textTransform: "uppercase", letterSpacing: "0.6px", color: "#8b949e", fontWeight: 600 }
+const statsGrid: CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }
+const statCard: CSSProperties = { background: "#0d1117", border: "1px solid #21262d", borderRadius: 6, padding: "6px 8px" }
+const statLabel: CSSProperties = { fontSize: 9, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 1 }
+const statValue: CSSProperties = { fontSize: 14, fontWeight: 700, lineHeight: 1.2 }
+const statName: CSSProperties = { fontSize: 9, color: "#8b949e", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }
+const strategyNav: CSSProperties = { display: "flex", flexDirection: "column", gap: 3 }
+const strategyBtn: CSSProperties = { background: "none", border: "1px solid #30363d", borderRadius: 4, color: "#8b949e", padding: "4px 8px", fontSize: 11, cursor: "pointer", textAlign: "left" }
+const activeStrategyBtn: CSSProperties = { ...strategyBtn, background: "#161b22", border: "1px solid #388bfd", color: "#e6edf3" }
+const jsonEditor: CSSProperties = { background: "#0d1117", border: "1px solid #30363d", borderRadius: 4, color: "#e6edf3", padding: 8, fontSize: 11, fontFamily: "monospace", height: 320, resize: "vertical", width: "100%", boxSizing: "border-box" }
+const jsonToggleBtn: CSSProperties = { background: "none", border: "1px solid #30363d", borderRadius: 4, color: "#8b949e", padding: "4px 8px", fontSize: 11, cursor: "pointer", textAlign: "left" }
+const applyBtn: CSSProperties = { flex: 1, padding: "5px 0", background: "#238636", border: "none", borderRadius: 4, color: "white", fontSize: 11, cursor: "pointer" }
+const cancelBtn: CSSProperties = { flex: 1, padding: "5px 0", background: "#21262d", border: "1px solid #30363d", borderRadius: 4, color: "#e6edf3", fontSize: 11, cursor: "pointer" }
+const errorMsg: CSSProperties = { color: "#f85149", fontSize: 10, fontFamily: "monospace" }
+const emptyState: CSSProperties = { color: "#8b949e", fontSize: 12, lineHeight: 1.6 }
+const rowStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 6 }
+const rowLabel: CSSProperties = { fontSize: 10, color: "#8b949e", width: 68, flexShrink: 0 }
+const rowInput: CSSProperties = { flex: 1, minWidth: 0 }
