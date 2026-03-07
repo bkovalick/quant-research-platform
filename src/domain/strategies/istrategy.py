@@ -24,8 +24,8 @@ class StrategyInterface(abc.ABC):
             non-cash weights by that factor (capped at vol_max_leverage).
             Cash absorbs the residual to keep weights summing to 1.
         """        
-        vol_target = getattr(self.rebalance_problem, "vol_target")
-        vol_max_leverage = getattr(self.rebalance_problem, "vol_max_leverage")
+        vol_target = getattr(self.rebalance_problem, "vol_target", None)
+        vol_max_leverage = getattr(self.rebalance_problem, "vol_max_leverage", None)
         realized_vol = risk_return_signals.portfolio_vol(optimized_weights)
         scaling_factor = min(vol_target / realized_vol, vol_max_leverage) if realized_vol > 0 else 1.0
 

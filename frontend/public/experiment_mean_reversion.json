@@ -23,7 +23,8 @@
       "signals_config": {
         "apply_winsorizing": true,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
-        "mean_reversion_window": 4
+        "mean_reversion_window": 4,
+        "momentum_skip_periods": 4
       },      
       "rebalance_problem": {
         "strategy_type": "mean_reversion_strategy",
@@ -48,8 +49,7 @@
             "max_positions": 50,
             "asset_class_constraints": { 
                 "Equity": [0.70, 0.90], 
-                "Fixed Income": [0.05, 0.25], 
-                "Cash": [0.0, 0.025] 
+                "Fixed Income": [0.05, 0.25]
             },
             "sector_constraints": {
                 "Information Technology": [0.25, 0.45], 
