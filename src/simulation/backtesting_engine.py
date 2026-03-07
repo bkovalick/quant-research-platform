@@ -1,5 +1,6 @@
 import abc
 import time
+import numpy as np
 
 from domain.portfolio.iportfolio import PortfolioInterface
 from domain.strategies.istrategy import StrategyInterface
@@ -39,7 +40,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             initial_weights
         )
         
-        prev_weights = initial_weights
+        prev_weights = np.array(initial_weights)
         while self.market_state.has_next():
             self.market_state.advance()
 

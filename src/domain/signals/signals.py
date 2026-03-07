@@ -16,12 +16,14 @@ class Signals(ABC):
 
     def lookback_returns(self) -> pd.DataFrame:
         r = self.market_state.lookback_returns()
+        if isinstance(r, pd.Series):
+            r = r.to_frame()
         if not self.apply_winsorizing:
             return r
 
         lower_bound = r.quantile(self.windsor_percentiles["lower"])
         upper_bound = r.quantile(self.windsor_percentiles["upper"])
-        return r.clip(lower=lower_bound, upper=upper_bound, axis = 1)
+        return r.clip(lower=lower_bound, upper=upper_bound, axis=1)
 
     @abstractmethod
     def mean_returns(self) -> np.ndarray: ...
@@ -77,6 +79,12 @@ class MeanReversionSignals(RiskReturnSignals):
         
         lookback_prices = self.market_state.lookback_prices()
         short_returns = lookback_prices.pct_change(mean_reversion_window).iloc[-1]
+        if not self.apply_winsorizing:
+            return short_returns
+
+        lower_bound = short_returns.quantile(self.windsor_percentiles["lower"])
+        upper_bound = short_returns.quantile(self.windsor_percentiles["upper"])
+        short_returns = short_returns.clip(lower=lower_bound, upper=upper_bound)
         annualized = -short_returns.values * (self.ann_factor/mean_reversion_window)
         return annualized
         

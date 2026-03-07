@@ -11,7 +11,7 @@ class Portfolio(PortfolioInterface):
         self.holdings = None
         self.turnover = None
 
-    def initialize(self, dates, tickers, initial_weights):
+    def initialize(self, dates, tickers: np.ndarray, initial_weights: np.ndarray):
         """Initialize portfolio with rebalance problem and price data."""
         if len(initial_weights) == 0:
             raise ValueError("price_data is empty—cannot initialize portfolio weights.")
@@ -21,16 +21,13 @@ class Portfolio(PortfolioInterface):
         self.returns = pd.Series(0, dtype=float, index=dates)
         self.turnover = pd.Series(0, dtype=float, index=dates)
     
-    def apply(self, target_weights, prev_weights, cursor):
+    def apply(self, target_weights: np.ndarray, prev_weights: np.ndarray, cursor: int) -> None:
         """ Updates weights and turnover """
         turnover = np.sum(np.abs(target_weights - prev_weights)) / 2
-
         self.weights.iloc[cursor] = target_weights
         self.turnover.iloc[cursor] = turnover
 
-        return target_weights
-
-    def drift(self, prev_weights, asset_returns, cursor):
+    def drift(self, prev_weights: np.ndarray, asset_returns: np.ndarray, cursor: int) -> np.ndarray:
         """ Updates weights and returns """
         portfolio_return = np.sum(prev_weights * asset_returns)
 
@@ -40,4 +37,4 @@ class Portfolio(PortfolioInterface):
         self.weights.iloc[cursor] = new_weights
         self.returns.iloc[cursor] = portfolio_return
 
-        return new_weights
+        return np.array(new_weights)

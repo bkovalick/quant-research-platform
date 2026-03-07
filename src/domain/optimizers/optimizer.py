@@ -106,9 +106,9 @@ class Optimizer(IOptimizer):
 		if getattr(rebalance_problem, 'turnover_limit') is None or current_weights is None:
 			return []
 		
-		portfolio_weights = decision_variables.get('portfolio_weights')
+		portfolio_weights = decision_variables.get('portfolio_weights')	
 		return [
-				cp.norm1(portfolio_weights - current_weights) <= rebalance_problem.turnover_limit
+			cp.norm1(portfolio_weights[:-1] - current_weights[:-1]) <= rebalance_problem.turnover_limit
 		]
 
 	def _setup_asset_class_constraints(self, 
@@ -174,10 +174,13 @@ class Optimizer(IOptimizer):
 					   rebalance_problem: RebalanceProblem, 
 					   signals: Signals = None) -> callable:
 		"""Set the objective function based on rebalance problem settings."""
-		if getattr(rebalance_problem, 'apply_max_return_objective'):
-			return self._set_maximize_return_objective(decision_variables, rebalance_problem, signals)
-		else:
-			return
+		objectives = {
+			'apply_max_return_objective': self._set_maximize_return_objective,
+		}
+		for flag, builder in objectives.items():
+			if getattr(rebalance_problem, flag, False):
+				return builder(decision_variables, rebalance_problem, signals)
+		raise ValueError("No objective function configured. Set one of: " + ", ".join(objectives))
 		
 	def _set_maximize_return_objective(self, 
 									   decision_variables: dict,

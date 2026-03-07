@@ -96,8 +96,7 @@
             "max_positions": 50,
             "asset_class_constraints": { 
                 "Equity": [0.70, 0.90], 
-                "Fixed Income": [0.05, 0.25], 
-                "Cash": [0.0, 0.025] 
+                "Fixed Income": [0.05, 0.25]
             },
             "sector_constraints": {
                 "Information Technology": [0.25, 0.45], 
@@ -155,8 +154,7 @@
             "max_positions": 50,
             "asset_class_constraints": { 
                 "Equity": [0.70, 0.90], 
-                "Fixed Income": [0.05, 0.25], 
-                "Cash": [0.0, 0.025] 
+                "Fixed Income": [0.05, 0.25]
             },
             "sector_constraints": {
                 "Information Technology": [0.25, 0.45], 
