@@ -13,9 +13,10 @@ src/
 ├── application/
 │   ├── experiment_runner.py
 ├── config/
-│   ├── experiment_20260220.json
-├── data/
+│   ├── experiment_config.json
+├── infrastructure/
 │   ├── market_data_gateway.py
+├── reference/
 │   ├── market_metadata.py
 ├── domain/
 │   ├── optimizers/
@@ -58,7 +59,8 @@ src/
 - **main.py**: Entry point for running experiments and orchestrating workflows.
 - **application/**: Contains experiment runner and application-level orchestration.
 - **config/**: Stores configuration files and settings for experiments.
-- **data/**: Handles market data ingestion and metadata management.
+- **infrastructure/**: Market data ingestion (yfinance, CSV).
+- **reference/**: Static market metadata (universe, asset class maps).
 - **domain/**:
   - **optimizers/**: Defines optimizer interfaces and implementations.
   - **portfolio/**: Portfolio abstractions and interfaces.
@@ -74,15 +76,22 @@ src/
 
 ### 1. Experiment Setup
 
-Configure your experiment in a JSON file (e.g., `config/experiment_20260220.json`).
+Configure your experiment in a JSON file (e.g., `config/experiment_config.json`).
 
 ### 2. Running an Experiment
 
+The simplest entry point — `ExperimentRunner` reads the config and orchestrates the full pipeline:
+
 ```python
+import json
 from application.experiment_runner import ExperimentRunner
 
-runner = ExperimentRunner(config_path="config/experiment_20260220.json")
-runner.run()
+with open("config/experiment_config.json") as f:
+    config = json.load(f)
+
+runner = ExperimentRunner(config)
+experiment = runner.run()           # single-threaded
+# experiment = runner.run_parallel()  # multi-threaded
 ```
 
 ### 3. Building a Rebalance Problem
@@ -90,17 +99,25 @@ runner.run()
 ```python
 from services.rebalance_problem_builder import RebalanceProblemBuilder
 
-builder = RebalanceProblemBuilder(config)
+builder = RebalanceProblemBuilder(config=strategy_config, universe_meta=universe_meta)
 rebalance_problem = builder.build()
 ```
 
-### 4. Optimizing a Portfolio
+### 4. Configuring a Strategy
 
 ```python
-from services.optimizer_factory import get_optimizer
+from services.optimizer_factory import OptimizerFactory
+from services.strategy_factory import StrategyFactory
 
-optimizer = get_optimizer("mean_variance")
-solution = optimizer.optimize(rebalance_problem)
+optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type)
+strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
+
+# On each rebalance date the strategy:
+#   1. Receives signals (mean returns, covariance) from the Signals object
+#   2. Calls optimizer.optimize(rebalance_problem, signals, current_weights)
+#   3. Applies post-optimisation rules (e.g. vol targeting, cash residual)
+#   4. Returns a new np.ndarray of portfolio weights
+new_weights = strategy.rebalance(signals, current_weights)
 ```
 
 ### 5. Backtesting
@@ -108,16 +125,22 @@ solution = optimizer.optimize(rebalance_problem)
 ```python
 from simulation.backtesting_engine import BacktestingEngine
 
-engine = BacktestingEngine()
-results = engine.run_backtest(strategy, market_data)
+engine = BacktestingEngine(
+    portfolio=portfolio,
+    strategy=strategy,
+    market_state=market_state,
+    signals_cfg=signals_cfg
+)
+portfolio = engine.run_backtest(rebalance_problem)
 ```
 
 ### 6. Reporting
 
 ```python
-from reporting.reporting_module import generate_report
+from reporting.reporting_module import ExcelGenerator
 
-generate_report(results)
+report = ExcelGenerator(experiment, output_path="backtest_results")
+report.generate_report()
 ```
 
 ## Adding a New Strategy or Optimizer
@@ -139,22 +162,67 @@ generate_report(results)
 - CVXPY (for optimization)
 - See `requirements.txt` for full list
 
-## Setup
+**Setup:**
+   - Create and activate a virtualenv in root: `.venv/`
+   - Install dependencies: `pip install -r requirements.txt`
 
-1. Create and activate a virtual environment:
+**Run:**
+   - Entry point: [src/main.py](src/main.py)
+   - Typical pattern: build config dict → use `RebalanceProblemBuilder` → pass to optimizer layer → pass to problem and optimizer to strategy layer → run backtest.
+   - Example:
+      ```python
+      builder = RebalanceProblemBuilder(config)
+      problem = builder.build()
+      portfolio = Portfolio(...)  # Create portfolio instance
+      optimizer = MyOptimizer()  # Initialize optimizer (problem passed to optimize(), not __init__)
+      strategy = MyStrategy(problem, optimizer)  # Initialize strategy with rebalance problem and optimizer
+      signals = SignalsConfig(...)  # Define signals configuration
+      weights = strategy.rebalance(signals, portfolio.weights.iloc[current_date])  # Strategy returns new portfolio weights (e.g., np.ndarray)
+      ```
+
+**Adding a strategy:**
+   - Create a new class in `src/domain/strategies/`, inheriting from a base strategy interface.
+   - Implement the `rebalance()` method by passing signals and the current portfolio.
+   - Integrate with the workflow above.
+
+**Adding an optimizer:**
+   - Create a new class in `src/domain/optimizers/`, implement class inheriting `IOptimizer`.
+   - Register in `optimizer_factory._optimizers`.
+
+**Data ingestion:**
+   - Update both `marketdatagateway.py` and `RebalanceProblemBuilder` if changing data sources or formats.
+   - Builders expect cleaned numpy arrays for all statistics.
+
+---
+
+# Running the UI (Frontend & Backend)
+
+## Backend
+1. Create and activate your virtual environment:
    ```bash
    python -m venv .venv
-   .venv\Scripts\activate
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
 2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
+3. Navigate to `src/` and start the backend server:
+   ```bash
+   uvicorn main:app --reload
+   ```
 
-## License
+## Frontend
+1. Navigate to the frontend directory.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+4. The frontend runs on `http://localhost:5173` by default.
 
-See CVXPY and other library documentation for licensing.
-
----
-
-For more details, see the source code and configuration files in the `src/` directory.
+## Accessing the App
+Open `http://localhost:5173` in your browser. Ensure the backend is running for full functionality.

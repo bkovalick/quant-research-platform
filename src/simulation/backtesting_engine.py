@@ -1,9 +1,10 @@
 import abc
 import time
+import numpy as np
 
 from domain.portfolio.iportfolio import PortfolioInterface
 from domain.strategies.istrategy import StrategyInterface
-from domain.signals.signals import Signals
+from domain.signals.signals import RiskReturnSignals, MovingAverageSignals, VolatilityForecastingSignals, MeanReversionSignals
 from models.rebalance_problem import RebalanceProblem
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
@@ -39,7 +40,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             initial_weights
         )
         
-        prev_weights = initial_weights
+        prev_weights = np.array(initial_weights)
         while self.market_state.has_next():
             self.market_state.advance()
 
@@ -55,7 +56,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             if not self._is_rebalance_step(cursor):
                 continue
 
-            signals = Signals(self.market_state, self.signals_cfg)
+            signals = self._build_signals(self.market_state, self.signals_cfg)
             target_weights = self.strategy.rebalance(signals, prev_weights)
             self.portfolio.apply(target_weights, prev_weights, cursor)
             prev_weights = target_weights
@@ -67,22 +68,13 @@ class BacktestingEngine(BacktestingEngineInterface):
         return step % self.rebalance_every == 0
     
     def _get_steps(self, freq_param):
-        key = (freq_param['from'], freq_param['to'])
-        return FREQ_TO_STEPS.get(key)
+        key = (self.market_state.market_frequency, freq_param)
+        return FREQ_TO_STEPS.get(key, 1)
     
-class SignalsFactory:
-    def __init__(self, config):
-        self.config = config
-        self.signals = dict()
-        
-    def build_signals_factory(self) -> dict:
-        pass
-
-    def _add_base_signals(self):
-        pass
-
-    def _add_moving_average_signals(self):
-        pass
-
-    def _add_volatility_signals(self):
-        pass
+    def _build_signals(self, market_state: MarketState, signals_config: SignalsConfig) -> dict:
+        return {
+            "risk_return": RiskReturnSignals(market_state, signals_config),
+            "mean_reversion": MeanReversionSignals(market_state, signals_config),
+            "moving_average": MovingAverageSignals(market_state, signals_config),
+            "volatility_forecast": VolatilityForecastingSignals(market_state, signals_config)
+        } 

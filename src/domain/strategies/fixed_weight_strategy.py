@@ -1,9 +1,16 @@
 from domain.strategies.istrategy import StrategyInterface
+from models.rebalance_problem import RebalanceProblem
+import numpy as np
 
 class FixedWeightStrategy(StrategyInterface):
-    def __init__(self, rebalance_problem, optimizer=None):
-        self.rebalance_problem = rebalance_problem
+    """Fixed weight strategy.
 
-    def rebalance(self, signals, current_weights):
+    Always returns the initial_weights defined in the rebalance problem,
+    drifting back to the target allocation on every rebalance date.
+    """
+    def __init__(self, rebalance_problem: RebalanceProblem, optimizer=None):
+        super().__init__(rebalance_problem, optimizer)
+
+    def rebalance(self, signals: dict, current_weights: np.ndarray) -> np.ndarray:
         """Calculate rebalance weights"""
         return self.rebalance_problem.initial_weights

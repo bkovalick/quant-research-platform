@@ -32,10 +32,6 @@ class RebalanceProblem:
         return self._data.get("apply_sharpe_objective", False)
 
     @property
-    def risk_free_rate(self) -> float:
-        return self._data.get("risk_free_rate")
-
-    @property
     def initial_weights(self) -> list:
         return self._data.get("initial_weights")
 
@@ -44,12 +40,12 @@ class RebalanceProblem:
         return self._data.get("cash_allocation")
     
     @property
-    def rebalance_frequency(self) -> dict:
-        return self._data.get("rebalance_frequency", {})
+    def rebalance_frequency(self) -> str:
+        return self._data.get("rebalance_frequency", "weekly")
     
     @property
-    def risk_tolerance(self) -> int:
-        return self._data.get("risk_tolerance", 0)
+    def risk_aversion(self) -> int:
+        return self._data.get("risk_aversion", 0)
 
     @property
     def turnover_limit(self) -> float:
@@ -94,3 +90,19 @@ class RebalanceProblem:
     @property
     def tickers(self) -> dict:
         return self._data.get("tickers", ["AAPL"])
+    
+    @property
+    def optimizer_vol_constraint(self) -> float:
+        return self._data.get("optimizer_vol_constraint", None)
+    
+    @property
+    def vol_target(self) -> float:
+        return self._data.get("vol_target", None)
+    
+    @property
+    def vol_lookback_days(self) -> float:
+        return self._data.get("vol_lookback_days", None)
+    
+    @property
+    def vol_max_leverage(self) -> float:
+        return self._data.get("vol_max_leverage", None)    

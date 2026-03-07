@@ -2,7 +2,6 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 import pandas as pd
 import numpy as np
-import yfinance as yf
 from datetime import datetime
 from pathlib import Path
 
@@ -80,6 +79,7 @@ class ExcelGenerator:
                 weights_df.insert(2, "WealthFactor", strategy_run.result.series["portfolio_wealth_factors"].values)
                 weights_df.insert(3, "PortfolioReturns", strategy_run.result.series["portfolio_returns"].values)
                 weights_df.insert(4, "PortfolioTurnover", strategy_run.result.series["portfolio_turnover"].values)
+                weights_df.insert(5, "PortfolioTrades", strategy_run.result.series["portfolio_trades"].values)
                 portfolio_dfs.append(weights_df)
 
             if "rolling_returns" in strategy_run.result.series:
@@ -140,6 +140,10 @@ class MetricsCompute:
                                        benchmark_index: pd.Series) -> dict:
         """Calculate performance metrics for the portfolio."""
         portfolio_weights = portfolio.weights
+        portfolio_trades = portfolio.weights.diff().abs().fillna(0)
+        if isinstance(portfolio_trades, pd.DataFrame):
+            portfolio_trades = portfolio_trades.sum(axis=1)
+
         portfolio_returns = portfolio.returns
         portfolio_turnover = portfolio.turnover
         wealth_factors = (1 + portfolio_returns).cumprod()
@@ -166,6 +170,7 @@ class MetricsCompute:
 
         performance_metrics = {
             "portfolio_wealth_factors": wealth_factors,
+            "portfolio_trades": portfolio_trades,
             "portfolio_weights": portfolio_weights,
             "portfolio_returns": portfolio_returns,
             "portfolio_turnover": portfolio_turnover,
@@ -186,7 +191,7 @@ class MetricsCompute:
                 np.sqrt(self.annual_trading_days)) if portfolio_returns[portfolio_returns < 0].std() != 0 else 0,
             "max_drawdown": max_drawdown,
             "turnover": portfolio_turnover.mean() * self.annual_trading_days,
-            "alpha": self._calculate_alpha(portfolio_returns, self.annual_trading_days, market_str_cfg, benchmark_index),
+            "alpha": self._calculate_alpha(portfolio_returns, self.annual_trading_days, benchmark_index),
             "calmar_ratio": annualized_return / max_drawdown if max_drawdown != 0 else 0.0,
             "tracking_error": np.sqrt(((portfolio_returns - benchmark_index.pct_change().fillna(0)) ** 2).mean()) * \
                 np.sqrt(self.annual_trading_days),
@@ -204,7 +209,7 @@ class MetricsCompute:
             "conditional_value_at_risk_99": portfolio_returns[portfolio_returns < \
                 portfolio_returns.quantile(0.01)].mean() if len(portfolio_returns) > 0 else 0.0,
             "alpha_decay": self._calculate_alpha(portfolio_returns[-self.annual_trading_days:], \
-                self.annual_trading_days, market_str_cfg, benchmark_index[-self.annual_trading_days:]) \
+                self.annual_trading_days, benchmark_index[-self.annual_trading_days:]) \
                     if len(portfolio_returns) >= self.annual_trading_days else None
         }
         return performance_metrics
@@ -249,10 +254,9 @@ class MetricsCompute:
     def _calculate_alpha(self, 
                          portfolio_returns: pd.Series, 
                          annualization_factor: int,
-                         market_str_cfg: MarketStoreConfig,
                          benchmark_index: pd.Series):
         """Calculate alpha of the portfolio against a benchmark (S&P 500)."""
-        rule = {"w": "W-FRI", "m": "M"}[self.market_frequency]
+        rule = {"d": "B", "w": "W-FRI", "m": "M"}[self.market_frequency]
         benchmark = benchmark_index.resample(rule).last()
         benchmark_returns = benchmark.pct_change().fillna(0)
 
@@ -274,6 +278,7 @@ class MetricsCompute:
                 
         performance_series = {
             "portfolio_wealth_factors": performance_metrics["portfolio_wealth_factors"],
+            "portfolio_trades": performance_metrics["portfolio_trades"],
             "portfolio_weights": performance_metrics["portfolio_weights"],
             "portfolio_returns": performance_metrics["portfolio_returns"],
             "portfolio_turnover": performance_metrics["portfolio_turnover"],
