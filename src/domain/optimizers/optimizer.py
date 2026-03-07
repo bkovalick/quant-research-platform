@@ -24,27 +24,21 @@ class Optimizer(IOptimizer):
 		objective = self._set_objective(decision_variables, rebalance_problem, signals)
 		prob = cp.Problem(objective, constraints)
 
-		best_result = None
 		for solver in [cp.CLARABEL, cp.ECOS, cp.SCS, cp.OSQP]:
 			try:
 				prob.solve(solver=solver, verbose=False)
-				if prob.status == cp.OPTIMAL:
+				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
 					break
-				if prob.status == cp.OPTIMAL_INACCURATE and best_result is None:
-					best_result = (prob.status, decision_variables['portfolio_weights'].value)
 			except (cp.SolverError, Exception):
 				continue
 		else:
-			if best_result is None:
-				raise RuntimeError("Optimization failed: all solvers failed")
+			raise RuntimeError("Optimization failed: all solvers failed")
 			
 		if prob.status not in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
-			if best_result is None:
-				print(f"Optimization failed: Problem status {prob.status}")
-				return current_weights
+			print(f"Optimization failed: Problem status {prob.status} {rebalance_problem.max_return}")
+			return current_weights
 
-		optimal_weights = decision_variables['portfolio_weights'].value if prob.status == cp.OPTIMAL \
-			else (best_result[1] if best_result else current_weights)
+		optimal_weights = decision_variables['portfolio_weights'].value
 		return optimal_weights	
 
 	def _setup_decision_variables(self, rebalance_problem: RebalanceProblem) -> dict:

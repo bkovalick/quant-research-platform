@@ -5,6 +5,8 @@ from simulation.market_state import MarketState
 
 from arch import arch_model
 from abc import ABC, abstractmethod
+from scipy.stats import rankdata
+from sklearn.covariance import LedoitWolf
 
 class Signals(ABC):
     def __init__(self, market_state: MarketState, signals_cfg: SignalsConfig):
@@ -16,14 +18,12 @@ class Signals(ABC):
 
     def lookback_returns(self) -> pd.DataFrame:
         r = self.market_state.lookback_returns()
-        if isinstance(r, pd.Series):
-            r = r.to_frame()
         if not self.apply_winsorizing:
             return r
 
         lower_bound = r.quantile(self.windsor_percentiles["lower"])
         upper_bound = r.quantile(self.windsor_percentiles["upper"])
-        return r.clip(lower=lower_bound, upper=upper_bound, axis=1)
+        return r.clip(lower=lower_bound, upper=upper_bound, axis = 1)
 
     @abstractmethod
     def mean_returns(self) -> np.ndarray: ...
@@ -44,10 +44,10 @@ class RiskReturnSignals(Signals):
 
     def covariance_matrix(self) -> np.ndarray:
         lookback_returns = self.lookback_returns()
-        r = lookback_returns.values
-        cov = np.cov(r, rowvar=False) * self.ann_factor
-        cov = 0.5 * (cov + cov.T)
-        return cov
+        lw = LedoitWolf()
+        lw.fit(lookback_returns.values)
+        cov = lw.covariance_ * self.ann_factor
+        return 0.5 * (cov + cov.T)
     
     def portfolio_vol(self, curr_weights: np.ndarray) -> float:
         cov = self.covariance_matrix()
@@ -87,6 +87,10 @@ class MeanReversionSignals(RiskReturnSignals):
         short_returns = short_returns.clip(lower=lower_bound, upper=upper_bound)
         annualized = -short_returns.values * (self.ann_factor/mean_reversion_window)
         return annualized
+
+    def ranked_mean_returns(self, short_returns: pd.Series, scaling_factor: int) -> np.ndarray:
+        ranked = rankdata(short_returns.values) / len(short_returns)
+        return -(ranked - 0.5) * scaling_factor
         
 class MovingAverageSignals:
     def __init__(self, 
