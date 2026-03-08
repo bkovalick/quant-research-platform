@@ -233,12 +233,18 @@ class MetricsCompute:
         max_streak = is_underwater.groupby(not_underwater_cumsum).sum().max()
         return int(max_streak) if not pd.isna(max_streak) else 0
     
-    def _calculate_avg_drawdown(self, cumulative_returns: pd.Series):
+    def _calculate_avg_drawdown(self, cumulative_returns: pd.Series) -> float:
         """ Mean of all individual drawdown values at each point in time"""
         running_max = cumulative_returns.cummax()
-        drawdown = (cumulative_returns - running_max) / running_max        
-        average_drawdown = drawdown[drawdown < 0].mean()
-        return average_drawdown
+        valid = running_max != 0
+        drawdown = pd.Series(0.0, index=cumulative_returns.index)
+        drawdown[valid] = (cumulative_returns[valid] - running_max[valid]) / running_max[valid]    
+        negative_drawdowns = drawdown[drawdown < 0]
+        if negative_drawdowns.empty:
+            return 0
+        
+        result = float(negative_drawdowns.mean())
+        return result if np.isfinite(result) else 0.0
 
     def _calculate_rolling_drawdown(self, cumulative: pd.Series, window: int):
         """Calculate rolling drawdown series over a specified window."""

@@ -1,4 +1,4 @@
-import { useState } from "react"
+    import { useState } from "react"
 import type { CSSProperties } from "react"
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis,
@@ -25,7 +25,7 @@ const TOOLTIPS: Record<string, string> = {
   "Sharpe Ratio": "Annualized excess return divided by annualized volatility. The primary risk-adjusted performance measure — higher is better.",
   "Sortino Ratio": "Like Sharpe, but only penalizes downside volatility. Useful when return distributions are asymmetric — a higher Sortino than Sharpe suggests losses are less frequent than gains.",
   "Calmar Ratio": "Annualized return divided by maximum drawdown. Measures return per unit of worst-case risk — higher is better. Sensitive to the length of the backtest.",
-  Turnover: "Average annual portfolio turnover. High turnover increases transaction costs and drag on returns.",
+  "Tracking Error": "Annualized standard deviation of returns relative to the benchmark. Measures active risk — how far the strategy's returns deviate from the benchmark regardless of direction.",
   // Tail Risk
   VaR: "Value at Risk (95%). The return threshold exceeded only 5% of the time — a typical bad day/week/period.",
   CVaR: "Conditional VaR (95%). The average return in the worst 5% of periods. Also called Expected Shortfall — a more complete picture of tail risk than VaR alone.",
@@ -35,6 +35,12 @@ const TOOLTIPS: Record<string, string> = {
   "Max DD": "Largest peak-to-trough decline over the backtest. The single worst loss an investor would have experienced.",
   "Avg DD": "Mean of all below-peak drawdown values over the backtest. Measures typical pain experienced by the strategy, not just the worst-case event.",
   "Max DD Days": "Longest consecutive streak of periods spent below a previous peak. Measures recovery time — how long an investor would have waited to break even from the worst drawdown.",
+  // Trade Quality
+  Turnover: "Average annual portfolio turnover. High turnover increases transaction costs and drag on returns.",
+  "Win Rate": "Fraction of periods with a positive return. Does not account for the size of wins or losses — always interpret alongside Average Win and Average Loss.",
+  "Loss Rate": "Fraction of periods with a negative return. Complement of Win Rate — together they sum to ~100% (excluding flat periods).",
+  "Average Win": "Mean return across all winning periods. Compare against Average Loss to assess the reward-to-risk ratio of individual periods.",
+  "Average Loss": "Mean return across all losing periods (negative value). A small Average Loss relative to Average Win indicates an asymmetric, favourable return profile.",
 }
 
 function MetricTooltip({ label, children }: { label: string; children: React.ReactNode }) {
@@ -322,19 +328,28 @@ function DrawdownView({ runs }: any) {
 /* ── Trade Quality ── */
 function TradeQualityView({ runs }: any) {
   const metrics = [
-    { key: "turnover",     label: "Turnover",     fmt: "pct" },
+    { key: "turnover",     label: "Turnover",     fmt: "num" },
     { key: "win_rate",     label: "Win Rate",     fmt: "pct" },
     { key: "loss_rate",    label: "Loss Rate",    fmt: "pct" },
     { key: "average_win",  label: "Average Win",  fmt: "num" },
     { key: "average_loss", label: "Average Loss", fmt: "num" },
   ]
 
-  const barData = runs.map((run: any, i: number) => ({
+  const winLossData = runs.map((run: any, i: number) => ({
     name: formatName(run.strategy_name),
-    "Max DD": run.result.summary.max_drawdown != null
-      ? Math.abs(run.result.summary.max_drawdown * 100) : null,
+    "Win Rate":  run.result.summary.win_rate  != null ? +(run.result.summary.win_rate  * 100).toFixed(2) : null,
+    "Loss Rate": run.result.summary.loss_rate != null ? +(run.result.summary.loss_rate * 100).toFixed(2) : null,
     color: COLORS[i % COLORS.length]
   }))
+
+  const avgWinLossData = runs.map((run: any, i: number) => ({
+    name: formatName(run.strategy_name),
+    "Avg Win":  run.result.summary.average_win  != null ? +(run.result.summary.average_win  * 100).toFixed(2) : null,
+    "Avg Loss": run.result.summary.average_loss != null ? Math.abs(+(run.result.summary.average_loss * 100).toFixed(2)) : null,
+    color: COLORS[i % COLORS.length]
+  }))
+
+  const hasData = winLossData.some((d: any) => d["Win Rate"] != null)
 
   return (
     <div style={tabBody}>
@@ -344,7 +359,11 @@ function TradeQualityView({ runs }: any) {
           <tr style={headerRow}>
             <th style={leftHeader}>Strategy</th>
             {metrics.map(m => (
-              <th key={m.key} style={rightHeader}>{m.label}</th>
+              <th key={m.key} style={rightHeader}>
+                <MetricTooltip label={m.label}>
+                  <span style={tooltipLabel}>{m.label} <span style={dotStyle}>?</span></span>
+                </MetricTooltip>
+              </th>
             ))}
           </tr>
         </thead>
@@ -357,7 +376,7 @@ function TradeQualityView({ runs }: any) {
                   <span style={{ ...colorDot, backgroundColor: COLORS[i % COLORS.length] }} />
                   {formatName(run.strategy_name)}
                 </td>
-                <td style={rightCell}>{fmt(s.turnover, "pct")}</td>
+                <td style={rightCell}>{fmt(s.turnover, "num")}</td>
                 <td style={rightCellGreen(s.win_rate)}>{fmt(s.win_rate, "pct")}</td>
                 <td style={rightCellRed(s.loss_rate)}>{fmt(s.loss_rate, "pct")}</td>
                 <td style={rightCell}>{fmt(s.average_win, "num")}</td>
@@ -367,25 +386,46 @@ function TradeQualityView({ runs }: any) {
           })}
         </tbody>
       </table>
+      
+      {hasData ? (
+        <>
+          <SectionTitle style={{ marginTop: 24 }}>Win vs Loss Rate (%)</SectionTitle>
+          <div style={{ height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={winLossData} barCategoryGap="30%">
+                <XAxis dataKey="name" tick={{ fill: "#8b949e", fontSize: 10 }} />
+                <YAxis tick={{ fill: "#8b949e", fontSize: 10 }} tickFormatter={v => v + "%"} domain={[0, 100]} />
+                <Tooltip
+                  contentStyle={{ background: "#161b22", border: "1px solid #2a2f3a", fontSize: 12 }}
+                  formatter={(v: any) => v.toFixed(1) + "%"}
+                />
+                <Bar dataKey="Win Rate"  fill="#3fb950" radius={[3,3,0,0]} />
+                <Bar dataKey="Loss Rate" fill="#f85149" radius={[3,3,0,0]} />
+                <Legend wrapperStyle={{ fontSize: 11, color: "#8b949e" }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
 
-      {/* <SectionTitle style={{ marginTop: 28 }}>Max Drawdown Comparison</SectionTitle>
-      <div style={{ height: 220 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={barData} barCategoryGap="35%">
-            <XAxis dataKey="name" tick={{ fill: "#8b949e", fontSize: 10 }} />
-            <YAxis tick={{ fill: "#8b949e", fontSize: 10 }} tickFormatter={v => v.toFixed(0) + "%"} />
-            <Tooltip
-              contentStyle={{ background: "#161b22", border: "1px solid #2a2f3a", fontSize: 12 }}
-              formatter={(v: any) => v.toFixed(2) + "%"}
-            />
-            <Bar dataKey="Max DD" radius={[3,3,0,0]}>
-              {barData.map((entry: any, i: number) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div> */}
+          <SectionTitle style={{ marginTop: 24 }}>Avg Win vs Avg Loss (absolute %)</SectionTitle>
+          <div style={{ height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={avgWinLossData} barCategoryGap="30%">
+                <XAxis dataKey="name" tick={{ fill: "#8b949e", fontSize: 10 }} />
+                <YAxis tick={{ fill: "#8b949e", fontSize: 10 }} tickFormatter={v => v + "%"} />
+                <Tooltip
+                  contentStyle={{ background: "#161b22", border: "1px solid #2a2f3a", fontSize: 12 }}
+                  formatter={(v: any) => v.toFixed(2) + "%"}
+                />
+                <Bar dataKey="Avg Win"  fill="#3fb950" radius={[3,3,0,0]} />
+                <Bar dataKey="Avg Loss" fill="#f85149" radius={[3,3,0,0]} />
+                <Legend wrapperStyle={{ fontSize: 11, color: "#8b949e" }} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      ) : (
+        <p style={chartNote}>Win/loss stats not available — add win_rate, loss_rate, average_win, average_loss to your backend summary response.</p>
+      )}
     </div>
   )
 }

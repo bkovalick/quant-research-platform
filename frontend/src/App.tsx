@@ -77,7 +77,8 @@ const styles: { [key: string]: CSSProperties } = {
     minWidth: 0,
     position: "sticky",
     top: 0,
-    alignSelf: "flex-start"
+    alignSelf: "flex-start",
+    height: "calc(100vh - 24px)"
   },
   empty: {
     display: "flex",
