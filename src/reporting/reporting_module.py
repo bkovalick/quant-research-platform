@@ -286,9 +286,6 @@ class MetricsCompute:
         benchmark = benchmark_index.resample(rule).last()
         benchmark_returns = benchmark.pct_change().fillna(0)
 
-        if(len(benchmark_returns) != len(portfolio_returns)):
-            return
-
         aligned = pd.concat([portfolio_returns, benchmark_returns], axis=1, join='inner')
         aligned.columns = ['portfolio', 'benchmark']
 

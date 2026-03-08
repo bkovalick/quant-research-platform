@@ -6,7 +6,7 @@ from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
 
 def local_run():
-    with open(f"src/config/experiment_20260220.json", 'r') as f:
+    with open(f"src/config/experiment_mean_reversion.json", 'r') as f:
         config = json.load(f)
 
     config = config.copy()
