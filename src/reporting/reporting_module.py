@@ -238,7 +238,7 @@ class MetricsCompute:
         running_max = cumulative_returns.cummax()
         valid = running_max != 0
         drawdown = pd.Series(0.0, index=cumulative_returns.index)
-        drawdown[valid] = (cumulative_returns[valid] - running_max[valid]) / running_max[valid]    
+        drawdown[valid] = (cumulative_returns[valid] - running_max[valid]) / running_max[valid]     
         negative_drawdowns = drawdown[drawdown < 0]
         if negative_drawdowns.empty:
             return 0
