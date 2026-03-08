@@ -192,12 +192,38 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                         onChange={(e) => updateField(["market_state_config", "cash_allocation"], Number(e.target.value))} />
                     </Row>
                     <label style={labelStyle}>Universe Tickers</label>
-                      <textarea
-                        style={{ ...inputStyle, height: 56, resize: "vertical", fontFamily: "monospace", fontSize: 10 }}
-                        defaultValue={(currentStrategy.market_state_config?.universe_tickers ?? []).join(", ")}
-                        key={currentStrategy.name}
-                        onBlur={(e) => updateField(["market_state_config", "universe_tickers"],
-                          e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean))} />
+                      <div style={{ display: "flex", gap: 6, marginBottom: 4, alignItems: "center" }}>
+                        <button style={smallBtn} onClick={() =>
+                          updateField(["market_state_config", "universe_tickers"],
+                            (strategySet.market_store_config.tickers ?? []).filter(
+                              (t: string) => t !== strategySet.market_store_config.benchmark
+                            ))}>All</button>
+                        <button style={smallBtn} onClick={() =>
+                          updateField(["market_state_config", "universe_tickers"], [])}>Clear</button>
+                        <span style={{ fontSize: 10, color: "#8b949e" }}>
+                          {(currentStrategy.market_state_config?.universe_tickers ?? []).length} selected
+                        </span>
+                      </div>
+                      <div style={tickerGrid}>
+                        {(strategySet.market_store_config.tickers ?? [])
+                          .filter((t: string) => t !== strategySet.market_store_config.benchmark)
+                          .map((ticker: string) => {
+                            const selected = (currentStrategy.market_state_config?.universe_tickers ?? []).includes(ticker)
+                            return (
+                              <button
+                                key={ticker}
+                                style={selected ? tickerChipActive : tickerChip}
+                                onClick={() => {
+                                  const current = currentStrategy.market_state_config?.universe_tickers ?? []
+                                  const updated = selected
+                                    ? current.filter((t: string) => t !== ticker)
+                                    : [...current, ticker]
+                                  updateField(["market_state_config", "universe_tickers"], updated)
+                                }}
+                              >{ticker}</button>
+                            )
+                          })}
+                      </div>
                   </Section>
                   
                   <Section title="Strategy Type">
@@ -252,6 +278,38 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                             value={currentStrategy.signals_config.mean_reversion_window}
                             onChange={(e) => updateField(["signals_config", "mean_reversion_window"], Number(e.target.value))} />
                         </Row>
+                      )}
+
+                      {/* Black-Litterman block */}
+                      <div style={blHeader}>
+                        <span style={blLabel}>Black-Litterman</span>
+                        {currentStrategy.signals_config.black_litterman ? (
+                          <button style={blRemoveBtn} onClick={() => {
+                            const updated = JSON.parse(JSON.stringify(editedStrategies))
+                            delete updated[selectedIdx].signals_config.black_litterman
+                            setEditedStrategies(updated)
+                          }}>Remove ✕</button>
+                        ) : (
+                          <button style={blAddBtn} onClick={() => {
+                            updateField(["signals_config", "black_litterman"], { delta: 2.5, tau: 0.05, reversion_view: 0.03 })
+                          }}>+ Add</button>
+                        )}
+                      </div>
+
+                      {currentStrategy.signals_config.black_litterman && (
+                        <div style={blBlock}>
+                          {([
+                            ["Delta", "delta", 0.1],
+                            ["Tau", "tau", 0.01],
+                            ["View", "reversion_view", 0.01],
+                          ] as [string, string, number][]).map(([labelText, key, step]) => (
+                            <Row key={key} label={labelText}>
+                              <input type="number" step={step} style={inputStyle}
+                                value={currentStrategy.signals_config.black_litterman[key] ?? ""}
+                                onChange={(e) => updateField(["signals_config", "black_litterman", key], Number(e.target.value))} />
+                            </Row>
+                          ))}
+                        </div>
                       )}
                     </Section>
                   )}
@@ -335,3 +393,12 @@ const emptyState: CSSProperties = { color: "#8b949e", fontSize: 12, lineHeight: 
 const rowStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 6 }
 const rowLabel: CSSProperties = { fontSize: 10, color: "#8b949e", width: 68, flexShrink: 0 }
 const rowInput: CSSProperties = { flex: 1, minWidth: 0 }
+const blHeader: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }
+const blLabel: CSSProperties = { fontSize: 10, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.4px" }
+const blAddBtn: CSSProperties = { background: "none", border: "1px solid #238636", borderRadius: 3, color: "#3fb950", fontSize: 10, cursor: "pointer", padding: "1px 6px" }
+const blRemoveBtn: CSSProperties = { background: "none", border: "1px solid #6e3535", borderRadius: 3, color: "#f85149", fontSize: 10, cursor: "pointer", padding: "1px 6px" }
+const blBlock: CSSProperties = { display: "flex", flexDirection: "column", gap: 4, paddingLeft: 8, borderLeft: "2px solid #21262d", marginTop: 4 }
+const tickerGrid: CSSProperties = { display: "flex", flexWrap: "wrap", gap: 4 }
+const tickerChip: CSSProperties = { background: "none", border: "1px solid #30363d", borderRadius: 3, color: "#8b949e", fontSize: 10, cursor: "pointer", padding: "2px 5px" }
+const tickerChipActive: CSSProperties = { ...tickerChip, background: "#0f2b14", border: "1px solid #238636", color: "#3fb950" }
+const smallBtn: CSSProperties = { background: "none", border: "1px solid #30363d", borderRadius: 3, color: "#8b949e", fontSize: 10, cursor: "pointer", padding: "2px 6px" }

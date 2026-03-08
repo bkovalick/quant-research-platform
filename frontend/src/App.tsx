@@ -78,7 +78,8 @@ const styles: { [key: string]: CSSProperties } = {
     position: "sticky",
     top: 0,
     alignSelf: "flex-start",
-    height: "calc(100vh - 24px)"
+    height: "calc(100vh - 24px)",
+    overflowY: "auto"
   },
   empty: {
     display: "flex",

@@ -1,9 +1,18 @@
 import { useState, useMemo } from "react"
 import type { CSSProperties } from "react"
+import type React from "react"
 
 type SortKey = "strategy_name" | "return" | "volatility" | "sharpe_ratio" | "max_drawdown" | "turnover"
 
 const COLORS = ["#3fb950", "#1f6feb", "#d29922", "#f85149", "#a371f7", "#56d364"]
+
+const TOOLTIPS: Record<string, string> = {
+  Return: "Annualized total return over the backtest period.",
+  Vol: "Annualized standard deviation of returns. Measures total variability — both up and down.",
+  Sharpe: "Annualized excess return divided by annualized volatility. The primary risk-adjusted performance measure — higher is better.",
+  "Max DD": "Largest peak-to-trough decline over the backtest. The worst-case loss an investor would have experienced.",
+  Turnover: "Average annual portfolio turnover. High turnover increases transaction costs and drag on returns.",
+}
 
 export default function StrategyGrid({ runs, onSelect }: any) {
   const [sortKey, setSortKey] = useState<SortKey>("sharpe_ratio")
@@ -73,8 +82,34 @@ function SortHeader({ label, k, sortKey, ascending, onSort }: any) {
   const active = sortKey === k
   return (
     <th style={{ ...rightHeader, color: active ? "#e6edf3" : "#8b949e" }} onClick={() => onSort(k)}>
-      {label} {active ? (ascending ? "↑" : "↓") : ""}
+      <MetricTooltip label={label}>
+        <span>
+          {label}
+          {TOOLTIPS[label] && <span style={dotStyle}>?</span>}
+          {active && (ascending ? " ↑" : " ↓")}
+        </span>
+      </MetricTooltip>
     </th>
+  )
+}
+
+function MetricTooltip({ label, children }: { label: string; children: React.ReactNode }) {
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
+  const tip = TOOLTIPS[label]
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}
+      onMouseEnter={(e) => tip && setPos({ x: e.clientX, y: e.clientY })}
+      onMouseMove={(e) => tip && setPos({ x: e.clientX, y: e.clientY })}
+      onMouseLeave={() => setPos(null)}
+    >
+      {children}
+      {pos && tip && (
+        <div style={{ ...tooltipBox, top: pos.y + 12, left: Math.min(pos.x + 8, window.innerWidth - 250) }}>
+          <strong style={{ display: "block", marginBottom: 4, color: "#e6edf3" }}>{label}</strong>
+          {tip}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -104,4 +139,18 @@ const rightCellRed = (_: number | null | undefined): CSSProperties => ({
 })
 const colorDot: CSSProperties = {
   display: "inline-block", width: 8, height: 8, borderRadius: "50%", flexShrink: 0
+}
+const dotStyle: CSSProperties = {
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  width: 12, height: 12, borderRadius: "50%", background: "#30363d",
+  color: "#8b949e", fontSize: 9, fontWeight: 700, marginLeft: 3, verticalAlign: "middle"
+}
+
+const tooltipBox: CSSProperties = {
+  position: "fixed", top: "auto", left: "auto",
+  width: 230, background: "#161b22", border: "1px solid #30363d",
+  borderRadius: 6, padding: "10px 12px", fontSize: 12,
+  color: "#8b949e", lineHeight: 1.5, zIndex: 9999,
+  boxShadow: "0 4px 16px rgba(0,0,0,0.5)", pointerEvents: "none",
+  textAlign: "left", fontWeight: 400
 }
