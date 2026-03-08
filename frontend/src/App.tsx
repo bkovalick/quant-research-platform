@@ -19,13 +19,8 @@ export default function App() {
         {experiment ? (
           <div style={styles.twoCol}>
             <div style={styles.leftCol}>
-              <div style={{ marginTop: 24 }}>
-                <StrategyGrid runs={experiment.strategy_runs} onSelect={setSelectedRun} />
-              </div>
+              <StrategyGrid runs={experiment.strategy_runs} onSelect={setSelectedRun} />
               <StrategyDetails runs={experiment.strategy_runs} />
-              {/* <div style={{ marginTop: 24 }}>
-                <StrategyGrid runs={experiment.strategy_runs} onSelect={setSelectedRun} />
-              </div> */}
             </div>
             <div style={styles.rightCol}>
               <AnalysisPanel runs={experiment.strategy_runs} selectedRun={selectedRun} />
@@ -62,7 +57,7 @@ const styles: { [key: string]: CSSProperties } = {
   main: {
     flex: 1,
     overflowY: "auto",
-    padding: "24px 20px",
+    padding: "12px 20px",
     minWidth: 0,
     boxSizing: "border-box"
   },

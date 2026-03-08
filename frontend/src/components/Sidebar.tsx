@@ -94,6 +94,7 @@ export default function Sidebar({ setExperiment, experiment }: any) {
   })()
 
   const rebalanceOptions = ["daily", "weekly", "monthly", "quarterly"]
+  const strategyTypes = ["mean_variance_strategy","mean_reversion_strategy","fwp_strategy","ewp_strategy"]
 
   return (
     <div style={container}>
@@ -191,11 +192,20 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                         onChange={(e) => updateField(["market_state_config", "cash_allocation"], Number(e.target.value))} />
                     </Row>
                     <label style={labelStyle}>Universe Tickers</label>
-                    <textarea
-                      style={{ ...inputStyle, height: 56, resize: "vertical", fontFamily: "monospace", fontSize: 10 }}
-                      value={(currentStrategy.market_state_config?.universe_tickers ?? []).join(", ")}
-                      onChange={(e) => updateField(["market_state_config", "universe_tickers"],
-                        e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean))} />
+                      <textarea
+                        style={{ ...inputStyle, height: 56, resize: "vertical", fontFamily: "monospace", fontSize: 10 }}
+                        defaultValue={(currentStrategy.market_state_config?.universe_tickers ?? []).join(", ")}
+                        key={currentStrategy.name}
+                        onBlur={(e) => updateField(["market_state_config", "universe_tickers"],
+                          e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean))} />
+                  </Section>
+                  
+                  <Section title="Strategy Type">
+                    <Row label="Strategy">
+                      <input style={inputStyle} 
+                        value={currentStrategy.rebalance_problem?.strategy_type ?? ""}
+                        onChange={(e) => updateField(["rebalance_problem", "strategy_type"], e.target.value)}/>                      
+                    </Row>
                   </Section>
 
                   <Section title="Rebalance">
@@ -205,10 +215,6 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                         onChange={(e) => updateField(["rebalance_problem", "rebalance_frequency"], e.target.value)}>
                         {rebalanceOptions.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
-                    </Row>
-                    <Row label="Type">
-                      <input style={inputStyle} value={currentStrategy.rebalance_problem?.strategy_type ?? ""}
-                        onChange={(e) => updateField(["rebalance_problem", "strategy_type"], e.target.value)} />
                     </Row>
                   </Section>
 

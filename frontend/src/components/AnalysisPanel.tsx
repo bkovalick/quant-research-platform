@@ -6,10 +6,9 @@ import {
   BarChart, Bar, XAxis, YAxis, Cell, Legend
 } from "recharts"
 
-type AnalysisTab = "performance" | "risk" | "tail" | "drawdown" | "trade_quality"
+type AnalysisTab = "risk" | "tail" | "drawdown" | "trade_quality"
 
 const TABS: { key: AnalysisTab; label: string }[] = [
-  { key: "performance",     label: "Strategy Performance" },
   { key: "risk",     label: "Risk Profile" },
   { key: "tail",     label: "Tail Risk" },
   { key: "drawdown", label: "Drawdown" },
@@ -19,13 +18,23 @@ const TABS: { key: AnalysisTab; label: string }[] = [
 const COLORS = ["#3fb950", "#1f6feb", "#d29922", "#f85149", "#a371f7", "#56d364"]
 
 const TOOLTIPS: Record<string, string> = {
+  // Risk Profile
   Volatility: "Annualized standard deviation of returns. Measures total variability — both up and down.",
   "Max Drawdown": "Largest peak-to-trough decline over the backtest. The worst-case loss an investor would have experienced.",
-  Turnover: "Average portfolio turnover per rebalance period. High turnover increases transaction costs.",
-  VaR: "Value at Risk (95%). The return threshold exceeded only 5% of the time — a typical bad day/week.",
-  CVaR: "Conditional VaR (95%). The average return in the worst 5% of periods. Also called Expected Shortfall.",
-  Skewness: "Asymmetry of the return distribution. Negative skew means occasional large losses; positive skew means occasional large gains.",
-  Kurtosis: "Fat-tailedness of returns. Higher kurtosis means more extreme outlier events (both gains and losses) than a normal distribution."
+  Sharpe: "Annualized excess return divided by annualized volatility. The primary risk-adjusted performance measure — higher is better.",
+  "Sharpe Ratio": "Annualized excess return divided by annualized volatility. The primary risk-adjusted performance measure — higher is better.",
+  "Sortino Ratio": "Like Sharpe, but only penalizes downside volatility. Useful when return distributions are asymmetric — a higher Sortino than Sharpe suggests losses are less frequent than gains.",
+  "Calmar Ratio": "Annualized return divided by maximum drawdown. Measures return per unit of worst-case risk — higher is better. Sensitive to the length of the backtest.",
+  Turnover: "Average annual portfolio turnover. High turnover increases transaction costs and drag on returns.",
+  // Tail Risk
+  VaR: "Value at Risk (95%). The return threshold exceeded only 5% of the time — a typical bad day/week/period.",
+  CVaR: "Conditional VaR (95%). The average return in the worst 5% of periods. Also called Expected Shortfall — a more complete picture of tail risk than VaR alone.",
+  Skewness: "Asymmetry of the return distribution. Negative skew means occasional large losses dominate; positive skew means occasional large gains. Most equity strategies have negative skew.",
+  Kurtosis: "Excess fat-tailedness relative to a normal distribution. Higher kurtosis means more extreme outlier events in both directions. A normal distribution has kurtosis = 0 (Fisher's definition).",
+  // Drawdown
+  "Max DD": "Largest peak-to-trough decline over the backtest. The single worst loss an investor would have experienced.",
+  "Avg DD": "Mean of all below-peak drawdown values over the backtest. Measures typical pain experienced by the strategy, not just the worst-case event.",
+  "Max DD Days": "Longest consecutive streak of periods spent below a previous peak. Measures recovery time — how long an investor would have waited to break even from the worst drawdown.",
 }
 
 function MetricTooltip({ label, children }: { label: string; children: React.ReactNode }) {
@@ -71,6 +80,7 @@ export default function AnalysisPanel({ runs, selectedRun }: any) {
         {tab === "risk"     && <RiskProfile runs={runs} />}
         {tab === "tail"     && <TailRisk runs={runs} />}
         {tab === "drawdown" && <DrawdownView runs={runs} />}
+        {tab === "trade_quality" && <TradeQualityView runs={runs} />}
       </div>
     </div>
   )
@@ -81,7 +91,10 @@ function RiskProfile({ runs }: any) {
   const metrics = [
     { key: "volatility",    label: "Volatility",    fmt: "pct" },
     { key: "max_drawdown",  label: "Max Drawdown",  fmt: "pct" },
-    { key: "turnover",      label: "Turnover",      fmt: "num" },
+    { key: "sharpe_ratio",  label: "Sharpe", fmt: "num" },
+    { key: "tracking_error",  label: "Tracking Error", fmt: "pct" },
+    { key: "sortino_ratio",  label: "Sortino Ratio", fmt: "num" },
+    { key: "calmar_ratio",  label: "Calmar Ratio", fmt: "num" },
   ]
 
   return (
@@ -111,7 +124,10 @@ function RiskProfile({ runs }: any) {
                 </td>
                 <td style={rightCell}>{fmt(s.volatility, "pct")}</td>
                 <td style={rightCellRed(s.max_drawdown)}>{fmt(s.max_drawdown, "pct")}</td>
-                <td style={rightCell}>{fmt(s.turnover, "num")}</td>
+                <td style={rightCell}>{fmt(s.sharpe_ratio, "num")}</td>
+                <td style={rightCell}>{fmt(s.tracking_error, "pct")}</td>
+                <td style={rightCell}>{fmt(s.sortino_ratio, "num")}</td>
+                <td style={rightCell}>{fmt(s.calmar_ratio, "num")}</td>
               </tr>
             )
           })}
@@ -272,7 +288,7 @@ function DrawdownView({ runs }: any) {
                   <span style={{ ...colorDot, backgroundColor: COLORS[i % COLORS.length] }} />
                   {formatName(run.strategy_name)}
                 </td>
-                <td style={rightCellRed(s.max_drawdown)}>{fmt(s.max_drawdown, "pct")}</td>
+                <td style={rightCellRed(-s.max_drawdown)}>{fmt(s.max_drawdown, "pct")}</td>
                 <td style={rightCellRed(s.avg_drawdown)}>{fmt(s.avg_drawdown, "pct")}</td>
                 <td style={rightCell}>{fmt(s.max_drawdown_duration, "num")}</td>
               </tr>
@@ -303,16 +319,88 @@ function DrawdownView({ runs }: any) {
   )
 }
 
+/* ── Trade Quality ── */
+function TradeQualityView({ runs }: any) {
+  const metrics = [
+    { key: "turnover",     label: "Turnover",     fmt: "pct" },
+    { key: "win_rate",     label: "Win Rate",     fmt: "pct" },
+    { key: "loss_rate",    label: "Loss Rate",    fmt: "pct" },
+    { key: "average_win",  label: "Average Win",  fmt: "num" },
+    { key: "average_loss", label: "Average Loss", fmt: "num" },
+  ]
+
+  const barData = runs.map((run: any, i: number) => ({
+    name: formatName(run.strategy_name),
+    "Max DD": run.result.summary.max_drawdown != null
+      ? Math.abs(run.result.summary.max_drawdown * 100) : null,
+    color: COLORS[i % COLORS.length]
+  }))
+
+  return (
+    <div style={tabBody}>
+      <SectionTitle>Trade Analysis</SectionTitle>
+      <table style={table}>
+        <thead>
+          <tr style={headerRow}>
+            <th style={leftHeader}>Strategy</th>
+            {metrics.map(m => (
+              <th key={m.key} style={rightHeader}>{m.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {runs.map((run: any, i: number) => {
+            const s = run.result.summary
+            return (
+              <tr key={run.run_id} style={row}>
+                <td style={leftCell}>
+                  <span style={{ ...colorDot, backgroundColor: COLORS[i % COLORS.length] }} />
+                  {formatName(run.strategy_name)}
+                </td>
+                <td style={rightCell}>{fmt(s.turnover, "pct")}</td>
+                <td style={rightCellGreen(s.win_rate)}>{fmt(s.win_rate, "pct")}</td>
+                <td style={rightCellRed(s.loss_rate)}>{fmt(s.loss_rate, "pct")}</td>
+                <td style={rightCell}>{fmt(s.average_win, "num")}</td>
+                <td style={rightCell}>{fmt(s.average_loss, "num")}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+
+      {/* <SectionTitle style={{ marginTop: 28 }}>Max Drawdown Comparison</SectionTitle>
+      <div style={{ height: 220 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={barData} barCategoryGap="35%">
+            <XAxis dataKey="name" tick={{ fill: "#8b949e", fontSize: 10 }} />
+            <YAxis tick={{ fill: "#8b949e", fontSize: 10 }} tickFormatter={v => v.toFixed(0) + "%"} />
+            <Tooltip
+              contentStyle={{ background: "#161b22", border: "1px solid #2a2f3a", fontSize: 12 }}
+              formatter={(v: any) => v.toFixed(2) + "%"}
+            />
+            <Bar dataKey="Max DD" radius={[3,3,0,0]}>
+              {barData.map((entry: any, i: number) => (
+                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div> */}
+    </div>
+  )
+}
+
 /* ── Shared helpers ── */
 function SectionTitle({ children, style }: any) {
   return <h4 style={{ ...sectionTitleStyle, ...style }}>{children}</h4>
 }
 
 function buildRadarData(runs: any[]) {
-  const keys = ["volatility", "max_drawdown", "turnover", "sharpe_ratio"]
-  const labels = ["Volatility", "Max DD", "Turnover", "Sharpe"]
+  const keys   = ["volatility", "max_drawdown", "sharpe_ratio", "sortino_ratio", "calmar_ratio"]
+  const labels = ["Volatility", "Max DD",       "Sharpe",       "Sortino",       "Calmar"]
+  // These axes are inverted: lower ratio = more risk = further from center
+  const invertedKeys = new Set(["sharpe_ratio", "sortino_ratio", "calmar_ratio"])
 
-  // Normalize each metric 0–1 across strategies
   const mins: Record<string, number> = {}
   const maxs: Record<string, number> = {}
   keys.forEach(k => {
@@ -326,9 +414,8 @@ function buildRadarData(runs: any[]) {
     runs.forEach(run => {
       const raw = Math.abs(run.result.summary[k] ?? 0)
       const range = maxs[k] - mins[k]
-      // For sharpe, invert so lower sharpe = further from center (more "risky")
       const normalized = range === 0 ? 0.5 : (raw - mins[k]) / range
-      row[run.strategy_name] = k === "sharpe_ratio" ? 1 - normalized : normalized
+      row[run.strategy_name] = invertedKeys.has(k) ? 1 - normalized : normalized
     })
     return row
   })
@@ -397,6 +484,9 @@ const leftCell: CSSProperties = { padding: "8px 10px", textAlign: "left", fontSi
 const rightCell: CSSProperties = { padding: "8px 10px", textAlign: "right", fontSize: 12 }
 const rightCellRed = (v: number | null | undefined): CSSProperties => ({
   ...rightCell, color: v != null && v < 0 ? "#f85149" : "#e6edf3"
+})
+const rightCellGreen = (val: number | null | undefined): CSSProperties => ({
+  ...rightCell, color: val != null && val > 0 ? "#3fb950" : "#f85149"
 })
 
 const colorDot: CSSProperties = {

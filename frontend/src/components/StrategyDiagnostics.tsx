@@ -96,18 +96,6 @@ export default function Performance({ runs, onSelect }: any) {
   )    
 }
 
-// export default function Risk({ runs, onSelect }: any) {
-
-// }
-
-// export default function TailRisk({ runs, onSelect }: any) {
-
-// }
-
-// export default function TradeStats({ runs, onSelect }: any) {
-
-// }
-
 /* ---------- Helpers ---------- */
 function keyIsSummary(key: string) {
   return key !== "strategy_name"
