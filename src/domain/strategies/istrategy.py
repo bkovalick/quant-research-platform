@@ -1,7 +1,7 @@
 import abc
 import numpy as np
 from models.rebalance_problem import RebalanceProblem
-from domain.signals.signals import RiskReturnSignals
+from domain.signals.signals import Signals
 from domain.optimizers.optimizer import Optimizer
 
 class StrategyInterface(abc.ABC):
@@ -16,8 +16,8 @@ class StrategyInterface(abc.ABC):
         raise NotImplementedError("Derived classes must implement 'rebalance' method")
     
     def _apply_vol_targeting(self, 
-                            risk_return_signals: RiskReturnSignals, 
-                            optimized_weights: np.ndarray) -> np.ndarray:
+                             risk_return_signals: Signals, 
+                             optimized_weights: np.ndarray) -> np.ndarray:
         """ Scale non-cash weights so the portfolio hits vol_target.
         
             Computes the ratio of target vol to realized vol and scales all

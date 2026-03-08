@@ -167,6 +167,7 @@ class MetricsCompute:
             rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self.annual_trading_days)
             rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd)
         max_drawdown = abs(self._calculate_max_drawdown(drawdown_returns))
+        max_drawdown_days = self._calculate_max_drawdown_days(drawdown_returns)
 
         performance_metrics = {
             "portfolio_wealth_factors": wealth_factors,
@@ -190,6 +191,8 @@ class MetricsCompute:
             "sortino_ratio": (annualized_return / portfolio_returns[portfolio_returns < 0].std() * \
                 np.sqrt(self.annual_trading_days)) if portfolio_returns[portfolio_returns < 0].std() != 0 else 0,
             "max_drawdown": max_drawdown,
+            "max_drawdown_days": max_drawdown_days,
+            "avg_drawdown": self._calculate_avg_drawdown(cumulative_returns),
             "turnover": portfolio_turnover.mean() * self.annual_trading_days,
             "alpha": self._calculate_alpha(portfolio_returns, self.annual_trading_days, benchmark_index),
             "calmar_ratio": annualized_return / max_drawdown if max_drawdown != 0 else 0.0,
@@ -199,14 +202,16 @@ class MetricsCompute:
             "loss_rate": (portfolio_returns < 0).mean(),
             "average_win": portfolio_returns[portfolio_returns > 0].mean() if (portfolio_returns > 0).any() else 0.0,
             "average_loss": portfolio_returns[portfolio_returns < 0].mean() if (portfolio_returns < 0).any() else 0.0,
-            "value_at_risk_95": portfolio_returns.quantile(0.05),
-            "value_at_risk_97.5": portfolio_returns.quantile(0.025),
-            "value_at_risk_99": portfolio_returns.quantile(0.01),
-            "conditional_value_at_risk_95": portfolio_returns[portfolio_returns < \
+            "skewness": portfolio_returns.skew(),
+            "kurtosis": portfolio_returns.kurt(),
+            "var_95": portfolio_returns.quantile(0.05),
+            "var_97.5": portfolio_returns.quantile(0.025),
+            "var_99": portfolio_returns.quantile(0.01),
+            "cvar_95": portfolio_returns[portfolio_returns < \
                 portfolio_returns.quantile(0.05)].mean() if len(portfolio_returns) > 0 else 0.0,
-            "conditional_value_at_risk_97.5": portfolio_returns[portfolio_returns < \
+            "cvar_97.5": portfolio_returns[portfolio_returns < \
                 portfolio_returns.quantile(0.025)].mean() if len(portfolio_returns) > 0 else 0.0,
-            "conditional_value_at_risk_99": portfolio_returns[portfolio_returns < \
+            "cvar_99": portfolio_returns[portfolio_returns < \
                 portfolio_returns.quantile(0.01)].mean() if len(portfolio_returns) > 0 else 0.0,
             "alpha_decay": self._calculate_alpha(portfolio_returns[-self.annual_trading_days:], \
                 self.annual_trading_days, benchmark_index[-self.annual_trading_days:]) \
@@ -219,6 +224,27 @@ class MetricsCompute:
         running_max = cumulative_returns.cummax()
         drawdown = (cumulative_returns - running_max) / running_max
         return drawdown.min()
+
+    def _calculate_max_drawdown_days(self, cumulative_returns: pd.Series) -> int:
+        """Calculate the longest drawdown duration in periods (peak to recovery or end)."""
+        running_max = cumulative_returns.cummax()
+        is_underwater = (cumulative_returns < running_max).astype(int)
+        not_underwater_cumsum = (1 - is_underwater).cumsum()
+        max_streak = is_underwater.groupby(not_underwater_cumsum).sum().max()
+        return int(max_streak) if not pd.isna(max_streak) else 0
+    
+    def _calculate_avg_drawdown(self, cumulative_returns: pd.Series) -> float:
+        """ Mean of all individual drawdown values at each point in time"""
+        running_max = cumulative_returns.cummax()
+        valid = running_max != 0
+        drawdown = pd.Series(0.0, index=cumulative_returns.index)
+        drawdown[valid] = (cumulative_returns[valid] - running_max[valid]) / running_max[valid]     
+        negative_drawdowns = drawdown[drawdown < 0]
+        if negative_drawdowns.empty:
+            return 0
+        
+        result = float(negative_drawdowns.mean())
+        return result if np.isfinite(result) else 0.0
 
     def _calculate_rolling_drawdown(self, cumulative: pd.Series, window: int):
         """Calculate rolling drawdown series over a specified window."""
@@ -260,9 +286,6 @@ class MetricsCompute:
         benchmark = benchmark_index.resample(rule).last()
         benchmark_returns = benchmark.pct_change().fillna(0)
 
-        if(len(benchmark_returns) != len(portfolio_returns)):
-            return
-
         aligned = pd.concat([portfolio_returns, benchmark_returns], axis=1, join='inner')
         aligned.columns = ['portfolio', 'benchmark']
 
@@ -302,6 +325,8 @@ class MetricsCompute:
             "sharpe_ratio": performance_metrics["sharpe_ratio"],
             "sortino_ratio": performance_metrics["sortino_ratio"],
             "max_drawdown": performance_metrics["max_drawdown"],
+            "avg_drawdown": performance_metrics["avg_drawdown"],
+            "max_drawdown_duration": performance_metrics["max_drawdown_days"],
             "turnover": performance_metrics["turnover"],
             "alpha": performance_metrics["alpha"],
             "calmar_ratio": performance_metrics["calmar_ratio"],
@@ -310,12 +335,14 @@ class MetricsCompute:
             "loss_rate": performance_metrics["loss_rate"],
             "average_win": performance_metrics["average_win"],
             "average_loss": performance_metrics["average_loss"],
-            "value_at_risk_95": performance_metrics["value_at_risk_95"],
-            "value_at_risk_97.5": performance_metrics["value_at_risk_97.5"],
-            "value_at_risk_99": performance_metrics["value_at_risk_99"],
-            "conditional_value_at_risk_95": performance_metrics["conditional_value_at_risk_95"],
-            "conditional_value_at_risk_97.5": performance_metrics["conditional_value_at_risk_97.5"],
-            "conditional_value_at_risk_99": performance_metrics["conditional_value_at_risk_99"],
+            "skewness": performance_metrics["skewness"],
+            "kurtosis": performance_metrics["kurtosis"],
+            "var_95": performance_metrics["var_95"],
+            "var_97.5": performance_metrics["var_97.5"],
+            "var_99": performance_metrics["var_99"],
+            "cvar_95": performance_metrics["cvar_95"],
+            "cvar_97.5": performance_metrics["cvar_97.5"],
+            "cvar_99": performance_metrics["cvar_99"],
             "alpha_decay": performance_metrics["alpha_decay"]
         }
         return performance_summary

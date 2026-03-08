@@ -3,47 +3,37 @@ import type { CSSProperties } from "react"
 import Sidebar from "./components/Sidebar"
 import StrategyGrid from "./components/StrategyGrid"
 import StrategyDetails from "./components/StrategyDetails"
-import StrategyDiagnostics from "./components/StrategyDiagnostics"
+import AnalysisPanel from "./components/AnalysisPanel"
 
 export default function App() {
   const [experiment, setExperiment] = useState<any>(null)
-  const [setSelectedRun] = useState<any>(null)
-  const [timeWindow, setTimeWindow] = useState<{
-  start: string | null
-  end: string | null
-  }>({ start: null, end: null })
+  const [selectedRun, setSelectedRun] = useState<any>(null)
 
   return (
     <div style={styles.app}>
       <div style={styles.sidebar}>
-        <Sidebar setExperiment={setExperiment} />
+        <Sidebar setExperiment={setExperiment} experiment={experiment} />
       </div>
 
       <div style={styles.main}>
-        <h2 style={{ marginBottom: 20 }}>Research Cockpit</h2>
-          {experiment && (
-            <>
-              <StrategyGrid
-                runs={experiment.strategy_runs}
-                onSelect={setSelectedRun}
-              />
-
-              <StrategyDetails
-                runs={experiment.strategy_runs}
-              />
-
-              <div style={sectionSpacing}>
-                <StrategyDiagnostics runs={experiment.strategy_runs} />
-              </div>
-            </>
-          )}
+        {experiment ? (
+          <div style={styles.twoCol}>
+            <div style={styles.leftCol}>
+              <StrategyGrid runs={experiment.strategy_runs} onSelect={setSelectedRun} />
+              <StrategyDetails runs={experiment.strategy_runs} />
+            </div>
+            <div style={styles.rightCol}>
+              <AnalysisPanel runs={experiment.strategy_runs} selectedRun={selectedRun} />
+            </div>
+          </div>
+        ) : (
+          <div style={styles.empty}>
+            <div style={styles.emptyText}>Load a strategy set and run an experiment to get started.</div>
+          </div>
+        )}
       </div>
     </div>
   )
-}
-
-const sectionSpacing: CSSProperties = {
-  marginTop: 50
 }
 
 const styles: { [key: string]: CSSProperties } = {
@@ -52,18 +42,52 @@ const styles: { [key: string]: CSSProperties } = {
     height: "100vh",
     backgroundColor: "#0e1117",
     color: "#e6edf3",
-    fontFamily: "Inter, sans-serif"
+    fontFamily: "Inter, sans-serif",
+    overflow: "hidden"
   },
   sidebar: {
-    width: 250,
+    width: 300,
+    minWidth: 300,
     borderRight: "1px solid #2a2f3a",
-    padding: 16
+    padding: "12px 14px",
+    overflowY: "auto",
+    height: "100vh",
+    boxSizing: "border-box"
   },
   main: {
     flex: 1,
-    padding: "32px 48px",
-    overflowY: "auto",  
-    maxWidth: 1600,
-    margin: "0 auto"
+    overflowY: "auto",
+    padding: "12px 20px",
+    minWidth: 0,
+    boxSizing: "border-box"
+  },
+  twoCol: {
+    display: "flex",
+    gap: 16,
+    alignItems: "flex-start",
+    width: "100%",
+    boxSizing: "border-box"
+  },
+  leftCol: {
+    flex: "1 1 0",
+    minWidth: 0
+  },
+  rightCol: {
+    flex: "1 1 0",
+    minWidth: 0,
+    position: "sticky",
+    top: 0,
+    alignSelf: "flex-start",
+    height: "calc(100vh - 24px)"
+  },
+  empty: {
+    display: "flex",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  emptyText: {
+    color: "#8b949e",
+    fontSize: 14
   }
 }
