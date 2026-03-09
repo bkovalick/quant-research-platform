@@ -32,8 +32,8 @@ class RebalanceProblem:
         return self._data.get("apply_sharpe_objective", False)
 
     @property
-    def initial_weights(self) -> list:
-        return self._data.get("initial_weights")
+    def initial_weights(self) -> dict:
+        return self._data.get("initial_weights", {})
 
     @property
     def cash_allocation(self) -> float:

@@ -12,16 +12,26 @@ from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from io import BytesIO
+from pathlib import Path
+
+def create_folder_path(folder_name: str):
+    path = Path(folder_name)
+    path.mkdir(parents=True, exist_ok=True)
 
 def local_run():
-    with open(f"src/config/experiment_mean_reversion.json", 'r') as f:
+    with open(f"src/config/experiment_fwp.json", 'r') as f:
         config = json.load(f)
 
     config = config.copy()
     runner = ExperimentRunner(config)
     experiment_results = runner.run_parallel()
-    reporting_module = ExcelGenerator(experiment_results, "backtest_results")
+    buffer = BytesIO()
+    reporting_module = ExcelGenerator(experiment_results, buffer)
     reporting_module.generate_report()
+    folder_path = "backtest_results" + "/" + datetime.now().strftime('%Y-%m-%d')
+    create_folder_path(folder_path)
+    with open(folder_path + "/backtest_report.xlsx", "wb") as f:
+        f.write(buffer.getvalue())
 
 app = FastAPI()
 
