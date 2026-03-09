@@ -39,6 +39,7 @@ class MarketStoreConfig:
     data_source: Dict
     benchmark: Optional[str]
     risk_free_rate: float
+    transaction_cost: float
 
     @classmethod
     def from_dict(cls, d: dict):
@@ -47,8 +48,9 @@ class MarketStoreConfig:
             start_date = d.get("start_date", "2005-01-01"),
             end_date = d.get("end_date", "2026-02-19"),
             data_source = d.get("data_source", { "yfinance": None }),
-            benchmark = d.get("benchmark", "SPY") ,
-            risk_free_rate = d.get("risk_free_rate", 0.0)
+            benchmark = d.get("benchmark", "SPY"),
+            risk_free_rate = d.get("risk_free_rate", 0.0),
+            transaction_cost = d.get("transaction_cost", 0.0)
         )
     
     def to_dict(self):
@@ -58,6 +60,7 @@ class MarketStoreConfig:
             "end_date": self.end_date,
             "data_source": self.data_source,
             "benchmark": self.benchmark,
-            "risk_free_rate": self.risk_free_rate
+            "risk_free_rate": self.risk_free_rate,
+            "transaction_cost": self.transaction_cost
         }
     

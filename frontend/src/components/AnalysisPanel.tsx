@@ -477,8 +477,10 @@ const panel: CSSProperties = {
   background: "#161b22",
   border: "1px solid #2a2f3a",
   borderRadius: 8,
-  overflow: "visible",
-  height: "100%"
+  overflow: "hidden",
+  height: "100%",
+  display: "flex",
+  flexDirection: "column"
 }
 
 
@@ -509,7 +511,7 @@ const activeTab: CSSProperties = {
 
 const inactiveTab: CSSProperties = baseTab
 
-const body: CSSProperties = { padding: 16 }
+const body: CSSProperties = { padding: 16, flex: 1, overflowY: "auto" }
 const tabBody: CSSProperties = { display: "flex", flexDirection: "column", gap: 0 }
 
 const sectionTitleStyle: CSSProperties = {

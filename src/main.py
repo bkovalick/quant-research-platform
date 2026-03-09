@@ -1,9 +1,17 @@
 from application.experiment_runner import ExperimentRunner
 from reporting.reporting_module import ExcelGenerator
+from models.experiment import Experiment
+from models.backtest_result import BacktestResult
+from models.strategy_run import StrategyRun
+from models.experiment_model import ExperimentModel
+
 import json
+from datetime import datetime
 
 from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from io import BytesIO
 
 def local_run():
     with open(f"src/config/experiment_mean_reversion.json", 'r') as f:
@@ -33,6 +41,35 @@ def run_experiment(config: dict = Body(...)):
     runner = ExperimentRunner(config)
     experiment_results = runner.run_parallel()
     return experiment_results.to_dict()
+
+from fastapi import Response
+
+@app.post("/download")
+def download(body: ExperimentModel = Body(...)):
+    experiment = Experiment(
+        experiment_id=body.experiment_id,
+        created_at=datetime.now(),
+        market_config=body.market_config,
+    )
+    for run in body.strategy_runs:
+        experiment.add_run(StrategyRun(
+            run_id=run.run_id,
+            strategy_name=run.strategy_name,
+            strategy_config=run.strategy_config,
+            metadata=run.metadata,
+            result=BacktestResult(
+                summary=run.result.summary,
+                series=run.result.series
+            )
+        ))
+
+    buffer = BytesIO()
+    ExcelGenerator(experiment, buffer).generate_report()
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=backtest_report.xlsx"}
+    )
 
 @app.post("/load-experiment")
 def load_experiment(config: dict):

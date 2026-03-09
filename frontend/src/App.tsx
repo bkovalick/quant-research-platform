@@ -46,8 +46,8 @@ const styles: { [key: string]: CSSProperties } = {
     overflow: "hidden"
   },
   sidebar: {
-    width: 300,
-    minWidth: 300,
+    width: 340,
+    minWidth: 340,
     borderRight: "1px solid #2a2f3a",
     padding: "12px 14px",
     overflowY: "auto",

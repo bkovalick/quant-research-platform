@@ -13,7 +13,7 @@ class MarketDataGateway:
         data_source = market_store_config.data_source
         start_date = market_store_config.start_date
         end_date = market_store_config.end_date
-
+        
         for source, content in data_source.items():
             if source == "yfinance":
                 return MarketDataGateway.get_price_data_y_finance(tickers, start_date, end_date)
