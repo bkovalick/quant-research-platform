@@ -9,6 +9,8 @@ export default function Sidebar({ setExperiment, experiment }: any) {
   const [startDate, setStartDate] = useState("2005-01-01")
   const [endDate, setEndDate] = useState("2020-12-31")
   const [transactionCost, setTransactionCost] = useState(0)
+  const [benchmark, setBenchmark] = useState("SPY")
+  const [riskFreeRate, setRiskFreeRate] = useState(0.03)
   const [strategySet, setStrategySet] = useState<any>(null)
   const [selectedIdx, setSelectedIdx] = useState(0)
   const [editedStrategies, setEditedStrategies] = useState<any[]>([])
@@ -18,6 +20,8 @@ export default function Sidebar({ setExperiment, experiment }: any) {
 
   const handleUpload = async (e: any) => {
     const file = e.target.files[0]
+    if (!file) return
+    e.target.value = ""
     const text = await file.text()
     const json = JSON.parse(text)
     setStrategySet(json)
@@ -26,7 +30,25 @@ export default function Sidebar({ setExperiment, experiment }: any) {
     if (json.market_store_config) {
       if (json.market_store_config.start_date) setStartDate(json.market_store_config.start_date)
       if (json.market_store_config.end_date) setEndDate(json.market_store_config.end_date)
+      if (json.market_store_config?.benchmark) setBenchmark(json.market_store_config.benchmark)
+      if (json.market_store_config?.transaction_cost) setTransactionCost(json.market_store_config.transaction_cost)
+      if (json.market_store_config?.risk_free_rate) setRiskFreeRate(json.market_store_config.risk_free_rate)
     }
+  }
+
+  const downloadReport = async () => {
+    if (!experiment) return
+    const res = await axios.post("http://localhost:8000/download", experiment, {
+      responseType: "blob"
+    })
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const link = document.createElement("a")
+    link.href = url
+    link.setAttribute("download", "backtest_report.xlsx")
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
   }
 
   const runExperiment = async () => {
@@ -37,7 +59,8 @@ export default function Sidebar({ setExperiment, experiment }: any) {
         ...strategySet.market_store_config,
         start_date: startDate,
         end_date: endDate,
-        transaction_cost: transactionCost
+        transaction_cost: transactionCost,
+        benchmark: benchmark
       },
       strategies: editedStrategies.length ? editedStrategies : strategySet.strategies
     }
@@ -109,10 +132,15 @@ export default function Sidebar({ setExperiment, experiment }: any) {
 
       {tab === "experiment" && (
         <>
-          <Section title="Strategy Set">
-            <input type="file" accept=".json" onChange={handleUpload} style={fileInput} />
-            {strategySet && <div style={pill}>{editedStrategies.length} strategies loaded</div>}
-          </Section>
+        <Section title="Strategy Set">
+          <input id="strategy-file-input" type="file" accept=".json" onChange={handleUpload} onClick={(e: any) => e.target.value = null} style={{ display: "none" }} />
+          {strategySet 
+            ? <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={pill}>{editedStrategies.length} strategies loaded</div>
+                <button style={changeLinkBtn} onClick={() => document.getElementById("strategy-file-input")?.click()}>change</button>
+              </div>
+            : null}
+        </Section>
 
           <Section title="Market Configuration">
             <Row label="Start">
@@ -121,13 +149,23 @@ export default function Sidebar({ setExperiment, experiment }: any) {
             <Row label="End">
               <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={inputStyle} />
             </Row>
+            <Row label="Benchmark">
+              <input type="text" value={benchmark} onChange={(e) => setBenchmark(e.target.value)} style={inputStyle} />
+            </Row>            
             <Row label="Txn Cost">
               <input type="number" value={transactionCost} step={0.001}
                 onChange={(e) => setTransactionCost(Number(e.target.value))} style={inputStyle} />
             </Row>
+            <Row label="Risk Free Rate">
+              <input type="number" value={riskFreeRate} step={0.005}
+                onChange={(e) => setRiskFreeRate(Number(e.target.value))} style={inputStyle} />
+            </Row>            
           </Section>
 
-          <button style={runButton} onClick={runExperiment} disabled={!strategySet}>
+          <button
+            style={strategySet ? runButton : loadButton}
+            onClick={strategySet ? runExperiment : () => document.getElementById("strategy-file-input")?.click()}
+          >
             {strategySet ? "Run Experiment" : "Load a Strategy Set"}
           </button>
 
@@ -141,6 +179,7 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                 <StatCard label="Min DD"   value={(quickStats.drawdown.value != null ? (quickStats.drawdown.value * 100).toFixed(1) + "%" : "-")} name={quickStats.drawdown.name} negative />
                 <StatCard label="Low Vol"  value={(quickStats.vol.value != null ? (quickStats.vol.value * 100).toFixed(1) + "%" : "-")} name={quickStats.vol.name} />
               </div>
+              <button style={exportButton} onClick={downloadReport}>↓ Download Report</button>
             </>
           )}
         </>
@@ -192,12 +231,38 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                         onChange={(e) => updateField(["market_state_config", "cash_allocation"], Number(e.target.value))} />
                     </Row>
                     <label style={labelStyle}>Universe Tickers</label>
-                      <textarea
-                        style={{ ...inputStyle, height: 56, resize: "vertical", fontFamily: "monospace", fontSize: 10 }}
-                        defaultValue={(currentStrategy.market_state_config?.universe_tickers ?? []).join(", ")}
-                        key={currentStrategy.name}
-                        onBlur={(e) => updateField(["market_state_config", "universe_tickers"],
-                          e.target.value.split(",").map((t: string) => t.trim()).filter(Boolean))} />
+                      <div style={{ display: "flex", gap: 6, marginBottom: 4, alignItems: "center" }}>
+                        <button style={smallBtn} onClick={() =>
+                          updateField(["market_state_config", "universe_tickers"],
+                            (strategySet.market_store_config.tickers ?? []).filter(
+                              (t: string) => t !== strategySet.market_store_config.benchmark
+                            ))}>All</button>
+                        <button style={smallBtn} onClick={() =>
+                          updateField(["market_state_config", "universe_tickers"], [])}>Clear</button>
+                        <span style={{ fontSize: 10, color: "#8b949e" }}>
+                          {(currentStrategy.market_state_config?.universe_tickers ?? []).length} selected
+                        </span>
+                      </div>
+                      <div style={tickerGrid}>
+                        {(strategySet.market_store_config.tickers ?? [])
+                          .filter((t: string) => t !== strategySet.market_store_config.benchmark)
+                          .map((ticker: string) => {
+                            const selected = (currentStrategy.market_state_config?.universe_tickers ?? []).includes(ticker)
+                            return (
+                              <button
+                                key={ticker}
+                                style={selected ? tickerChipActive : tickerChip}
+                                onClick={() => {
+                                  const current = currentStrategy.market_state_config?.universe_tickers ?? []
+                                  const updated = selected
+                                    ? current.filter((t: string) => t !== ticker)
+                                    : [...current, ticker]
+                                  updateField(["market_state_config", "universe_tickers"], updated)
+                                }}
+                              >{ticker}</button>
+                            )
+                          })}
+                      </div>
                   </Section>
                   
                   <Section title="Strategy Type">
@@ -239,6 +304,35 @@ export default function Sidebar({ setExperiment, experiment }: any) {
 
                   {currentStrategy.signals_config && Object.keys(currentStrategy.signals_config).length > 0 && (
                     <Section title="Signals">
+                      <Row label="Winsorize">
+                        <select
+                          style={inputStyle}
+                          value={currentStrategy.signals_config.apply_winsorizing ? "true" : "false"}
+                          onChange={(e) => updateField(["signals_config", "apply_winsorizing"], e.target.value === "true")}
+                        >
+                          <option value="false">Off</option>
+                          <option value="true">On</option>
+                        </select>
+                      </Row>
+
+                      {currentStrategy.signals_config.apply_winsorizing && (
+                        <>
+                          <Row label="Lower %">
+                            <input
+                              type="number" step={0.01} min={0} max={1} style={inputStyle}
+                              value={currentStrategy.signals_config.windsor_percentiles?.lower ?? 0.05}
+                              onChange={(e) => updateField(["signals_config", "windsor_percentiles", "lower"], Number(e.target.value))}
+                            />
+                          </Row>
+                          <Row label="Upper %">
+                            <input
+                              type="number" step={0.01} min={0} max={1} style={inputStyle}
+                              value={currentStrategy.signals_config.windsor_percentiles?.upper ?? 0.95}
+                              onChange={(e) => updateField(["signals_config", "windsor_percentiles", "upper"], Number(e.target.value))}
+                            />
+                          </Row>
+                        </>
+                      )}                      
                       {currentStrategy.signals_config.momentum_skip_periods !== undefined && (
                         <Row label="Mom Skip">
                           <input type="number" style={inputStyle}
@@ -252,6 +346,38 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                             value={currentStrategy.signals_config.mean_reversion_window}
                             onChange={(e) => updateField(["signals_config", "mean_reversion_window"], Number(e.target.value))} />
                         </Row>
+                      )}
+
+                      {/* Black-Litterman block */}
+                      <div style={blHeader}>
+                        <span style={blLabel}>Black-Litterman</span>
+                        {currentStrategy.signals_config.black_litterman ? (
+                          <button style={blRemoveBtn} onClick={() => {
+                            const updated = JSON.parse(JSON.stringify(editedStrategies))
+                            delete updated[selectedIdx].signals_config.black_litterman
+                            setEditedStrategies(updated)
+                          }}>Remove ✕</button>
+                        ) : (
+                          <button style={blAddBtn} onClick={() => {
+                            updateField(["signals_config", "black_litterman"], { delta: 2.5, tau: 0.05, reversion_view: 0.03 })
+                          }}>+ Add</button>
+                        )}
+                      </div>
+
+                      {currentStrategy.signals_config.black_litterman && (
+                        <div style={blBlock}>
+                          {([
+                            ["Delta", "delta", 0.1],
+                            ["Tau", "tau", 0.01],
+                            ["View", "reversion_view", 0.01],
+                          ] as [string, string, number][]).map(([labelText, key, step]) => (
+                            <Row key={key} label={labelText}>
+                              <input type="number" step={step} style={inputStyle}
+                                value={currentStrategy.signals_config.black_litterman[key] ?? ""}
+                                onChange={(e) => updateField(["signals_config", "black_litterman", key], Number(e.target.value))} />
+                            </Row>
+                          ))}
+                        </div>
                       )}
                     </Section>
                   )}
@@ -335,3 +461,15 @@ const emptyState: CSSProperties = { color: "#8b949e", fontSize: 12, lineHeight: 
 const rowStyle: CSSProperties = { display: "flex", alignItems: "center", gap: 6 }
 const rowLabel: CSSProperties = { fontSize: 10, color: "#8b949e", width: 68, flexShrink: 0 }
 const rowInput: CSSProperties = { flex: 1, minWidth: 0 }
+const blHeader: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }
+const blLabel: CSSProperties = { fontSize: 10, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.4px" }
+const blAddBtn: CSSProperties = { background: "none", border: "1px solid #238636", borderRadius: 3, color: "#3fb950", fontSize: 10, cursor: "pointer", padding: "1px 6px" }
+const blRemoveBtn: CSSProperties = { background: "none", border: "1px solid #6e3535", borderRadius: 3, color: "#f85149", fontSize: 10, cursor: "pointer", padding: "1px 6px" }
+const blBlock: CSSProperties = { display: "flex", flexDirection: "column", gap: 4, paddingLeft: 8, borderLeft: "2px solid #21262d", marginTop: 4 }
+const tickerGrid: CSSProperties = { display: "flex", flexWrap: "wrap", gap: 4 }
+const tickerChip: CSSProperties = { background: "none", border: "1px solid #30363d", borderRadius: 3, color: "#8b949e", fontSize: 10, cursor: "pointer", padding: "2px 5px" }
+const tickerChipActive: CSSProperties = { ...tickerChip, background: "#0f2b14", border: "1px solid #238636", color: "#3fb950" }
+const smallBtn: CSSProperties = { background: "none", border: "1px solid #30363d", borderRadius: 3, color: "#8b949e", fontSize: 10, cursor: "pointer", padding: "2px 6px" }
+const loadButton: CSSProperties = { padding: "8px 12px", background: "#1f6feb", border: "none", color: "white", cursor: "pointer", borderRadius: 6, fontWeight: 600, fontSize: 12, width: "100%" }
+const exportButton: CSSProperties = { padding: "8px 12px", background: "none", border: "1px solid #238636", color: "#3fb950", cursor: "pointer", borderRadius: 6, fontWeight: 600, fontSize: 12, width: "100%" }
+const changeLinkBtn: CSSProperties = { background: "none", border: "none", color: "#8b949e", fontSize: 10, cursor: "pointer", padding: 0, textDecoration: "underline" }

@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from pathlib import Path
+from io import BytesIO
 
 from domain.portfolio.portfolio import Portfolio
 from models.backtest_result import BacktestResult
@@ -11,51 +12,64 @@ from models.experiment import Experiment
 from models.rebalance_problem import RebalanceProblem
 from models.market_config import MarketStoreConfig, MarketStateConfig
 
+
+def deserialize_series(data) -> pd.Series:
+    """Deserialize a series from JSON round-trip (handles {index, values} format and plain dicts)."""
+    if isinstance(data, pd.Series):
+        return data
+    if isinstance(data, dict) and "index" in data and "values" in data:
+        return pd.Series(data["values"], index=data["index"])
+    if isinstance(data, dict):
+        return pd.Series(data)
+    return pd.Series(data)
+
+
+def deserialize_dataframe(data) -> pd.DataFrame:
+    """Deserialize a DataFrame from JSON round-trip."""
+    if isinstance(data, pd.DataFrame):
+        return data.copy()
+    if isinstance(data, dict) and "index" in data and "columns" in data and "values" in data:
+        return pd.DataFrame(data["values"], index=data["index"], columns=data["columns"])
+    if isinstance(data, dict):
+        try:
+            return pd.DataFrame.from_dict(data, orient="index")
+        except Exception:
+            return pd.DataFrame(data)
+    return pd.DataFrame(data)
+
+
 class ExcelGenerator:
-    def __init__(self, experiment: Experiment, folder_name: str):
+    def __init__(self, experiment: Experiment, buffer: BytesIO):
         self.experiment = experiment
         self.config = experiment.market_config
-        self.folder_name = folder_name + "/" + datetime.now().strftime('%Y-%m-%d')
-        self.create_folder_path(self.folder_name)
-
-    def create_folder_path(self, folder_name: str):
-        path = Path(folder_name)
-        path.mkdir(parents=True, exist_ok=True)
+        self.buffer = buffer
 
     def generate_report(self):
-        full_filename = (
-            f"{self.folder_name}/backtest_report_"
-            f"{self.config.start_date}_{self.config.end_date}_"
-            f"{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
-        )
         results = self.aggregate_performance_metrics()
-
         wb = Workbook()
         default_sheet = wb.active
         wb.remove(default_sheet)
-        if "summary" in results:
+
+        if "summary" in results and results["summary"] is not None:
             summary_ws = wb.create_sheet(title="Summary")
-            summary_rows = dataframe_to_rows(results["summary"], header=True, index=False)   
-            for r_idx, row in enumerate(summary_rows, 1):
+            for r_idx, row in enumerate(dataframe_to_rows(results["summary"], header=True, index=False), 1):
                 for c_idx, value in enumerate(row, 1):
                     summary_ws.cell(row=r_idx, column=c_idx, value=value)
 
-        if "time_series" in results:
+        if "time_series" in results and results["time_series"] is not None:
             ts_ws = wb.create_sheet(title="Time Series")
-            ts_rows = dataframe_to_rows(results["time_series"], header=True, index=False)
-            for r_idx, row in enumerate(ts_rows, 1):
+            for r_idx, row in enumerate(dataframe_to_rows(results["time_series"], header=True, index=False), 1):
                 for c_idx, value in enumerate(row, 1):
                     ts_ws.cell(row=r_idx, column=c_idx, value=value)
 
-        if "rolling_time_series" in results:
+        if "rolling_time_series" in results and results["rolling_time_series"] is not None:
             ts_ws = wb.create_sheet(title="Rolling Time Series")
-            ts_rows = dataframe_to_rows(results["rolling_time_series"], header=True, index=False)
-            for r_idx, row in enumerate(ts_rows, 1):
+            for r_idx, row in enumerate(dataframe_to_rows(results["rolling_time_series"], header=True, index=False), 1):
                 for c_idx, value in enumerate(row, 1):
                     ts_ws.cell(row=r_idx, column=c_idx, value=value)
 
-        wb.save(full_filename)
-        wb.close()
+        wb.save(self.buffer)
+        self.buffer.seek(0)
 
     def aggregate_performance_metrics(self):
         """Aggregate performance metrics from multiple strategies into summary and time series DataFrames."""
@@ -65,6 +79,8 @@ class ExcelGenerator:
 
         for strategy_run in self.experiment.strategy_runs:
             strategy_name = strategy_run.strategy_name
+
+            # Summary
             row = {"strategy": strategy_name}
             for k, v in strategy_run.result.summary.items():
                 if isinstance(v, (pd.Series, pd.DataFrame)):
@@ -72,52 +88,68 @@ class ExcelGenerator:
                 row[k] = v
             summary_rows.append(row)
 
-            if "portfolio_weights" in strategy_run.result.series:
-                weights_df = pd.DataFrame(strategy_run.result.series["portfolio_weights"].values, columns=strategy_run.result.series["portfolio_weights"].columns)
-                weights_df.insert(0, "Date", pd.to_datetime(strategy_run.result.series["portfolio_wealth_factors"].index))
-                weights_df.insert(1, "Strategy", strategy_name)
-                weights_df.insert(2, "WealthFactor", strategy_run.result.series["portfolio_wealth_factors"].values)
-                weights_df.insert(3, "PortfolioReturns", strategy_run.result.series["portfolio_returns"].values)
-                weights_df.insert(4, "PortfolioTurnover", strategy_run.result.series["portfolio_turnover"].values)
-                weights_df.insert(5, "PortfolioTrades", strategy_run.result.series["portfolio_trades"].values)
-                portfolio_dfs.append(weights_df)
+            # Time series
+            series = strategy_run.result.series
+            if "portfolio_weights" in series:
+                try:
+                    weights_df = deserialize_dataframe(series["portfolio_weights"])
+                    wealth_series = deserialize_series(series["portfolio_wealth_factors"])
+                    returns_series = deserialize_series(series["portfolio_returns"])
+                    turnover_series = deserialize_series(series["portfolio_turnover"])
+                    trades_series = deserialize_series(series["portfolio_trades"])
 
-            if "rolling_returns" in strategy_run.result.series:
-                rolling_df = pd.DataFrame({
-                    "Date": pd.to_datetime(strategy_run.result.series["rolling_returns"].index),
-                    "Strategy": strategy_name,
-                    "RollingReturns": strategy_run.result.series["rolling_returns"].values,
-                    "RollingVolatility": strategy_run.result.series["rolling_volatility"].values,
-                    "RollingSharpe": strategy_run.result.series["rolling_sharpe_ratio"].values,
-                    "RollingDrawdown": strategy_run.result.series["rolling_drawdown"].values,
-                    "RollingTurnover": strategy_run.result.series["rolling_turnover"].values                    
-                })
-                rolling_dfs.append(rolling_df)
+                    weights_df = weights_df.reset_index(drop=True)
+                    min_len = min(
+                        len(weights_df), len(wealth_series),
+                        len(returns_series), len(turnover_series), len(trades_series)
+                    )
+                    weights_df = weights_df.iloc[:min_len].copy()
+
+                    weights_df.insert(0, "Date", pd.to_datetime(wealth_series.index[:min_len]))
+                    weights_df.insert(1, "Strategy", strategy_name)
+                    weights_df.insert(2, "WealthFactor", wealth_series.values[:min_len])
+                    weights_df.insert(3, "PortfolioReturns", returns_series.values[:min_len])
+                    weights_df.insert(4, "PortfolioTurnover", turnover_series.values[:min_len])
+                    weights_df.insert(5, "PortfolioTrades", trades_series.values[:min_len])
+                    portfolio_dfs.append(weights_df)
+                except Exception as e:
+                    print(f"Warning: could not build time series for {strategy_name}: {e}")
+
+            # Rolling time series
+            if "rolling_returns" in series:
+                try:
+                    rr = deserialize_series(series["rolling_returns"])
+                    rolling_df = pd.DataFrame({
+                        "Date": pd.to_datetime(rr.index),
+                        "Strategy": strategy_name,
+                        "RollingReturns": rr.values,
+                        "RollingVolatility": deserialize_series(series["rolling_volatility"]).values,
+                        "RollingSharpe": deserialize_series(series["rolling_sharpe_ratio"]).values,
+                        "RollingDrawdown": deserialize_series(series["rolling_drawdown"]).values,
+                        "RollingTurnover": deserialize_series(series["rolling_turnover"]).values,
+                    })
+                    rolling_dfs.append(rolling_df)
+                except Exception as e:
+                    print(f"Warning: could not build rolling series for {strategy_name}: {e}")
 
         summary_df = pd.DataFrame(summary_rows)
-        if portfolio_dfs:
-            portfolio_metrics_df = pd.concat(portfolio_dfs, axis=0, ignore_index=True)
-        else:
-            portfolio_metrics_df = None
-
-        if rolling_dfs:
-            rolling_metrics_df = pd.concat(rolling_dfs, axis=0, ignore_index=True)
-        else:
-            rolling_metrics_df = None
+        portfolio_metrics_df = pd.concat(portfolio_dfs, axis=0, ignore_index=True) if portfolio_dfs else None
+        rolling_metrics_df = pd.concat(rolling_dfs, axis=0, ignore_index=True) if rolling_dfs else None
 
         return {
             "summary": summary_df,
-            "time_series": portfolio_metrics_df, 
+            "time_series": portfolio_metrics_df,
             "rolling_time_series": rolling_metrics_df
         }
+
 
 class MetricsCompute:
     def __init__(self):
         pass
 
-    def compute(self, 
-                rebalance_problem: RebalanceProblem, 
-                portfolio: Portfolio, 
+    def compute(self,
+                rebalance_problem: RebalanceProblem,
+                portfolio: Portfolio,
                 market_store_config: MarketStoreConfig,
                 market_state_config: MarketStateConfig,
                 benchmark_index: pd.Series) -> BacktestResult:
@@ -134,8 +166,8 @@ class MetricsCompute:
             series=performance_series
         )
 
-    def _calculate_performance_metrics(self, 
-                                       portfolio: Portfolio, 
+    def _calculate_performance_metrics(self,
+                                       portfolio: Portfolio,
                                        market_str_cfg: MarketStoreConfig,
                                        benchmark_index: pd.Series) -> dict:
         """Calculate performance metrics for the portfolio."""
@@ -154,7 +186,7 @@ class MetricsCompute:
         annualized_volatility = portfolio_returns.std() * np.sqrt(self.annual_trading_days)
 
         sharpe_ratio = (
-            annualized_return / annualized_volatility 
+            annualized_return / annualized_volatility
             if annualized_volatility != 0 else 0.0
         )
 
@@ -166,6 +198,7 @@ class MetricsCompute:
             drawdown_returns = cumulative_returns
             rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self.annual_trading_days)
             rolling_dd = align_series_to_dataframe(cumulative_returns.copy(), rolling_dd)
+
         max_drawdown = abs(self._calculate_max_drawdown(drawdown_returns))
         max_drawdown_days = self._calculate_max_drawdown_days(drawdown_returns)
 
@@ -175,29 +208,27 @@ class MetricsCompute:
             "portfolio_weights": portfolio_weights,
             "portfolio_returns": portfolio_returns,
             "portfolio_turnover": portfolio_turnover,
-            "cumulative_returns": cumulative_returns,            
-            "rolling_returns": self._calculate_rolling_returns(
-                portfolio_returns, self.annual_trading_days),
-            "rolling_volatility": self._calculate_rolling_volatility(
-                portfolio_returns, self.annual_trading_days),
-            "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(
-                portfolio_returns, self.annual_trading_days),
+            "cumulative_returns": cumulative_returns,
+            "rolling_returns": self._calculate_rolling_returns(portfolio_returns, self.annual_trading_days),
+            "rolling_volatility": self._calculate_rolling_volatility(portfolio_returns, self.annual_trading_days),
+            "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(portfolio_returns, self.annual_trading_days),
             "rolling_drawdown": rolling_dd,
-            "rolling_turnover": self._calculate_rolling_turnover(
-                portfolio_turnover, self.annual_trading_days),
+            "rolling_turnover": self._calculate_rolling_turnover(portfolio_turnover, self.annual_trading_days),
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
-            "sortino_ratio": (annualized_return / portfolio_returns[portfolio_returns < 0].std() * \
-                np.sqrt(self.annual_trading_days)) if portfolio_returns[portfolio_returns < 0].std() != 0 else 0,
+            "sortino_ratio": (
+                annualized_return / portfolio_returns[portfolio_returns < 0].std() * np.sqrt(self.annual_trading_days)
+            ) if portfolio_returns[portfolio_returns < 0].std() != 0 else 0,
             "max_drawdown": max_drawdown,
             "max_drawdown_days": max_drawdown_days,
-            "avg_drawdown": self._calculate_avg_drawdown(cumulative_returns),
+            "avg_drawdown": self._calculate_avg_drawdown(drawdown_returns),
             "turnover": portfolio_turnover.mean() * self.annual_trading_days,
             "alpha": self._calculate_alpha(portfolio_returns, self.annual_trading_days, benchmark_index),
             "calmar_ratio": annualized_return / max_drawdown if max_drawdown != 0 else 0.0,
-            "tracking_error": np.sqrt(((portfolio_returns - benchmark_index.pct_change().fillna(0)) ** 2).mean()) * \
-                np.sqrt(self.annual_trading_days),
+            "tracking_error": np.sqrt(
+                ((portfolio_returns - benchmark_index.pct_change().fillna(0)) ** 2).mean()
+            ) * np.sqrt(self.annual_trading_days),
             "win_rate": (portfolio_returns > 0).mean(),
             "loss_rate": (portfolio_returns < 0).mean(),
             "average_win": portfolio_returns[portfolio_returns > 0].mean() if (portfolio_returns > 0).any() else 0.0,
@@ -207,15 +238,14 @@ class MetricsCompute:
             "var_95": portfolio_returns.quantile(0.05),
             "var_97.5": portfolio_returns.quantile(0.025),
             "var_99": portfolio_returns.quantile(0.01),
-            "cvar_95": portfolio_returns[portfolio_returns < \
-                portfolio_returns.quantile(0.05)].mean() if len(portfolio_returns) > 0 else 0.0,
-            "cvar_97.5": portfolio_returns[portfolio_returns < \
-                portfolio_returns.quantile(0.025)].mean() if len(portfolio_returns) > 0 else 0.0,
-            "cvar_99": portfolio_returns[portfolio_returns < \
-                portfolio_returns.quantile(0.01)].mean() if len(portfolio_returns) > 0 else 0.0,
-            "alpha_decay": self._calculate_alpha(portfolio_returns[-self.annual_trading_days:], \
-                self.annual_trading_days, benchmark_index[-self.annual_trading_days:]) \
-                    if len(portfolio_returns) >= self.annual_trading_days else None
+            "cvar_95": portfolio_returns[portfolio_returns < portfolio_returns.quantile(0.05)].mean() if len(portfolio_returns) > 0 else 0.0,
+            "cvar_97.5": portfolio_returns[portfolio_returns < portfolio_returns.quantile(0.025)].mean() if len(portfolio_returns) > 0 else 0.0,
+            "cvar_99": portfolio_returns[portfolio_returns < portfolio_returns.quantile(0.01)].mean() if len(portfolio_returns) > 0 else 0.0,
+            "alpha_decay": self._calculate_alpha(
+                portfolio_returns[-self.annual_trading_days:],
+                self.annual_trading_days,
+                benchmark_index[-self.annual_trading_days:]
+            ) if len(portfolio_returns) >= self.annual_trading_days else None
         }
         return performance_metrics
 
@@ -232,17 +262,16 @@ class MetricsCompute:
         not_underwater_cumsum = (1 - is_underwater).cumsum()
         max_streak = is_underwater.groupby(not_underwater_cumsum).sum().max()
         return int(max_streak) if not pd.isna(max_streak) else 0
-    
+
     def _calculate_avg_drawdown(self, cumulative_returns: pd.Series) -> float:
-        """ Mean of all individual drawdown values at each point in time"""
+        """Mean of all individual drawdown values at each point in time."""
         running_max = cumulative_returns.cummax()
         valid = running_max != 0
         drawdown = pd.Series(0.0, index=cumulative_returns.index)
-        drawdown[valid] = (cumulative_returns[valid] - running_max[valid]) / running_max[valid]     
+        drawdown[valid] = (cumulative_returns[valid] - running_max[valid]) / running_max[valid]
         negative_drawdowns = drawdown[drawdown < 0]
         if negative_drawdowns.empty:
-            return 0
-        
+            return 0.0
         result = float(negative_drawdowns.mean())
         return result if np.isfinite(result) else 0.0
 
@@ -252,36 +281,29 @@ class MetricsCompute:
 
     def _calculate_rolling_returns(self, returns: pd.Series, window: int):
         """Calculate rolling return over a specified window."""
-        annualization_factor = window
         rolling_return = (1 + returns).rolling(window=window).apply(np.prod, raw=True) - 1
-        rolling_return = (1 + rolling_return) ** (annualization_factor / window) - 1
+        rolling_return = (1 + rolling_return) ** (window / window) - 1
         return rolling_return
 
     def _calculate_rolling_volatility(self, returns: pd.Series, window: int):
         """Calculate rolling volatility over a specified window."""
-        annualization_factor = window
-        rolling_std = returns.rolling(window=window).std()
-        rolling_volatility = rolling_std * np.sqrt(annualization_factor)
-        return rolling_volatility
+        return returns.rolling(window=window).std() * np.sqrt(window)
 
     def _calculate_rolling_sharpe_ratio(self, returns: pd.Series, window: int):
         """Calculate rolling Sharpe ratio over a specified window."""
-        annualization_factor = window
         rolling_mean = returns.rolling(window=window).mean()
         rolling_std = returns.rolling(window=window).std()
-        rolling_sharpe = (rolling_mean / rolling_std) * np.sqrt(annualization_factor)
-        return rolling_sharpe
+        return (rolling_mean / rolling_std) * np.sqrt(window)
 
     def _calculate_rolling_turnover(self, turnover: pd.Series, window: int):
         """Calculate rolling turnover over a specified window."""
-        annualization_factor = window
-        return turnover.rolling(window=window).mean() * np.sqrt(annualization_factor)
+        return turnover.rolling(window=window).mean() * np.sqrt(window)
 
-    def _calculate_alpha(self, 
-                         portfolio_returns: pd.Series, 
+    def _calculate_alpha(self,
+                         portfolio_returns: pd.Series,
                          annualization_factor: int,
                          benchmark_index: pd.Series):
-        """Calculate alpha of the portfolio against a benchmark (S&P 500)."""
+        """Calculate alpha of the portfolio against a benchmark."""
         rule = {"d": "B", "w": "W-FRI", "m": "M"}[self.market_frequency]
         benchmark = benchmark_index.resample(rule).last()
         benchmark_returns = benchmark.pct_change().fillna(0)
@@ -289,17 +311,15 @@ class MetricsCompute:
         aligned = pd.concat([portfolio_returns, benchmark_returns], axis=1, join='inner')
         aligned.columns = ['portfolio', 'benchmark']
 
-        portfolio_annualized = (1 + aligned['portfolio']).prod() ** (annualization_factor/len(aligned)) - 1
-        benchmark_annualized = (1 + aligned['benchmark']).prod() ** (annualization_factor/len(aligned)) - 1
-        alpha = portfolio_annualized - benchmark_annualized
-        return alpha
+        portfolio_annualized = (1 + aligned['portfolio']).prod() ** (annualization_factor / len(aligned)) - 1
+        benchmark_annualized = (1 + aligned['benchmark']).prod() ** (annualization_factor / len(aligned)) - 1
+        return portfolio_annualized - benchmark_annualized
 
     def _build_performance_series(self, performance_metrics: dict) -> dict:
-        """Create performance series dictionary for BacktestResult dataclass"""
+        """Create performance series dictionary for BacktestResult dataclass."""
         if performance_metrics is None:
-            return
-                
-        performance_series = {
+            return {}
+        return {
             "portfolio_wealth_factors": performance_metrics["portfolio_wealth_factors"],
             "portfolio_trades": performance_metrics["portfolio_trades"],
             "portfolio_weights": performance_metrics["portfolio_weights"],
@@ -312,14 +332,12 @@ class MetricsCompute:
             "rolling_drawdown": performance_metrics["rolling_drawdown"],
             "rolling_turnover": performance_metrics["rolling_turnover"]
         }
-        return performance_series
 
     def _build_summary(self, performance_metrics) -> dict:
-        """Create summary dictionary for BacktestResult dataclass"""
+        """Create summary dictionary for BacktestResult dataclass."""
         if performance_metrics is None:
-            return
-        
-        performance_summary = {
+            return {}
+        return {
             "return": performance_metrics["return"],
             "volatility": performance_metrics["volatility"],
             "sharpe_ratio": performance_metrics["sharpe_ratio"],
@@ -345,11 +363,11 @@ class MetricsCompute:
             "cvar_99": performance_metrics["cvar_99"],
             "alpha_decay": performance_metrics["alpha_decay"]
         }
-        return performance_summary
+
 
 def align_series_to_dataframe(df: pd.DataFrame, series: pd.Series) -> pd.Series:
     n = len(df) - len(series)
-    nan_part = pd.Series([np.nan]*n, index=df.index[:n])
+    nan_part = pd.Series([np.nan] * n, index=df.index[:n])
     aligned = pd.concat([nan_part, series])
     aligned = aligned.reindex(df.index)
     return aligned

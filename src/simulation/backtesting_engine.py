@@ -9,6 +9,7 @@ from domain.signals.moving_average_signals import MovingAverageSignals
 from domain.signals.volatility_forecasting_signals import VolatilityForecastingSignals
 from domain.signals.mean_reversion_signals import MeanReversionSignals
 from domain.signals.momentum_signals import MomentumSignals
+from domain.signals.black_litterman_signal import BlackLittermanSignal
 from models.rebalance_problem import RebalanceProblem
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
@@ -48,7 +49,7 @@ class BacktestingEngine(BacktestingEngineInterface):
         while self.market_state.has_next():
             self.market_state.advance()
 
-            print(f"Backtesting Date: {self.market_state.current_date().strftime("%Y-%m-%d")}")
+            # print(f"Backtesting Date: {self.market_state.current_date().strftime("%Y-%m-%d")}")
             cursor = self.market_state.cursor
             
             current_returns = self.market_state.returns.iloc[cursor]
@@ -60,7 +61,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             if not self._is_rebalance_step(cursor):
                 continue
 
-            signals = self._build_signals(self.market_state, self.signals_cfg)
+            signals = self._build_signals(self.market_state, self.signals_cfg, prev_weights)
             target_weights = self.strategy.rebalance(signals, prev_weights)
             self.portfolio.apply(target_weights, prev_weights, cursor)
             prev_weights = target_weights
@@ -75,11 +76,12 @@ class BacktestingEngine(BacktestingEngineInterface):
         key = (self.market_state.market_frequency, freq_param)
         return FREQ_TO_STEPS.get(key, 1)
     
-    def _build_signals(self, market_state: MarketState, signals_config: SignalsConfig) -> dict:
+    def _build_signals(self, market_state: MarketState, signals_config: SignalsConfig, current_weights: np.ndarray) -> dict:
         return {
             "risk_return": RiskReturnSignals(market_state, signals_config),
             "mean_reversion": MeanReversionSignals(market_state, signals_config),
             "moving_average": MovingAverageSignals(market_state, signals_config),
             "volatility_forecast": VolatilityForecastingSignals(market_state, signals_config),
-            "momentum": MomentumSignals(market_state, signals_config)
+            "momentum": MomentumSignals(market_state, signals_config),
+            "black_litterman": BlackLittermanSignal(market_state, signals_config, current_weights)
         } 

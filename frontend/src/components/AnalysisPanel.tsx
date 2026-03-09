@@ -44,16 +44,17 @@ const TOOLTIPS: Record<string, string> = {
 }
 
 function MetricTooltip({ label, children }: { label: string; children: React.ReactNode }) {
-  const [visible, setVisible] = useState(false)
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
   const tip = TOOLTIPS[label]
   return (
     <div style={{ position: "relative", display: "inline-block" }}
-      onMouseEnter={() => tip && setVisible(true)}
-      onMouseLeave={() => setVisible(false)}
+      onMouseEnter={(e) => tip && setPos({ x: e.clientX, y: e.clientY })}
+      onMouseMove={(e) => tip && setPos({ x: e.clientX, y: e.clientY })}
+      onMouseLeave={() => setPos(null)}
     >
       {children}
-      {visible && tip && (
-        <div style={tooltipBox}>
+      {pos && tip && (
+        <div style={{ ...tooltipBox, top: pos.y + 12, left: Math.min(pos.x + 8, window.innerWidth - 250) }}>
           <strong style={{ display: "block", marginBottom: 4, color: "#e6edf3" }}>{label}</strong>
           {tip}
         </div>
@@ -477,8 +478,11 @@ const panel: CSSProperties = {
   border: "1px solid #2a2f3a",
   borderRadius: 8,
   overflow: "hidden",
-  height: "100%"
+  height: "100%",
+  display: "flex",
+  flexDirection: "column"
 }
+
 
 const tabStrip: CSSProperties = {
   display: "flex",
@@ -507,7 +511,7 @@ const activeTab: CSSProperties = {
 
 const inactiveTab: CSSProperties = baseTab
 
-const body: CSSProperties = { padding: 16 }
+const body: CSSProperties = { padding: 16, flex: 1, overflowY: "auto" }
 const tabBody: CSSProperties = { display: "flex", flexDirection: "column", gap: 0 }
 
 const sectionTitleStyle: CSSProperties = {
@@ -552,10 +556,10 @@ const dotStyle: CSSProperties = {
 }
 
 const tooltipBox: CSSProperties = {
-  position: "absolute", bottom: "calc(100% + 8px)", right: 0,
+  position: "fixed", top: "auto", left: "auto",
   width: 230, background: "#161b22", border: "1px solid #30363d",
   borderRadius: 6, padding: "10px 12px", fontSize: 12,
-  color: "#8b949e", lineHeight: 1.5, zIndex: 100,
+  color: "#8b949e", lineHeight: 1.5, zIndex: 9999,
   boxShadow: "0 4px 16px rgba(0,0,0,0.5)", pointerEvents: "none",
   textAlign: "left", fontWeight: 400
 }

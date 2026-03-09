@@ -7,7 +7,8 @@
     "end_date": "2026-02-19",
     "data_source": { "yfinance": null },
     "benchmark": "SPY",
-    "risk_free_rate": 0.03
+    "risk_free_rate": 0.03,
+    "transaction_cost": 0.003
   },
   "strategies": [
     {
@@ -24,13 +25,18 @@
         "apply_winsorizing": true,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
         "mean_reversion_window": 4,
-        "momentum_skip_periods": 4
+        "momentum_skip_periods": 4,
+        "black_litterman": {
+          "delta": 2.5,
+          "tau": 0.05,
+          "reversion_view": 0.03
+        }
       },      
       "rebalance_problem": {
         "strategy_type": "mean_reversion_strategy",
         "optimizer_type": "portfolio_optimizer",
         "benchmark_universe": "SPY",
-        "rebalance_frequency": "quarterly",
+        "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
         "apply_sharpe_objective": false,
         "strategy_rules": {

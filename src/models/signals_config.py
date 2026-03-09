@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Any
 
 @dataclass(frozen=True)
 class SignalsConfig:
@@ -7,6 +7,7 @@ class SignalsConfig:
     windsor_percentiles: Dict
     mean_reversion_window: int
     momentum_skip_periods: int
+    black_litterman: Dict[Any]
     
     @classmethod
     def from_dict(cls, d: dict):
@@ -17,6 +18,7 @@ class SignalsConfig:
                 {"lower": 0.05, "upper": 0.95}
             ),
             mean_reversion_window = d.get("mean_reversion_window", 4),
-            momentum_skip_periods = d.get("momentum_skip_periods", 4)
+            momentum_skip_periods = d.get("momentum_skip_periods", 4),
+            black_litterman = d.get("black_litterman", None)
         )
         
