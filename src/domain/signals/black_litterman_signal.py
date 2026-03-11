@@ -11,7 +11,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         super().__init__(market_state, signals_cfg)
         self.current_weights = current_weights
 
-    def mean_returns(self):
+    def mean_returns(self) -> np.ndarray:
         black_litterman = getattr(self.signals_cfg, "black_litterman", None)
         if black_litterman is None:
             return super().mean_returns()
@@ -54,7 +54,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         
         return P, Q, omega
 
-    def _compute_posterior(self, pi, sigma, P, Q, omega):
+    def _compute_posterior(self, pi, sigma, P, Q, omega) -> np.ndarray:
         tau = getattr(self.signals_cfg, "tau", 0.05)
         M = np.linalg.inv(
             np.linalg.inv(tau * sigma) + P.T @ np.linalg.inv(omega) @ P

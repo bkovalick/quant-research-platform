@@ -1,0 +1,87 @@
+{
+  "market_store_config": {
+	"tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
+                "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX"
+            ],
+    "start_date": "2005-01-01",
+    "end_date": "2026-02-19",
+    "data_source": { "yfinance": null },
+    "benchmark": "SPY",
+    "risk_free_rate": 0.03,
+    "transaction_cost": 0.003
+  },
+  "strategies": [
+    {
+      "name": "mean_reversion",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.05,
+        "universe_tickers": ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
+            "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA"
+        ]        
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
+        "mean_reversion_window": 4,
+        "momentum_skip_periods": 4,
+        "black_litterman": {
+          "delta": 2.5,
+          "tau": 0.05,
+          "reversion_view": 0.03
+        }
+      },
+      "ml_signals_config":{
+          "enabled": true,
+          "features_model": "cross_sectional_model",
+          "features": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal"],
+          "signals_model": "ridge",
+          "training_window": 504,
+          "horizon": 21,
+          "alpha": 1.0
+      },            
+      "rebalance_problem": {
+        "strategy_type": "mean_reversion_strategy",
+        "optimizer_type": "portfolio_optimizer",
+        "benchmark_universe": "SPY",
+        "rebalance_frequency": "weekly",
+        "apply_max_return_objective": true,
+        "apply_sharpe_objective": false,
+        "strategy_rules": {
+            "vol_target": 0.15,
+            "vol_lookback_days": 21,
+            "vol_max_leverage": 1.5
+        },        
+        "constraints": {
+            "concentration_strength": 1,
+            "max_return": 0.25,
+            "risk_aversion": 0.10,
+            "optimizer_vol_constraint": 0.20,
+            "turnover_limit": 0.30,
+            "min_position_size": 0.0,
+            "max_position_size": 0.35,  
+            "max_positions": 50,
+            "asset_class_constraints": { 
+                "Equity": [0.70, 0.90], 
+                "Fixed Income": [0.05, 0.25]
+            },
+            "sector_constraints": {
+                "Information Technology": [0.25, 0.45], 
+                "US Aggregate": [0.05, 0.25],
+                "Communication Services": [0.10, 0.20],
+                "Financials": [0.10, 0.20],
+                "Consumer Discretionary": [0.10, 0.15], 
+                "Consumer Staples": [0.075, 0.15],
+                "Health Care": [0.10, 0.15],
+                "Materials": [0.0, 0.05],
+                "Energy": [0.0, 0.04],
+                "Real Estate": [0.0, 0.025],
+                "Utilities": [0.0, 0.02],
+                "Industrials": [0.0, 0.02]
+            }
+        }        
+      }
+    }  
+  ]
+}
