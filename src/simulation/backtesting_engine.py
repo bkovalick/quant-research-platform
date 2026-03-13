@@ -31,29 +31,31 @@ class BacktestingEngine(BacktestingEngineInterface):
                  portfolio: PortfolioInterface, 
                  strategy: StrategyInterface,
                  market_state: MarketState,
-                 signals_cfg: SignalsConfig,
-                 ml_signals_cfg: MachineLearningConfig):
+                 signals_config: SignalsConfig,
+                 ml_signals_config: MachineLearningConfig):
         self.portfolio = portfolio
         self.strategy = strategy
         self.market_state = market_state
-        self.signals_cfg = signals_cfg
-        self.ml_signals_cfg = ml_signals_cfg
-        # self.feature_builder = FeatureBuilder(
-        #     self.market_state.prices.copy(), 
-        #     self.market_state.returns.copy()
-        # )
-        # self.cs_model = CrossSectionalModel(ml_signals_cfg)
-        # self.ml_signals_state = MLSignalsState(
-        #     ml_signals_cfg,
-        #     self.feature_builder,
-        #     self.cs_model
-        # )
-        # self.ml_signals = MLSignals(
-        #     self.market_state, 
-        #     self.signals_cfg, 
-        #     self.ml_signals_cfg, 
-        #     self.ml_signals_state
-        # )
+        self.signals_cfg = signals_config
+
+        if ml_signals_config is not None:
+            self.ml_signals_cfg = ml_signals_config
+            self.feature_builder = FeatureBuilder(
+                self.market_state.prices.copy(), 
+                self.market_state.returns.copy()
+            )
+            self.cs_model = CrossSectionalModel(ml_signals_config)
+            self.ml_signals_state = MLSignalsState(
+                ml_signals_config,
+                self.feature_builder,
+                self.cs_model
+            )
+            self.ml_signals = MLSignals(
+                self.market_state, 
+                self.signals_cfg, 
+                self.ml_signals_cfg, 
+                self.ml_signals_state
+            )
 
     def run_backtest(self, rebalance_problem: RebalanceProblem):
         """Run backtest on the given rebalance problem."""
@@ -101,13 +103,15 @@ class BacktestingEngine(BacktestingEngineInterface):
                        market_state: MarketState, 
                        signals_config: SignalsConfig, 
                        current_weights: np.ndarray) -> dict:
-        # self.ml_signals_state.update(market_state.current_date)
+        if self.ml_signals_cfg is not None:
+            self.ml_signals_state.update(market_state.current_date)
+
         return {
             "risk_return": RiskReturnSignals(market_state, signals_config),
             "mean_reversion": MeanReversionSignals(market_state, signals_config),
             "moving_average": MovingAverageSignals(market_state, signals_config),
             "volatility_forecast": VolatilityForecastingSignals(market_state, signals_config),
             "momentum": MomentumSignals(market_state, signals_config),
-            "black_litterman": BlackLittermanSignal(market_state, signals_config, current_weights)
-            # "ml_cross_sectional": self.ml_signals
+            "black_litterman": BlackLittermanSignal(market_state, signals_config, current_weights),
+            "ml_cross_sectional": self.ml_signals
         } 
