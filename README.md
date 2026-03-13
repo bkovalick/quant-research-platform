@@ -1,8 +1,8 @@
-# Portfolio Optimizer
+# Quant-Research-Platform
 
 ## Overview
 
-Portfolio Optimizer is a modular Python toolkit for portfolio rebalancing, optimization, and backtesting. It supports experiment-driven workflows, strategy evaluation, and reporting, using CVXPY for optimization. The architecture is designed for extensibility, reproducibility, and clear separation of concerns.
+Experiment-driven research platform for systematic strategy development and evaluation across asset classes — CVXPY optimization, multi-strategy backtesting, signal research. The architecture is designed for extensibility, reproducibility, and clear separation of concerns.
 
 ## Project Structure
 
