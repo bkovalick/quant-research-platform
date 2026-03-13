@@ -18,12 +18,30 @@ from datetime import datetime
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
+def build_signal_config(strategy_cfg: dict) -> SignalsConfig:
+    signals_config = strategy_cfg.get("signals_config", None)
+    if signals_config is not None:
+        return SignalsConfig.from_dict(signals_config)
+    return None
+
+def build_machine_learning_config(strategy_cfg: dict) -> MachineLearningConfig:
+    ml_config = strategy_cfg.get("ml_signals_config", None)
+    if ml_config is not None:
+        return MachineLearningConfig.from_dict(ml_config)
+    return None
+
+def build_market_state_config(strategy_cfg: dict) -> MarketStateConfig:
+    market_state_config = strategy_cfg.get("market_state_config", None)
+    if market_state_config is None:
+        raise ValueError("Error: Market state configuration must be present to run a backtest")
+    return MarketStateConfig.from_dict(market_state_config)
+
 def run_strategy_worker(strategy_cfg, market_store_config):
     market_store = MarketDataStore(market_store_config)
     portfolio = Portfolio()
     metrics_computer = MetricsCompute()
 
-    state_config = MarketStateConfig.from_dict(strategy_cfg["market_state_config"])
+    state_config = build_market_state_config(strategy_cfg)
     state = MarketState(market_store, state_config)
 
     universe_meta = {
@@ -38,8 +56,8 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         universe_meta
     ).build()
 
-    signal_config = SignalsConfig.from_dict(strategy_cfg["signals_config"])
-    ml_config = MachineLearningConfig.from_dict(strategy_cfg["ml_signals_config"])
+    signal_config = build_signal_config(strategy_cfg)
+    ml_config = build_machine_learning_config(strategy_cfg)    
 
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
@@ -168,15 +186,21 @@ class ExperimentRunner:
         )
 
     def _build_market_store_config(self) -> MarketStoreConfig:
-        return MarketStoreConfig.from_dict(self.config["market_store_config"])
+        market_store_config = self.config.get("market_store_config", None)
+        if market_store_config is None:
+            raise ValueError("Error: Market store configuration must be present to run a backtest")
+        return MarketStoreConfig.from_dict(market_store_config)
 
     def _build_market_store(self, 
                             market_store_config: MarketStoreConfig) -> MarketDataStore:
         return MarketDataStore(market_store_config)
 
     def _build_market_state_config(self, strategy_cfg: dict) -> MarketStateConfig:
-        return MarketStateConfig.from_dict(strategy_cfg["market_state_config"])
-
+        market_state_config = strategy_cfg.get("market_state_config", None)
+        if market_state_config is None:
+            raise ValueError("Error: Market state configuration must be present to run a backtest")
+        return MarketStateConfig.from_dict(market_state_config)
+    
     def _build_market_state(self, 
                             market_store: MarketDataStore, 
                             market_state_config: MarketStateConfig) -> MarketState:

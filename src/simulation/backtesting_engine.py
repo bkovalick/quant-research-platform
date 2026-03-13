@@ -12,7 +12,7 @@ from domain.signals.momentum_signals import MomentumSignals
 from domain.signals.black_litterman_signal import BlackLittermanSignal
 from domain.machine_learning.cross_sectional_model import CrossSectionalModel
 from domain.machine_learning.feature_builder import FeatureBuilder
-from domain.signals.ml_signals import MLSignals
+from domain.signals.ml_signals import MLSignals, MLSignalsState
 from models.rebalance_problem import RebalanceProblem
 from models.signals_config import SignalsConfig
 from models.machine_learning_config import MachineLearningConfig
@@ -38,18 +38,22 @@ class BacktestingEngine(BacktestingEngineInterface):
         self.market_state = market_state
         self.signals_cfg = signals_cfg
         self.ml_signals_cfg = ml_signals_cfg
-        self.feature_builder = FeatureBuilder(
-            self.market_state.prices.copy(), 
-            self.market_state.returns.copy()
-        )
-        self.cs_model = CrossSectionalModel(ml_signals_cfg) # this might need to be a factory?
-        self._ml_signals = MLSignals(
-            self.market_state, 
-            self.signals_cfg, 
-            self.ml_signals_cfg, 
-            self.feature_builder, 
-            self.cs_model
-        )
+        # self.feature_builder = FeatureBuilder(
+        #     self.market_state.prices.copy(), 
+        #     self.market_state.returns.copy()
+        # )
+        # self.cs_model = CrossSectionalModel(ml_signals_cfg)
+        # self.ml_signals_state = MLSignalsState(
+        #     ml_signals_cfg,
+        #     self.feature_builder,
+        #     self.cs_model
+        # )
+        # self.ml_signals = MLSignals(
+        #     self.market_state, 
+        #     self.signals_cfg, 
+        #     self.ml_signals_cfg, 
+        #     self.ml_signals_state
+        # )
 
     def run_backtest(self, rebalance_problem: RebalanceProblem):
         """Run backtest on the given rebalance problem."""
@@ -97,7 +101,7 @@ class BacktestingEngine(BacktestingEngineInterface):
                        market_state: MarketState, 
                        signals_config: SignalsConfig, 
                        current_weights: np.ndarray) -> dict:
-        # self._ml_signals.update(market_state.current_date)
+        # self.ml_signals_state.update(market_state.current_date)
         return {
             "risk_return": RiskReturnSignals(market_state, signals_config),
             "mean_reversion": MeanReversionSignals(market_state, signals_config),
@@ -105,5 +109,5 @@ class BacktestingEngine(BacktestingEngineInterface):
             "volatility_forecast": VolatilityForecastingSignals(market_state, signals_config),
             "momentum": MomentumSignals(market_state, signals_config),
             "black_litterman": BlackLittermanSignal(market_state, signals_config, current_weights)
-            # "ml_cross_sectional": self._ml_signals
+            # "ml_cross_sectional": self.ml_signals
         } 

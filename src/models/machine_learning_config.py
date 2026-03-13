@@ -9,7 +9,8 @@ class MachineLearningConfig:
     signals_model: str
     training_window: int
     horizon: int
-    alpha: int
+    alpha: float
+    rebal_cadence: int
 
     @classmethod
     def from_dict(cls, d: dict):
@@ -20,5 +21,6 @@ class MachineLearningConfig:
             signals_model = d.get("signals_model", "ridge"),
             training_window = d.get("training_window", 504),
             horizon = d.get("horizon", 21),
-            alpha = d.get("alpha", 1.0)
+            alpha = d.get("alpha", 1.0),
+            rebal_cadence = d.get("rebal_cadence", 5)
         )

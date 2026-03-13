@@ -26,9 +26,9 @@ class CrossSectionalModel(ISignalModel):
             self._model = Ridge(alpha=self.alpha)
         else:
             self._model = GradientBoostingRegressor(
-                n_estimators=100, max_depth=3, learning_rate=0.05
+                n_estimators=100, max_depth=3, learning_rate=0.05 # add as params
             )
-        self._model.fit(X_arr, y_arr)        
+        self._model.fit(X_arr, y_arr)
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         if self._model is None:
