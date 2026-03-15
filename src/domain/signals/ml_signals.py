@@ -22,18 +22,23 @@ class MLSignalsState:
         self._cached_scores = None
         self._last_trained = None
         self._training_window = ml_config.training_window
-        self._horizon = ml_config.horizon        
+        self._horizon = ml_config.horizon
+        self._sample_stride = ml_config.sample_stride
 
     def update(self, as_of_date: datetime):
+        """
+        Retrains the model on a rolling window of historical features and forward returns,
+        then generates and caches predicted scores for the current date. Retraining is
+        skipped if the configured cadence has not elapsed since the last training run.
+        """
         if self._should_retrain(as_of_date):
             dates = self._feature_builder.prices.index
             train_dates = dates[-(self._training_window + self._horizon):-self._horizon]
 
             X_list, y_list = [], []
-            for date in train_dates[::5]:
+            for date in train_dates[::self._sample_stride]:
                 X_t = self._feature_builder.build(date)
-                y_t = self._feature_builder.build_forward_returns(
-                        date, self._horizon)
+                y_t = self._feature_builder.build_forward_returns(date, self._horizon)
                 if X_t.empty or y_t.empty:
                     continue
                 X_list.append(X_t)

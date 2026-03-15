@@ -228,14 +228,17 @@ class ExperimentRunner:
     def _build_signal_config(self, 
                              strategy_cfg: dict) -> SignalsConfig:
         signals_config = strategy_cfg.get("signals_config")
-        if signals_config is not None:
-            return SignalsConfig.from_dict(signals_config)
-        return None
-    
+        if signals_config is None:
+            raise ValueError("Missing 'signals_config' in strategy configuration. Please provide a default SignalsConfig instance.")
+        return SignalsConfig.from_dict(signals_config)
+        
     def _build_machine_learning_config(self, strategy_cfg: dict) -> MachineLearningConfig:
-        ml_cfg = strategy_cfg.get("ml_signals_config")
-        if ml_cfg is not None:
-            return MachineLearningConfig.from_dict(ml_cfg)
+        ml_signals_config_dict = strategy_cfg.get("ml_signals_config")
+        if ml_signals_config_dict is not None:
+            ml_signals_config =  MachineLearningConfig.from_dict(ml_signals_config_dict)
+            if not ml_signals_config.enabled:
+                return None
+            return ml_signals_config
         return None
 
     def _build_metadata(self) -> dict:

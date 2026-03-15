@@ -11,6 +11,7 @@ class MachineLearningConfig:
     horizon: int
     alpha: float
     rebal_cadence: int
+    sample_stride: int
 
     @classmethod
     def from_dict(cls, d: dict):
@@ -22,5 +23,6 @@ class MachineLearningConfig:
             training_window = d.get("training_window", 504),
             horizon = d.get("horizon", 21),
             alpha = d.get("alpha", 1.0),
-            rebal_cadence = d.get("rebal_cadence", 5)
+            rebal_cadence = d.get("rebal_cadence", 5),
+            sample_stride = d.get("sample_stride", 5)
         )

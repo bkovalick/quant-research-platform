@@ -19,7 +19,7 @@ class FeatureBuilder:
 
         features = pd.DataFrame(index=self.prices.columns)
         features["mom_1m"]   = px.iloc[-1] / px.iloc[-21]  - 1
-        features["mom_12m"]  = px.iloc[-21] / px.iloc[-252] - 1   # skip last month
+        features["mom_12m"]  = px.iloc[-21] / px.iloc[-252] - 1   # skip last month, this breaks outside of the backtest engine b/c it needs a lookback date check
         features["vol_1m"]   = rets.iloc[-21:].std()
         features["vol_3m"]   = rets.iloc[-63:].std()
         features["reversal"] = -(px.iloc[-1] / px.iloc[-6] - 1)   # negative = reversal

@@ -7,7 +7,7 @@ class SignalsConfig:
     windsor_percentiles: Dict
     mean_reversion_window: int
     momentum_skip_periods: int
-    black_litterman: Dict[Any]
+    black_litterman: Dict[str, Any]
     
     @classmethod
     def from_dict(cls, d: dict):
