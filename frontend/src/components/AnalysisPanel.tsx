@@ -332,8 +332,8 @@ function TradeQualityView({ runs }: any) {
     { key: "turnover",     label: "Turnover",     fmt: "num" },
     { key: "win_rate",     label: "Win Rate",     fmt: "pct" },
     { key: "loss_rate",    label: "Loss Rate",    fmt: "pct" },
-    { key: "average_win",  label: "Average Win",  fmt: "num" },
-    { key: "average_loss", label: "Average Loss", fmt: "num" },
+    { key: "average_win",  label: "Average Win",  fmt: "pct" },
+    { key: "average_loss", label: "Average Loss", fmt: "pct" },
   ]
 
   const winLossData = runs.map((run: any, i: number) => ({
@@ -380,8 +380,8 @@ function TradeQualityView({ runs }: any) {
                 <td style={rightCell}>{fmt(s.turnover, "num")}</td>
                 <td style={rightCellGreen(s.win_rate)}>{fmt(s.win_rate, "pct")}</td>
                 <td style={rightCellRed(s.loss_rate)}>{fmt(s.loss_rate, "pct")}</td>
-                <td style={rightCell}>{fmt(s.average_win, "num")}</td>
-                <td style={rightCell}>{fmt(s.average_loss, "num")}</td>
+                <td style={rightCellGreen(s.average_win)}>{fmt(s.average_win, "pct")}</td>
+                <td style={rightCellRed(s.average_loss)}>{fmt(s.average_loss, "pct")}</td>
               </tr>
             )
           })}

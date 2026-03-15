@@ -15,11 +15,16 @@ class RebalanceProblemBuilder:
         n_assets = len(tickers)
         explicit_weights = self.config.get("initial_weights", None)
         if explicit_weights:
-            initial_weights = explicit_weights
+            weights = explicit_weights
         elif cash_allocation > 0:
-            initial_weights = [(1 - cash_allocation) / (n_assets - 1)] * (n_assets - 1) + [cash_allocation]
+            weights = [(1 - cash_allocation) / (n_assets - 1)] * (n_assets - 1) + [cash_allocation]
         else:
-            initial_weights = [1 / n_assets] * n_assets
+            weights = [1 / n_assets] * n_assets
+
+        if isinstance(weights, list):
+            initial_weights = dict(zip(tickers, weights))
+        elif isinstance(weights, dict):
+            initial_weights = weights
 
         constraints = self.config.get("constraints", {})
         strategy_rules = self.config.get("strategy_rules", {}) 

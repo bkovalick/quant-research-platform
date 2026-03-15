@@ -53,6 +53,23 @@ export default function Sidebar({ setExperiment, experiment }: any) {
 
   const runExperiment = async () => {
     if (!strategySet) return
+
+    // Validate fixed weight strategies
+    for (const s of editedStrategies) {
+      if (s.rebalance_problem?.strategy_type === "fwp_strategy") {
+        const tickers = s.market_state_config?.universe_tickers ?? []
+        const w = s.rebalance_problem?.initial_weights
+        const dict = Array.isArray(w)
+          ? Object.fromEntries(tickers.map((t: string, i: number) => [t, w[i] ?? 0]))
+          : (w ?? {})
+        const total = Object.values(dict).reduce((a: number, b) => a + (b as number), 0)
+        if (Math.abs(total - 1) > 0.0001) {
+          alert(`Fixed weights for "${s.name}" must sum to 1. Current sum: ${total.toFixed(4)}`)
+          return
+        }
+      }
+    }
+
     const config = {
       ...strategySet,
       market_store_config: {
@@ -232,13 +249,35 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                     </Row>
                     <label style={labelStyle}>Universe Tickers</label>
                       <div style={{ display: "flex", gap: 6, marginBottom: 4, alignItems: "center" }}>
-                        <button style={smallBtn} onClick={() =>
-                          updateField(["market_state_config", "universe_tickers"],
-                            (strategySet.market_store_config.tickers ?? []).filter(
-                              (t: string) => t !== strategySet.market_store_config.benchmark
-                            ))}>All</button>
-                        <button style={smallBtn} onClick={() =>
-                          updateField(["market_state_config", "universe_tickers"], [])}>Clear</button>
+                        <button style={smallBtn} onClick={() => {
+                          const allTickers = (strategySet.market_store_config.tickers ?? []).filter(
+                            (t: string) => t !== strategySet.market_store_config.benchmark
+                          )
+                          if (currentStrategy.rebalance_problem?.strategy_type === "fwp_strategy") {
+                            const rawWeights = currentStrategy.rebalance_problem?.initial_weights
+                            const currentWeights: Record<string, number> = Array.isArray(rawWeights)
+                              ? Object.fromEntries((currentStrategy.market_state_config?.universe_tickers ?? []).map((t: string, i: number) => [t, rawWeights[i] ?? 0]))
+                              : (rawWeights ?? {})
+                            const newWeights = Object.fromEntries(allTickers.map((t: string) => [t, currentWeights[t] ?? 0]))
+                            const updatedStrategies = JSON.parse(JSON.stringify(editedStrategies))
+                            updatedStrategies[selectedIdx].market_state_config.universe_tickers = allTickers
+                            updatedStrategies[selectedIdx].rebalance_problem.initial_weights = newWeights
+                            setEditedStrategies(updatedStrategies)
+                            return
+                          }
+                          updateField(["market_state_config", "universe_tickers"], allTickers)
+                        }}>All</button>
+
+                        <button style={smallBtn} onClick={() => {
+                          if (currentStrategy.rebalance_problem?.strategy_type === "fwp_strategy") {
+                            const updatedStrategies = JSON.parse(JSON.stringify(editedStrategies))
+                            updatedStrategies[selectedIdx].market_state_config.universe_tickers = []
+                            updatedStrategies[selectedIdx].rebalance_problem.initial_weights = {}
+                            setEditedStrategies(updatedStrategies)
+                            return
+                          }
+                          updateField(["market_state_config", "universe_tickers"], [])
+                        }}>Clear</button>
                         <span style={{ fontSize: 10, color: "#8b949e" }}>
                           {(currentStrategy.market_state_config?.universe_tickers ?? []).length} selected
                         </span>
@@ -257,6 +296,25 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                                   const updated = selected
                                     ? current.filter((t: string) => t !== ticker)
                                     : [...current, ticker]
+                                  
+                                  // If fwp strategy, sync initial_weights dict with new ticker list
+                                  if (currentStrategy.rebalance_problem?.strategy_type === "fwp_strategy") {
+                                    const rawWeights = currentStrategy.rebalance_problem?.initial_weights
+                                    const currentWeights: Record<string, number> = Array.isArray(rawWeights)
+                                      ? Object.fromEntries(current.map((t: string, i: number) => [t, rawWeights[i] ?? 0]))
+                                      : (rawWeights ?? {})
+                                    
+                                    const newWeights = Object.fromEntries(
+                                      updated.map((t: string) => [t, currentWeights[t] ?? 0])
+                                    )
+                                    
+                                    const updatedStrategies = JSON.parse(JSON.stringify(editedStrategies))
+                                    updatedStrategies[selectedIdx].market_state_config.universe_tickers = updated
+                                    updatedStrategies[selectedIdx].rebalance_problem.initial_weights = newWeights
+                                    setEditedStrategies(updatedStrategies)
+                                    return
+                                  }
+
                                   updateField(["market_state_config", "universe_tickers"], updated)
                                 }}
                               >{ticker}</button>
@@ -283,6 +341,50 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                     </Row>
                   </Section>
 
+                  {currentStrategy.rebalance_problem?.strategy_type === "fwp_strategy" && (() => {
+                    const tickers: string[] = currentStrategy.market_state_config?.universe_tickers ?? []
+                    const rawWeights = currentStrategy.rebalance_problem?.initial_weights
+                    
+                    // Normalize to dict
+                    const weightsDict: Record<string, number> = Array.isArray(rawWeights)
+                      ? Object.fromEntries(tickers.map((t, i) => [t, rawWeights[i] ?? 0]))
+                      : (rawWeights ?? {})
+
+                    const total = Object.values(weightsDict).reduce((s, v) => s + v, 0)
+                    const valid = Math.abs(total - 1) < 0.0001
+
+                    const updateWeight = (ticker: string, val: number) => {
+                      const updated = { ...weightsDict, [ticker]: val }
+                      // Store as dict
+                      updateField(["rebalance_problem", "initial_weights"], updated)
+                    }
+
+                    const equalise = () => {
+                      const eq = tickers.length > 0 ? +(1 / tickers.length).toFixed(4) : 0
+                      const updated = Object.fromEntries(tickers.map(t => [t, eq]))
+                      updateField(["rebalance_problem", "initial_weights"], updated)
+                    }
+
+                    return (
+                      <Section title="Fixed Weights">
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                          <span style={{ fontSize: 10, color: valid ? "#3fb950" : "#f85149" }}>
+                            Sum: {(total * 100).toFixed(1)}% {valid ? "✓" : "— must equal 100%"}
+                          </span>
+                          <button style={smallBtn} onClick={equalise}>Equalise</button>
+                        </div>
+                        {tickers.map(ticker => (
+                          <Row key={ticker} label={ticker}>
+                            <input
+                              type="number" step={0.005} min={0} max={1} style={inputStyle}
+                              value={weightsDict[ticker] ?? 0}
+                              onChange={(e) => updateWeight(ticker, Number(e.target.value))}
+                            />
+                          </Row>
+                        ))}
+                      </Section>
+                    )
+                  })()}
                   {currentStrategy.rebalance_problem?.constraints && (
                     <Section title="Constraints">
                       {[
@@ -313,7 +415,7 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                           <option value="false">Off</option>
                           <option value="true">On</option>
                         </select>
-                      </Row>
+                      </Row>  
 
                       {currentStrategy.signals_config.apply_winsorizing && (
                         <>

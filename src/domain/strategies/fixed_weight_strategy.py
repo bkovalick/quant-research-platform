@@ -13,4 +13,4 @@ class FixedWeightStrategy(StrategyInterface):
 
     def rebalance(self, signals: dict, current_weights: np.ndarray) -> np.ndarray:
         """Calculate rebalance weights"""
-        return self.rebalance_problem.initial_weights
+        return np.array(list(self.rebalance_problem.initial_weights.values()))

@@ -38,7 +38,7 @@
         "strategy_type": "fwp_strategy",
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
-        "initial_weights": [0.20, 0.20, 0.15, 0.15, 0.10, 0.025, 0.125]
+        "initial_weights": [0.25, 0.20, 0.15, 0.15, 0.10, 0.025, 0.125]
       }
     },
     {
