@@ -36,24 +36,23 @@ class BacktestingEngine(BacktestingEngineInterface):
         self.portfolio = portfolio
         self.strategy = strategy
         self.market_state = market_state
-        self.signals_cfg = signals_config
-
-        if ml_signals_config is not None:
-            self.ml_signals_cfg = ml_signals_config
+        self.signals_config = signals_config
+        self.ml_signals_config = ml_signals_config
+        if self.ml_signals_config is not None:
             self.feature_builder = FeatureBuilder(
                 self.market_state.prices.copy(), 
                 self.market_state.returns.copy()
             )
-            self.cs_model = CrossSectionalModel(ml_signals_config)
+            self.cs_model = CrossSectionalModel(self.ml_signals_config)
             self.ml_signals_state = MLSignalsState(
-                ml_signals_config,
+                self.ml_signals_config,
                 self.feature_builder,
                 self.cs_model
             )
             self.ml_signals = MLSignals(
                 self.market_state, 
-                self.signals_cfg, 
-                self.ml_signals_cfg, 
+                self.signals_config, 
+                self.ml_signals_config, 
                 self.ml_signals_state
             )
 
@@ -84,7 +83,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             if not self._is_rebalance_step(cursor):
                 continue
 
-            signals = self._build_signals(self.market_state, self.signals_cfg, prev_weights)
+            signals = self._build_signals(self.market_state, self.signals_config, prev_weights)
             target_weights = self.strategy.rebalance(signals, prev_weights)
             self.portfolio.apply(target_weights, prev_weights, cursor)
             prev_weights = target_weights
@@ -103,8 +102,8 @@ class BacktestingEngine(BacktestingEngineInterface):
                        market_state: MarketState, 
                        signals_config: SignalsConfig, 
                        current_weights: np.ndarray) -> dict:
-        if self.ml_signals_cfg is not None:
-            self.ml_signals_state.update(market_state.current_date)
+        if self.ml_signals_config is not None:
+            self.ml_signals_state.update(market_state.current_date())
 
         return {
             "risk_return": RiskReturnSignals(market_state, signals_config),
@@ -113,5 +112,5 @@ class BacktestingEngine(BacktestingEngineInterface):
             "volatility_forecast": VolatilityForecastingSignals(market_state, signals_config),
             "momentum": MomentumSignals(market_state, signals_config),
             "black_litterman": BlackLittermanSignal(market_state, signals_config, current_weights),
-            "ml_cross_sectional": self.ml_signals
+            "ml_cross_sectional": self.ml_signals if self.ml_signals_config is not None else None
         } 
