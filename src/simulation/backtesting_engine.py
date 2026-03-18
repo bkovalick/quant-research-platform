@@ -31,13 +31,12 @@ class BacktestingEngine(BacktestingEngineInterface):
                  portfolio: PortfolioInterface, 
                  strategy: StrategyInterface,
                  market_state: MarketState,
-                 signals_config: SignalsConfig,
-                 ml_signals_config: MachineLearningConfig):
+                 signals_config: SignalsConfig):
         self.portfolio = portfolio
         self.strategy = strategy
         self.market_state = market_state
         self.signals_config = signals_config
-        self.ml_signals_config = ml_signals_config
+        self.ml_signals_config = signals_config.ml_signals_config
         if self.ml_signals_config is not None:
             self.feature_builder = FeatureBuilder(
                 self.market_state.prices.copy(), 

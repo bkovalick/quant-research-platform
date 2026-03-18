@@ -30,18 +30,18 @@
           "delta": 2.5,
           "tau": 0.05,
           "reversion_view": 0.03
+        },
+        "ml_signals_config":{
+            "enabled": true,
+            "features_model": "cross_sectional_model",
+            "features": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal"],
+            "signals_model": "ridge",
+            "training_window": 504,
+            "horizon": 21,
+            "alpha": 1.0,
+            "rebal_cadence": 5
         }
-      },
-      "ml_signals_config":{
-          "enabled": true,
-          "features_model": "cross_sectional_model",
-          "features": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal"],
-          "signals_model": "ridge",
-          "training_window": 504,
-          "horizon": 21,
-          "alpha": 1.0,
-          "rebal_cadence": 5
-      },            
+      },           
       "rebalance_problem": {
         "strategy_type": "mean_reversion_strategy",
         "optimizer_type": "portfolio_optimizer",

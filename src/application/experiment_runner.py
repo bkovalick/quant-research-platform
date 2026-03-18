@@ -24,12 +24,6 @@ def build_signal_config(strategy_cfg: dict) -> SignalsConfig:
         return SignalsConfig.from_dict(signals_config)
     return None
 
-def build_machine_learning_config(strategy_cfg: dict) -> MachineLearningConfig:
-    ml_config = strategy_cfg.get("ml_signals_config", None)
-    if ml_config is not None:
-        return MachineLearningConfig.from_dict(ml_config)
-    return None
-
 def build_market_state_config(strategy_cfg: dict) -> MarketStateConfig:
     market_state_config = strategy_cfg.get("market_state_config", None)
     if market_state_config is None:
@@ -56,8 +50,7 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         universe_meta
     ).build()
 
-    signal_config = build_signal_config(strategy_cfg)
-    ml_config = build_machine_learning_config(strategy_cfg)    
+    signals_config = build_signal_config(strategy_cfg)
 
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
@@ -66,8 +59,7 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         portfolio,
         strategy,
         state,
-        signal_config,
-        ml_config
+        signals_config
     )
 
     portfolio = engine.run_backtest(rebalance_problem)
@@ -140,9 +132,7 @@ class ExperimentRunner:
 
         rebalance_problem = self._build_rebalance_problem(strategy_cfg, universe_meta)
 
-        signal_config = self._build_signal_config(strategy_cfg)
-
-        ml_config = self._build_machine_learning_config(strategy_cfg)
+        signals_config = self._build_signal_config(strategy_cfg)
 
         optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
         strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
@@ -151,8 +141,7 @@ class ExperimentRunner:
             portfolio,
             strategy,
             state,
-            signal_config,
-            ml_config
+            signals_config
         )
 
         portfolio = engine.run_backtest(rebalance_problem)
@@ -231,15 +220,6 @@ class ExperimentRunner:
         if signals_config is None:
             raise ValueError("Missing 'signals_config' in strategy configuration. Please provide a default SignalsConfig instance.")
         return SignalsConfig.from_dict(signals_config)
-        
-    def _build_machine_learning_config(self, strategy_cfg: dict) -> MachineLearningConfig:
-        ml_signals_config_dict = strategy_cfg.get("ml_signals_config")
-        if ml_signals_config_dict is not None:
-            ml_signals_config =  MachineLearningConfig.from_dict(ml_signals_config_dict)
-            if not ml_signals_config.enabled:
-                return None
-            return ml_signals_config
-        return None
 
     def _build_metadata(self) -> dict:
         return {

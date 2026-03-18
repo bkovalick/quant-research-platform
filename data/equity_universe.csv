@@ -452,3 +452,17 @@ BIDU,Equity,Communication Services
 MELI,Equity,Consumer Discretionary
 NPSNY,Equity,Communication Services
 MTN,Equity,Communication Services
+SPY,Equity,US Large Cap
+IVW,Equity,US Large Cap Growth
+IWD,Equity,US Large Cap Value
+IWF,Equity,US Large Cap Growth
+EFA,Equity,International Developed
+EEM,Equity,Emerging Markets
+VNQ,Equity,Real Estate
+XLU,Equity,Utilities
+XLV,Equity,Health Care
+IWM,Equity,US Small Cap
+IJH,Equity,US Mid Cap
+XLE,Equity,Energy
+GLD,Commodities,Precious Metals
+PDBC,Commodities,Broad Commodities

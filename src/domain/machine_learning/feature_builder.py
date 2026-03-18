@@ -24,7 +24,7 @@ class FeatureBuilder:
         features["vol_3m"]   = rets.iloc[-63:].std()
         features["reversal"] = -(px.iloc[-1] / px.iloc[-6] - 1)   # negative = reversal
 
-        features = features.rank(True)
+        features = features.rank(axis=0, pct=True)
         return features.dropna()
     
     def build_forward_returns(self,
@@ -40,4 +40,4 @@ class FeatureBuilder:
         if idx + horizon >= len(px):
             return pd.Series(dtype=float)
         fwd = px.iloc[idx + horizon] / px.iloc[idx] - 1
-        return fwd    
+        return fwd

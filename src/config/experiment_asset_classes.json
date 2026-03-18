@@ -1,7 +1,9 @@
 {
   "market_store_config": {
 	"tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-                "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX"
+              "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX",
+              "SPY", "IVW", "IWM", "SHY", "IJH", "EMB", "XLE", "IWD", "IWF", "EFA", "EEM", "TLT", "IEF", 
+              "LQD", "HYG", "TIP", "GLD", "PDBC", "VNQ", "XLU", "XLV", "SPAB"                
             ],
     "start_date": "2005-01-01",
     "end_date": "2026-02-19",
@@ -17,9 +19,8 @@
         "lookback_window_key": "1y",
         "market_frequency": "d",
         "cash_allocation": 0.05,
-        "universe_tickers": ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-            "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA"
-        ]        
+        "universe_tickers": ["SPY", "IVW", "IWM", "SHY", "IJH", "EMB", "XLE", "IWD", 
+          "IWF", "EFA", "EEM", "TLT", "IEF", "LQD", "HYG", "TIP", "GLD", "PDBC", "VNQ", "XLU", "XLV", "SPAB"]
       },
       "signals_config": {
         "apply_winsorizing": true,
@@ -31,7 +32,7 @@
           "tau": 0.05,
           "reversion_view": 0.03
         },
-        "ml_signals_config":{
+        "ml_signals_config": {
             "enabled": true,
             "features_model": "cross_sectional_model",
             "features": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal"],
@@ -40,8 +41,8 @@
             "horizon": 21,
             "alpha": 1.0,
             "rebal_cadence": 5
-        }
-      },           
+        }        
+      },
       "rebalance_problem": {
         "strategy_type": "mean_reversion_strategy",
         "optimizer_type": "portfolio_optimizer",
@@ -65,23 +66,10 @@
             "max_positions": 50,
             "asset_class_constraints": { 
                 "Equity": [0.70, 0.90], 
-                "Fixed Income": [0.05, 0.25]
-            },
-            "sector_constraints": {
-                "Information Technology": [0.25, 0.45], 
-                "US Aggregate": [0.05, 0.25],
-                "Communication Services": [0.10, 0.20],
-                "Financials": [0.10, 0.20],
-                "Consumer Discretionary": [0.10, 0.15], 
-                "Consumer Staples": [0.075, 0.15],
-                "Health Care": [0.10, 0.15],
-                "Materials": [0.0, 0.05],
-                "Energy": [0.0, 0.04],
-                "Real Estate": [0.0, 0.025],
-                "Utilities": [0.0, 0.02],
-                "Industrials": [0.0, 0.02]
+                "Fixed Income": [0.05, 0.25],
+                "Commodities": [0.0, 0.05]
             }
-        }        
+        }
       }
     }  
   ]

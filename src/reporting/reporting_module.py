@@ -168,9 +168,10 @@ class MetricsCompute:
 
     def _calculate_performance_metrics(self,
                                        portfolio: Portfolio,
-                                       market_str_cfg: MarketStoreConfig,
+                                       market_store_config: MarketStoreConfig,
                                        benchmark_index: pd.Series) -> dict:
         """Calculate performance metrics for the portfolio."""
+        risk_free_rate = market_store_config.risk_free_rate
         portfolio_weights = portfolio.weights
         portfolio_trades = portfolio.weights.diff().abs().fillna(0)
         if isinstance(portfolio_trades, pd.DataFrame):
@@ -186,7 +187,7 @@ class MetricsCompute:
         annualized_volatility = portfolio_returns.std() * np.sqrt(self.annual_trading_days)
 
         sharpe_ratio = (
-            annualized_return / annualized_volatility
+            (annualized_return - risk_free_rate) / annualized_volatility
             if annualized_volatility != 0 else 0.0
         )
 
@@ -306,7 +307,7 @@ class MetricsCompute:
         """Calculate alpha of the portfolio against a benchmark."""
         rule = {"d": "B", "w": "W-FRI", "m": "M"}[self.market_frequency]
         benchmark = benchmark_index.resample(rule).last()
-        benchmark_returns = benchmark.pct_change().fillna(0)
+        benchmark_returns = benchmark.pct_change(fill_method=None).fillna(0)
 
         aligned = pd.concat([portfolio_returns, benchmark_returns], axis=1, join='inner')
         aligned.columns = ['portfolio', 'benchmark']
