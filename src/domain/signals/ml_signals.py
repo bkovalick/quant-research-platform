@@ -15,30 +15,30 @@ class MLSignalsState:
                  ml_config: MachineLearningConfig, 
                  feature_builder: FeatureBuilder, 
                  model: ISignalModel):
-        self._ml_config = ml_config
-        self._feature_builder = feature_builder
-        self._model = model
-        self._cadence = ml_config.rebal_cadence
-        self._cached_scores = None
-        self._last_trained = None
-        self._training_window = ml_config.training_window
-        self._horizon = ml_config.horizon
-        self._sample_stride = ml_config.sample_stride
+        self.ml_config = ml_config
+        self.feature_builder = feature_builder
+        self.model = model
+        self.cadence = ml_config.rebal_cadence
+        self.cached_scores = None
+        self.last_trained = None
+        self.training_window = ml_config.training_window
+        self.horizon = ml_config.horizon
+        self.sample_stride = ml_config.sample_stride
 
-    def update(self, as_of_date: datetime):
+    def update(self, cursor: int, as_of_date: datetime):
         """
         Retrains the model on a rolling window of historical features and forward returns,
         then generates and caches predicted scores for the current date. Retraining is
         skipped if the configured cadence has not elapsed since the last training run.
         """
-        if self._should_retrain(as_of_date):
-            dates = self._feature_builder.prices.index
-            train_dates = dates[-(self._training_window + self._horizon):-self._horizon]
+        if self._should_retrain(cursor):
+            dates = self.feature_builder.prices.index
+            train_dates = dates[-(self.training_window + self.horizon):-self.horizon]
 
             X_list, y_list = [], []
-            for date in train_dates[::self._sample_stride]:
-                X_t = self._feature_builder.build(date)
-                y_t = self._feature_builder.build_forward_returns(date, self._horizon)
+            for date in train_dates[::self.sample_stride]:
+                X_t = self.feature_builder.build(date)
+                y_t = self.feature_builder.build_forward_returns(date, self.horizon)
                 if X_t.empty or y_t.empty:
                     continue
                 X_list.append(X_t)
@@ -50,20 +50,20 @@ class MLSignalsState:
             X_train = pd.concat(X_list)
             y_train = pd.concat(y_list)
 
-            self._model.fit(X_train, y_train)
-            X_now = self._feature_builder.build(as_of_date)
-            scores = self._model.predict(X_now)
-            self._cached_scores = np.array(scores)
-            self._last_trained = as_of_date
+            self.model.fit(X_train, y_train)
+            X_now = self.feature_builder.build(as_of_date)
+            scores = self.model.predict(X_now)
+            self.cached_scores = np.array(scores)
+            self.last_trained = cursor
 
-    def _should_retrain(self, as_of_date: datetime) -> bool:
-        if self._last_trained is None:
+    def _should_retrain(self, cursor: int) -> bool:
+        if self.last_trained is None:
             return True
-        return (as_of_date - self._last_trained).days >= self._cadence
+        return (cursor - self.last_trained) >= self.cadence
     
     @property
     def scores(self):
-        return self._cached_scores
+        return self.cached_scores
 
 class MLSignals(RiskReturnSignals):
     def __init__(self, 
@@ -79,5 +79,6 @@ class MLSignals(RiskReturnSignals):
     def mean_returns(self):
         if not self.ml_config.enabled:
             return super().mean_returns()
-        
+        if self.state.scores is None:
+            return super().mean_returns()
         return self.state.scores

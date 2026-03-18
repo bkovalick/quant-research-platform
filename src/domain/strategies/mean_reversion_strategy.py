@@ -17,7 +17,7 @@ class MeanReversionStrategy(StrategyInterface):
         # reversion_signals = signals.get("black_litterman", None)
         reversion_signals = signals.get("ml_cross_sectional", None)
 
-        if not reversion_signals:
+        if reversion_signals is None:
             return current_weights
         
         optimized_weights = self.optimizer.optimize(

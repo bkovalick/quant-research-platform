@@ -1,14 +1,20 @@
 from domain.signals.risk_return_signals import RiskReturnSignals
+from domain.signals.ml_signals import MLSignalsState
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
+
 import numpy as np
+import pandas as pd
 
 class BlackLittermanSignal(RiskReturnSignals):
     def __init__(self, 
                  market_state: MarketState, 
-                 signals_cfg: SignalsConfig, 
+                 signals_config: SignalsConfig,
+                 ml_state: MLSignalsState,
                  current_weights: np.ndarray):
-        super().__init__(market_state, signals_cfg)
+        super().__init__(market_state, signals_config)
+
+        self.ml_state = ml_state
         self.current_weights = current_weights
 
     def mean_returns(self) -> np.ndarray:
@@ -44,14 +50,21 @@ class BlackLittermanSignal(RiskReturnSignals):
           Q     — (1,) array of the expected return spread.
           Omega — (1 x 1) diagonal uncertainty matrix scaled by tau * P @ Sigma @ P'.
         """
-        mean_reversion_window = getattr(self.signals_cfg, "mean_reversion_window", 4)
-        lookback_prices = self.market_state.lookback_prices()
-        short_returns = lookback_prices.pct_change(mean_reversion_window).iloc[-1]
+        if self.signals_cfg.ml_signals_config is not None and self.ml_state is not None and self.ml_state.scores is not None:
+            ml_scores = self.ml_state.scores
+            tickers = self.market_state.lookback_prices().columns
+            ranked = pd.Series(ml_scores, index=tickers)
+            expected_spread = self.signals_cfg.black_litterman.get("ml_view_spread", 0.03)
+        else:
+            mean_reversion_window = getattr(self.signals_cfg, "mean_reversion_window", 4)
+            lookback_prices = self.market_state.lookback_prices()
+            short_returns = lookback_prices.pct_change(mean_reversion_window).iloc[-1]        
+            ranked = short_returns.rank()
+            expected_spread = getattr(self.signals_cfg, "reversion_view", 0.03)
         
-        n = len(short_returns)
+        n = len(ranked)
         quintile = n // 5
-        ranked = short_returns.rank()
-        
+
         losers  = ranked <= quintile        # bottom 20%
         winners = ranked >= n - quintile    # top 20%
         
@@ -60,7 +73,6 @@ class BlackLittermanSignal(RiskReturnSignals):
         P[0, losers]  = 1 / losers.sum()   # long losers equally
         P[0, winners] = -1 / winners.sum() # short winners equally
         
-        expected_spread = getattr(self.signals_cfg, "reversion_view", 0.03)
         Q = np.array([expected_spread])
         
         tau = getattr(self.signals_cfg, "tau", 0.05)

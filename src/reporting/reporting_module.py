@@ -219,7 +219,7 @@ class MetricsCompute:
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
             "sortino_ratio": (
-                annualized_return / portfolio_returns[portfolio_returns < 0].std() * np.sqrt(self.annual_trading_days)
+                annualized_return / (portfolio_returns[portfolio_returns < 0].std() * np.sqrt(self.annual_trading_days))
             ) if portfolio_returns[portfolio_returns < 0].std() != 0 else 0,
             "max_drawdown": max_drawdown,
             "max_drawdown_days": max_drawdown_days,

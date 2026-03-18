@@ -70,6 +70,7 @@ class BacktestingEngine(BacktestingEngineInterface):
         prev_weights = np.array(initial_weights)
         while self.market_state.has_next():
             self.market_state.advance()
+            # print(f"Processing date: {self.market_state.current_date().strftime('%Y-%m-%d')}")
 
             cursor = self.market_state.cursor
             
@@ -101,15 +102,16 @@ class BacktestingEngine(BacktestingEngineInterface):
                        market_state: MarketState, 
                        signals_config: SignalsConfig, 
                        current_weights: np.ndarray) -> dict:
-        if self.ml_signals_config is not None:
-            self.ml_signals_state.update(market_state.current_date())
+        if self.ml_signals_config is not None and self.ml_signals_state is not None:
+            self.ml_signals_state.update(market_state.cursor, market_state.current_date())
 
+        ml_state = getattr(self, "ml_signals_state", None)
         return {
             "risk_return": RiskReturnSignals(market_state, signals_config),
             "mean_reversion": MeanReversionSignals(market_state, signals_config),
             "moving_average": MovingAverageSignals(market_state, signals_config),
             "volatility_forecast": VolatilityForecastingSignals(market_state, signals_config),
             "momentum": MomentumSignals(market_state, signals_config),
-            "black_litterman": BlackLittermanSignal(market_state, signals_config, current_weights),
+            "black_litterman": BlackLittermanSignal(market_state, signals_config, ml_state, current_weights),
             "ml_cross_sectional": self.ml_signals if self.ml_signals_config is not None else None
         } 
