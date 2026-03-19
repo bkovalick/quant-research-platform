@@ -10,6 +10,8 @@ class FeatureBuilder:
         self.prices = prices
         self.returns = returns
         self._w = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
+        # "1w" only exists for daily; for coarser frequencies use 1 period
+        self._reversal_window = self._w.get("1w", 1)
 
     def build(self, date: pd.Timestamp) -> pd.DataFrame:
         """
@@ -28,7 +30,7 @@ class FeatureBuilder:
         features["mom_12m"]  = px.iloc[-self._w["1m"]] / px.iloc[-self._w["1y"]] - 1  # skip last month
         features["vol_1m"]   = rets.iloc[-self._w["1m"]:].std()
         features["vol_3m"]   = rets.iloc[-self._w["3m"]:].std()
-        features["reversal"] = -(px.iloc[-1] / px.iloc[-self._w["1w"]] - 1)
+        features["reversal"] = -(px.iloc[-1] / px.iloc[-self._reversal_window] - 1)
 
         features = features.rank(axis=0, pct=True)
         return features.dropna()

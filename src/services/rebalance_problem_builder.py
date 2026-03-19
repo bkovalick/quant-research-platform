@@ -10,11 +10,13 @@ class RebalanceProblemBuilder:
         self.universe_meta = universe_meta
         self.market_frequency = market_frequency
 
-    def _resolve_window(self, value) -> int:
-        """Resolve a duration string (e.g. '1m') or raw int to a period count."""
+    def _resolve_window(self, value):
+        """Resolve a duration string (e.g. '1m') or raw int to a period count. Returns None if value is None."""
+        if value is None:
+            return None
         if isinstance(value, str):
             return LOOKBACK_WINDOWS.get(self.market_frequency, LOOKBACK_WINDOWS["d"])[value]
-        return value
+        return int(value)
     
     def build(self) -> RebalanceProblem:
         """Build and return a RebalanceProblem instance."""
