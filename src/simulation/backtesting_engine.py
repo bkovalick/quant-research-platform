@@ -70,7 +70,6 @@ class BacktestingEngine(BacktestingEngineInterface):
         prev_weights = np.array(initial_weights)
         while self.market_state.has_next():
             self.market_state.advance()
-            # print(f"Processing date: {self.market_state.current_date().strftime('%Y-%m-%d')}")
 
             cursor = self.market_state.cursor
             
@@ -79,6 +78,11 @@ class BacktestingEngine(BacktestingEngineInterface):
             prev_weights = self.portfolio.drift(prev_weights, current_returns, cursor)
             if cursor < self.market_state.lookback_window:
                 continue
+
+            if self.ml_signals_config is not None:
+                ml_warmup = self.ml_signals_config.training_window + self.ml_signals_config.horizon
+                if cursor >= ml_warmup:
+                    self.ml_signals_state.update(cursor, self.market_state.current_date())
 
             if not self._is_rebalance_step(cursor):
                 continue
@@ -102,9 +106,6 @@ class BacktestingEngine(BacktestingEngineInterface):
                        market_state: MarketState, 
                        signals_config: SignalsConfig, 
                        current_weights: np.ndarray) -> dict:
-        if self.ml_signals_config is not None and self.ml_signals_state is not None:
-            self.ml_signals_state.update(market_state.cursor, market_state.current_date())
-
         ml_state = getattr(self, "ml_signals_state", None)
         return {
             "risk_return": RiskReturnSignals(market_state, signals_config),

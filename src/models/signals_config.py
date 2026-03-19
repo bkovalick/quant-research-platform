@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from models.machine_learning_config import MachineLearningConfig
 
 @dataclass(frozen=True)
@@ -9,7 +9,7 @@ class SignalsConfig:
     mean_reversion_window: int
     momentum_skip_periods: int
     black_litterman: Dict[str, Any]
-    ml_signals_config: MachineLearningConfig
+    ml_signals_config: Optional[MachineLearningConfig]
     
     @classmethod
     def from_dict(cls, d: dict):

@@ -252,8 +252,9 @@ class MetricsCompute:
 
     def _calculate_max_drawdown(self, cumulative_returns: pd.Series):
         """Calculate maximum drawdown from cumulative returns."""
-        running_max = cumulative_returns.cummax()
-        drawdown = (cumulative_returns - running_max) / running_max
+        wealth = 1 + cumulative_returns
+        running_max = wealth.cummax()
+        drawdown = (wealth - running_max) / running_max
         return drawdown.min()
 
     def _calculate_max_drawdown_days(self, cumulative_returns: pd.Series) -> int:
@@ -266,10 +267,9 @@ class MetricsCompute:
 
     def _calculate_avg_drawdown(self, cumulative_returns: pd.Series) -> float:
         """Mean of all individual drawdown values at each point in time."""
-        running_max = cumulative_returns.cummax()
-        valid = running_max != 0
-        drawdown = pd.Series(0.0, index=cumulative_returns.index)
-        drawdown[valid] = (cumulative_returns[valid] - running_max[valid]) / running_max[valid]
+        wealth = 1 + cumulative_returns
+        running_max = wealth.cummax()
+        drawdown = (wealth - running_max) / running_max
         negative_drawdowns = drawdown[drawdown < 0]
         if negative_drawdowns.empty:
             return 0.0
