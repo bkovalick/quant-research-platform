@@ -461,7 +461,7 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                           }}>Remove ✕</button>
                         ) : (
                           <button style={blAddBtn} onClick={() => {
-                            updateField(["signals_config", "black_litterman"], { delta: 2.5, tau: 0.05, reversion_view: 0.03 })
+                            updateField(["signals_config", "black_litterman"], { delta: 2.5, tau: 0.05, reversion_view: 0.03, ml_view_spread: 0.03 })
                           }}>+ Add</button>
                         )}
                       </div>
@@ -471,7 +471,8 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                           {([
                             ["Delta", "delta", 0.1],
                             ["Tau", "tau", 0.01],
-                            ["View", "reversion_view", 0.01],
+                            ["Reversion View", "reversion_view", 0.01],
+                            ["ML View Spread", "ml_view_spread", 0.01],
                           ] as [string, string, number][]).map(([labelText, key, step]) => (
                             <Row key={key} label={labelText}>
                               <input type="number" step={step} style={inputStyle}

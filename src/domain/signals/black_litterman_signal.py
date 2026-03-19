@@ -53,14 +53,14 @@ class BlackLittermanSignal(RiskReturnSignals):
         if self.signals_cfg.ml_signals_config is not None and self.ml_state is not None and self.ml_state.scores is not None:
             ml_scores = self.ml_state.scores
             tickers = self.market_state.lookback_prices().columns
-            ranked = pd.Series(ml_scores, index=tickers)
+            ranked = pd.Series(ml_scores, index=tickers).rank()
             expected_spread = self.signals_cfg.black_litterman.get("ml_view_spread", 0.03)
         else:
             mean_reversion_window = getattr(self.signals_cfg, "mean_reversion_window", 4)
             lookback_prices = self.market_state.lookback_prices()
             short_returns = lookback_prices.pct_change(mean_reversion_window).iloc[-1]        
             ranked = short_returns.rank()
-            expected_spread = getattr(self.signals_cfg, "reversion_view", 0.03)
+            expected_spread = self.signals_cfg.black_litterman.get("reversion_view", 0.03)
         
         n = len(ranked)
         quintile = n // 5
