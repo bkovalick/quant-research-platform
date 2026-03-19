@@ -40,7 +40,8 @@ class BacktestingEngine(BacktestingEngineInterface):
         if self.ml_signals_config is not None:
             self.feature_builder = FeatureBuilder(
                 self.market_state.prices.copy(), 
-                self.market_state.returns.copy()
+                self.market_state.returns.copy(),
+                self.market_state.market_frequency
             )
             self.cs_model = CrossSectionalModel(self.ml_signals_config)
             self.ml_signals_state = MLSignalsState(
@@ -86,7 +87,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             if self.ml_signals_config is not None:
                 ml_warmup = self.ml_signals_config.training_window + self.ml_signals_config.horizon
                 if cursor >= ml_warmup:
-                    self.ml_signals_state.update(cursor, self.market_state.lookback_window, self.market_state.current_date())
+                    self.ml_signals_state.update(cursor, self.market_state.current_date())
 
             if not self._is_rebalance_step(cursor):
                 continue

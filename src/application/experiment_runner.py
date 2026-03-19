@@ -50,7 +50,7 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         strategy_cfg["rebalance_problem"], 
         universe_meta,
         state_config.market_frequency
-    )
+    ).build()
     signals_config = build_signal_config(strategy_cfg)
 
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 

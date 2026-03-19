@@ -25,7 +25,7 @@ class MLSignalsState:
         self.horizon = ml_config.horizon
         self.sample_stride = ml_config.sample_stride
 
-    def update(self, cursor: int, lookback_window: int, as_of_date: datetime):
+    def update(self, cursor: int, as_of_date: datetime):
         """
         Retrains the model on a rolling window of historical features and forward returns,
         then generates and caches predicted scores for the current date. Retraining is
@@ -46,7 +46,7 @@ class MLSignalsState:
 
         X_list, y_list = [], []
         for date in train_dates:
-            X_t = self.feature_builder.build(date, lookback_window)
+            X_t = self.feature_builder.build(date)
             y_t = self.feature_builder.build_forward_returns(date, self.horizon)
             if X_t.empty or y_t.empty:
                 continue
@@ -60,7 +60,7 @@ class MLSignalsState:
         y_train = pd.concat(y_list)
 
         self.model.fit(X_train, y_train)
-        X_now = self.feature_builder.build(as_of_date, lookback_window)
+        X_now = self.feature_builder.build(as_of_date)
         if X_now.empty:
             return
 

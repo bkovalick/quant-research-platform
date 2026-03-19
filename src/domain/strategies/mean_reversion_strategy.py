@@ -16,8 +16,9 @@ class MeanReversionStrategy(StrategyInterface):
     def rebalance(self, 
                   signals: dict, 
                   current_weights: np.ndarray) -> np.ndarray:
-        reversion_signals = signals.get("black_litterman", None)
-
+        # reversion_signals = signals.get("black_litterman", None)
+        reversion_signals = signals.get("mean_reversion", None)
+        
         if reversion_signals is None:
             return current_weights
         

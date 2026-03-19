@@ -1,14 +1,17 @@
 import pandas as pd
 import numpy as np
+from utils.lookback_windows import LOOKBACK_WINDOWS
 
 class FeatureBuilder:
     def __init__(self, 
                  prices: pd.DataFrame, 
-                 returns: pd.DataFrame):
+                 returns: pd.DataFrame,
+                 market_frequency: str = "d"):
         self.prices = prices
         self.returns = returns
+        self._w = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
 
-    def build(self, date: pd.Timestamp, lookback_window: int):
+    def build(self, date: pd.Timestamp) -> pd.DataFrame:
         """
         Build feature matrix for all assets as of a single date.
         Returns DataFrame of shape (n_assets, n_features), index=tickers.
@@ -17,15 +20,15 @@ class FeatureBuilder:
         px   = self.prices.loc[:date]
         rets = self.returns.loc[:date]
 
-        if len(px) < lookback_window:
+        if len(px) < self._w["1y"]:
             return pd.DataFrame(index=self.prices.columns)
 
         features = pd.DataFrame(index=self.prices.columns)
-        features["mom_1m"]   = px.iloc[-1] / px.iloc[-21]  - 1
-        features["mom_12m"]  = px.iloc[-21] / px.iloc[-252] - 1   # skip last month, this breaks outside of the backtest engine b/c it needs a lookback date check
-        features["vol_1m"]   = rets.iloc[-21:].std()
-        features["vol_3m"]   = rets.iloc[-63:].std()
-        features["reversal"] = -(px.iloc[-1] / px.iloc[-6] - 1)   # negative = reversal
+        features["mom_1m"]   = px.iloc[-1] / px.iloc[-self._w["1m"]] - 1
+        features["mom_12m"]  = px.iloc[-self._w["1m"]] / px.iloc[-self._w["1y"]] - 1  # skip last month
+        features["vol_1m"]   = rets.iloc[-self._w["1m"]:].std()
+        features["vol_3m"]   = rets.iloc[-self._w["3m"]:].std()
+        features["reversal"] = -(px.iloc[-1] / px.iloc[-self._w["1w"]] - 1)
 
         features = features.rank(axis=0, pct=True)
         return features.dropna()
