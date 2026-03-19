@@ -17,7 +17,11 @@ class Optimizer(IOptimizer):
 			  current_weights: np.ndarray = None) -> RebalanceSolution:
 		"""Optimize portfolio weights for the given rebalance problem."""
 		if current_weights is None:
-			current_weights = np.array(list(rebalance_problem.initial_weights.values()))
+			tickers = rebalance_problem.tickers
+			current_weights = np.array([
+				rebalance_problem.initial_weights.get(ticker, 0.0) 
+				for ticker in tickers
+			])
 
 		decision_variables = self._setup_decision_variables(rebalance_problem)
 		constraints = self._setup_constraints(decision_variables, rebalance_problem, signals, current_weights)

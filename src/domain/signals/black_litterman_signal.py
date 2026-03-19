@@ -72,8 +72,14 @@ class BlackLittermanSignal(RiskReturnSignals):
         
         # build P — one relative view
         P = np.zeros((1, n))
-        P[0, losers]  = 1 / losers.sum()   # long losers equally
-        P[0, winners] = -1 / winners.sum() # short winners equally
+
+        view_direction = self.signals_cfg.black_litterman.get("view_direction", "momentum")
+        if view_direction == "momentum":
+            P[0, winners] = 1 / winners.sum() # long winners equally
+            P[0, losers]  = -1 / losers.sum()   # short losers equally
+        elif view_direction == "mean_reversion":
+            P[0, losers]  = 1 / losers.sum()   # long losers equally
+            P[0, winners] = -1 / winners.sum() # short winners equally
         
         Q = np.array([expected_spread])
         

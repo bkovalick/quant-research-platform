@@ -30,7 +30,8 @@
           "delta": 2.5,
           "tau": 0.05,
           "reversion_view": 0.03,
-          "ml_view_spread": 0.03
+          "ml_view_spread": 0.03,
+          "view_direction": "mean_reversion"
         }
       },      
       "rebalance_problem": {
