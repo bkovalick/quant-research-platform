@@ -8,7 +8,7 @@ class FeatureBuilder:
         self.prices = prices
         self.returns = returns
 
-    def build(self, date: pd.Timestamp):
+    def build(self, date: pd.Timestamp, lookback_window: int):
         """
         Build feature matrix for all assets as of a single date.
         Returns DataFrame of shape (n_assets, n_features), index=tickers.
@@ -16,6 +16,9 @@ class FeatureBuilder:
         """
         px   = self.prices.loc[:date]
         rets = self.returns.loc[:date]
+
+        if len(px) < lookback_window:
+            return pd.DataFrame(index=self.prices.columns)
 
         features = pd.DataFrame(index=self.prices.columns)
         features["mom_1m"]   = px.iloc[-1] / px.iloc[-21]  - 1

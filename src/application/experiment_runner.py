@@ -215,13 +215,12 @@ class ExperimentRunner:
         except ValueError as e:
             print(f"Error building rebalance problem for {strategy_cfg['strategy_type']}: {e}")
 
-    def _build_signal_config(self, 
-                             strategy_cfg: dict) -> SignalsConfig:
-        signals_config = strategy_cfg.get("signals_config")
-        if signals_config is None:
-            raise ValueError("Missing 'signals_config' in strategy configuration. Please provide a default SignalsConfig instance.")
-        market_frequency = strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
-        return SignalsConfig.from_dict(signals_config, market_frequency)
+    def _build_signal_config(strategy_cfg: dict) -> SignalsConfig:
+        signals_config = strategy_cfg.get("signals_config", None)
+        if signals_config is not None:
+            market_frequency = strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
+            return SignalsConfig.from_dict(signals_config, market_frequency)
+        return None    
 
     def _build_metadata(self) -> dict:
         return {
