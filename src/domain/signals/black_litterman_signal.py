@@ -75,7 +75,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         
         Q = np.array([expected_spread])
         
-        tau = getattr(self.signals_cfg, "tau", 0.05)
+        tau = self.signals_cfg.black_litterman.get("tau", 0.05)
         omega = np.diag(np.diag(tau * P @ sigma @ P.T))
         
         return P, Q, omega
@@ -87,7 +87,7 @@ class BlackLittermanSignal(RiskReturnSignals):
           mu_BL = M @ (inv(tau*Sigma) @ pi + P' @ inv(Omega) @ Q)
         where M = inv(inv(tau*Sigma) + P' @ inv(Omega) @ P).
         """
-        tau = getattr(self.signals_cfg, "tau", 0.05)
+        tau = self.signals_cfg.black_litterman.get("tau", 0.05)
         M = np.linalg.inv(
             np.linalg.inv(tau * sigma) + P.T @ np.linalg.inv(omega) @ P
         )

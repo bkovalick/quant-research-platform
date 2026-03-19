@@ -8,7 +8,6 @@ class Portfolio(PortfolioInterface):
     def __init__(self):
         self.weights = None
         self.returns = None
-        self.holdings = None
         self.turnover = None
 
     def initialize(self, dates, tickers: np.ndarray, initial_weights: np.ndarray):

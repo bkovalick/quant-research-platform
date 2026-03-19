@@ -31,30 +31,42 @@ class MLSignalsState:
         then generates and caches predicted scores for the current date. Retraining is
         skipped if the configured cadence has not elapsed since the last training run.
         """
-        if self._should_retrain(cursor):
-            dates = self.feature_builder.prices.index
-            train_dates = dates[-(self.training_window + self.horizon):-self.horizon]
+        if not self._should_retrain(cursor):
+            return 
+        
+        train_end = cursor - self.horizon
+        train_start = train_end - self.training_window
+        if train_start < 0 and train_end <= 0:
+            # Not enough history yet, leave scores as None
+            # Strategy will fall back to non-ML signals            
+            return
 
-            X_list, y_list = [], []
-            for date in train_dates[::self.sample_stride]:
-                X_t = self.feature_builder.build(date)
-                y_t = self.feature_builder.build_forward_returns(date, self.horizon)
-                if X_t.empty or y_t.empty:
-                    continue
-                X_list.append(X_t)
-                y_list.append(y_t)
+        dates = self.feature_builder.prices.index
+        train_dates = dates[train_start:train_end:self.sample_stride]
 
-            if not X_list:
-                raise ValueError("Could not build training data.")
+        X_list, y_list = [], []
+        for date in train_dates:
+            X_t = self.feature_builder.build(date)
+            y_t = self.feature_builder.build_forward_returns(date, self.horizon)
+            if X_t.empty or y_t.empty:
+                continue
+            X_list.append(X_t)
+            y_list.append(y_t)
 
-            X_train = pd.concat(X_list)
-            y_train = pd.concat(y_list)
+        if not X_list:
+            return
 
-            self.model.fit(X_train, y_train)
-            X_now = self.feature_builder.build(as_of_date)
-            scores = self.model.predict(X_now)
-            self.cached_scores = np.array(scores)
-            self.last_trained = cursor
+        X_train = pd.concat(X_list)
+        y_train = pd.concat(y_list)
+
+        self.model.fit(X_train, y_train)
+        X_now = self.feature_builder.build(as_of_date)
+        if X_now.empty:
+            return
+
+        scores = self.model.predict(X_now)
+        self.cached_scores = pd.Series(scores, index=X_now.index)
+        self.last_trained = cursor
 
     def _should_retrain(self, cursor: int) -> bool:
         if self.last_trained is None:
@@ -63,7 +75,11 @@ class MLSignalsState:
     
     @property
     def scores(self):
-        return self.cached_scores
+        if self.cached_scores is None:
+            return None
+        # Reindex to full universe, NaN for any assets dropped by dropna()
+        all_tickers = self.feature_builder.prices.columns
+        return self.cached_scores.reindex(all_tickers)
 
 class MLSignals(RiskReturnSignals):
     def __init__(self, 

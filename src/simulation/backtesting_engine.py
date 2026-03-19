@@ -60,7 +60,11 @@ class BacktestingEngine(BacktestingEngineInterface):
         print("Running backtest...")
         start_time = time.time()
         self.rebalance_every = self._get_steps(rebalance_problem.rebalance_frequency)
-        initial_weights = np.array(list(rebalance_problem.initial_weights.values()))
+        tickers = rebalance_problem.tickers
+        initial_weights = np.array([
+            rebalance_problem.initial_weights.get(ticker, 0.0) 
+            for ticker in tickers
+        ])
         self.portfolio.initialize(
             self.market_state.prices.index, 
             self.market_state.prices.columns, 
