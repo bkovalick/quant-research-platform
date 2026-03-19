@@ -15,6 +15,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         super().__init__(market_state, signals_config)
 
         self.ml_state = ml_state
+        self.ml_signals_config = self.signals_cfg.ml_signals_config
         self.current_weights = current_weights
 
     def mean_returns(self) -> np.ndarray:
@@ -50,7 +51,8 @@ class BlackLittermanSignal(RiskReturnSignals):
           Q     — (1,) array of the expected return spread.
           Omega — (1 x 1) diagonal uncertainty matrix scaled by tau * P @ Sigma @ P'.
         """
-        if self.signals_cfg.ml_signals_config is not None and self.ml_state is not None and self.ml_state.scores is not None:
+        if self.ml_signals_config is not None and self.ml_signals_config.enabled \
+            and self.ml_state is not None and self.ml_state.scores is not None:
             ml_scores = self.ml_state.scores
             tickers = self.market_state.lookback_prices().columns
             ranked = pd.Series(ml_scores, index=tickers).rank()

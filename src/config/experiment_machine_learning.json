@@ -52,7 +52,7 @@
         "apply_sharpe_objective": false,
         "strategy_rules": {
             "vol_target": 0.15,
-            "vol_lookback_days": 21,
+            "vol_lookback_days": "1m",
             "vol_max_leverage": 1.5
         },        
         "constraints": {

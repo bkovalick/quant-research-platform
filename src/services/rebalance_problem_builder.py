@@ -1,12 +1,20 @@
 from models.rebalance_problem import RebalanceProblem
+from utils.lookback_windows import LOOKBACK_WINDOWS
 
 class RebalanceProblemBuilder:
     """Orchestrates the pipeline to build a RebalanceProblem from input configuration."""
 
-    def __init__(self, config: dict, universe_meta: dict):
+    def __init__(self, config: dict, universe_meta: dict, market_frequency: str = "d"):
         """Initialize with configuration dictionary."""
         self.config = config
         self.universe_meta = universe_meta
+        self.market_frequency = market_frequency
+
+    def _resolve_window(self, value) -> int:
+        """Resolve a duration string (e.g. '1m') or raw int to a period count."""
+        if isinstance(value, str):
+            return LOOKBACK_WINDOWS.get(self.market_frequency, LOOKBACK_WINDOWS["d"])[value]
+        return value
     
     def build(self) -> RebalanceProblem:
         """Build and return a RebalanceProblem instance."""
@@ -51,7 +59,7 @@ class RebalanceProblemBuilder:
             "tickers": tickers,
             "optimizer_vol_constraint": constraints.get("optimizer_vol_constraint", None),
             "vol_target": strategy_rules.get("vol_target", None),
-            "vol_lookback_days": strategy_rules.get("vol_lookback_days", None),
+            "vol_lookback_days": self._resolve_window(strategy_rules.get("vol_lookback_days", None)),
             "vol_max_leverage": strategy_rules.get("vol_max_leverage", None)
         }
 

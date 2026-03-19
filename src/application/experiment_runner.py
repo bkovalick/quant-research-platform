@@ -48,9 +48,8 @@ def run_strategy_worker(strategy_cfg, market_store_config):
 
     rebalance_problem = RebalanceProblemBuilder(
         strategy_cfg["rebalance_problem"], 
-        universe_meta
-    ).build()
-
+          universe_meta,
+          state_config.market_frequency
     signals_config = build_signal_config(strategy_cfg)
 
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
@@ -208,14 +207,18 @@ class ExperimentRunner:
     def _build_rebalance_problem(self, 
                                  strategy_cfg: dict, 
                                  universe_meta: dict) -> RebalanceProblem:
-        builder = RebalanceProblemBuilder(strategy_cfg["rebalance_problem"], universe_meta)
+        builder = RebalanceProblemBuilder(
+            strategy_cfg["rebalance_problem"],
+            universe_meta,
+            strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
+        )
         try:
             rebalance_problem = builder.build()
             return rebalance_problem
         except ValueError as e:
             print(f"Error building rebalance problem for {strategy_cfg['strategy_type']}: {e}")
 
-    def _build_signal_config(strategy_cfg: dict) -> SignalsConfig:
+    def _build_signal_config(self, strategy_cfg: dict) -> SignalsConfig:
         signals_config = strategy_cfg.get("signals_config", None)
         if signals_config is not None:
             market_frequency = strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
