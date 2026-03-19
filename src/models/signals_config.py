@@ -12,7 +12,7 @@ class SignalsConfig:
     ml_signals_config: Optional[MachineLearningConfig]
     
     @classmethod
-    def from_dict(cls, d: dict):
+    def from_dict(cls, d: dict, market_frequency: str = "d"):
         ml_config = d.get("ml_signals_config", None)
         return cls(
             apply_winsorizing = d.get("apply_winsorizing", True),
@@ -23,6 +23,6 @@ class SignalsConfig:
             mean_reversion_window = d.get("mean_reversion_window", 4),
             momentum_skip_periods = d.get("momentum_skip_periods", 4),
             black_litterman = d.get("black_litterman", None),
-            ml_signals_config = MachineLearningConfig.from_dict(ml_config) if ml_config is not None else None
+            ml_signals_config = MachineLearningConfig.from_dict(ml_config, market_frequency) if ml_config is not None else None
         )
         

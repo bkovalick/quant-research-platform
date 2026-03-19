@@ -37,8 +37,8 @@
             "features_model": "cross_sectional_model",
             "features": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal"],
             "signals_model": "ridge",
-            "training_window": 504,
-            "horizon": 21,
+            "training_window": "2y",
+            "horizon": "1m",
             "alpha": 1.0,
             "rebal_cadence": 5
         }

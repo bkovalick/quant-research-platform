@@ -21,7 +21,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 def build_signal_config(strategy_cfg: dict) -> SignalsConfig:
     signals_config = strategy_cfg.get("signals_config", None)
     if signals_config is not None:
-        return SignalsConfig.from_dict(signals_config)
+        market_frequency = strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
+        return SignalsConfig.from_dict(signals_config, market_frequency)
     return None
 
 def build_market_state_config(strategy_cfg: dict) -> MarketStateConfig:
@@ -219,7 +220,8 @@ class ExperimentRunner:
         signals_config = strategy_cfg.get("signals_config")
         if signals_config is None:
             raise ValueError("Missing 'signals_config' in strategy configuration. Please provide a default SignalsConfig instance.")
-        return SignalsConfig.from_dict(signals_config)
+        market_frequency = strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
+        return SignalsConfig.from_dict(signals_config, market_frequency)
 
     def _build_metadata(self) -> dict:
         return {
