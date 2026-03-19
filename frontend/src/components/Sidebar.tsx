@@ -461,7 +461,8 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                           }}>Remove ✕</button>
                         ) : (
                           <button style={blAddBtn} onClick={() => {
-                            updateField(["signals_config", "black_litterman"], { delta: 2.5, tau: 0.05, reversion_view: 0.03, ml_view_spread: 0.03 })
+                            updateField(["signals_config", "black_litterman"], 
+                              { delta: 2.5, tau: 0.05, reversion_view: 0.03, ml_view_spread: 0.03, view_direction: "momentum" })
                           }}>+ Add</button>
                         )}
                       </div>
@@ -480,6 +481,14 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                                 onChange={(e) => updateField(["signals_config", "black_litterman", key], Number(e.target.value))} />
                             </Row>
                           ))}
+                          <Row label="View Dir">
+                            <select style={inputStyle}
+                              value={currentStrategy.signals_config.black_litterman.view_direction ?? "momentum"}
+                              onChange={(e) => updateField(["signals_config", "black_litterman", "view_direction"], e.target.value)}>
+                              <option value="momentum">momentum</option>
+                              <option value="mean_reversion">mean_reversion</option>
+                            </select>
+                          </Row>
                         </div>
                       )}
                     </Section>
