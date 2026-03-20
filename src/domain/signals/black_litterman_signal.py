@@ -3,6 +3,7 @@ from domain.signals.ml_signals import MLSignalsState
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
 
+from typing import Optional
 import numpy as np
 import pandas as pd
 
@@ -10,7 +11,7 @@ class BlackLittermanSignal(RiskReturnSignals):
     def __init__(self, 
                  market_state: MarketState, 
                  signals_config: SignalsConfig,
-                 ml_state: MLSignalsState,
+                 ml_state: Optional[MLSignalsState],
                  current_weights: np.ndarray):
         super().__init__(market_state, signals_config)
 
