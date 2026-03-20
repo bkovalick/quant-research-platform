@@ -14,12 +14,15 @@ from fastapi.responses import StreamingResponse
 from io import BytesIO
 from pathlib import Path
 
+import warnings
+warnings.filterwarnings("ignore", module="cvxpy")
+
 def create_folder_path(folder_name: str):
     path = Path(folder_name)
     path.mkdir(parents=True, exist_ok=True)
 
 def local_run():
-    with open(f"src/config/experiment_machine_learning.json", 'r') as f:
+    with open(f"src/config/experiment_high_risk.json", 'r') as f:
         config = json.load(f)
 
     config = config.copy()
@@ -30,7 +33,7 @@ def local_run():
     reporting_module.generate_report()
     folder_path = "backtest_results" + "/" + datetime.now().strftime('%Y-%m-%d')
     create_folder_path(folder_path)
-    with open(folder_path + "/backtest_report.xlsx", "wb") as f:
+    with open(folder_path + "/backtest_report_" + datetime.now().strftime("%Y%m%d%H%M%S%f") + ".xlsx", "wb") as f:
         f.write(buffer.getvalue())
 
 app = FastAPI()

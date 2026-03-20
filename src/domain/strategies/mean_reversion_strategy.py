@@ -13,12 +13,18 @@ class MeanReversionStrategy(StrategyInterface):
     def __init__(self, rebalance_problem: RebalanceProblem, optimizer=None):
         super().__init__(rebalance_problem, optimizer)
 
-    def rebalance(self, signals: dict, current_weights: np.ndarray) -> np.ndarray:
+    def rebalance(self, 
+                  signals: dict, 
+                  current_weights: np.ndarray) -> np.ndarray:
         reversion_signals = signals.get("black_litterman", None)
+        
+        if reversion_signals is None:
+            return current_weights
+        
         optimized_weights = self.optimizer.optimize(
             self.rebalance_problem, reversion_signals, current_weights
         )
 
-        if getattr(self.rebalance_problem, 'vol_target', None):
+        if getattr(self.rebalance_problem, 'vol_target', None) is not None:
             return self._apply_vol_targeting(reversion_signals, optimized_weights)
         return optimized_weights

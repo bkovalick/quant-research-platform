@@ -21,13 +21,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 def build_signal_config(strategy_cfg: dict) -> SignalsConfig:
     signals_config = strategy_cfg.get("signals_config", None)
     if signals_config is not None:
-        return SignalsConfig.from_dict(signals_config)
-    return None
-
-def build_machine_learning_config(strategy_cfg: dict) -> MachineLearningConfig:
-    ml_config = strategy_cfg.get("ml_signals_config", None)
-    if ml_config is not None:
-        return MachineLearningConfig.from_dict(ml_config)
+        market_frequency = strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
+        return SignalsConfig.from_dict(signals_config, market_frequency)
     return None
 
 def build_market_state_config(strategy_cfg: dict) -> MarketStateConfig:
@@ -53,11 +48,10 @@ def run_strategy_worker(strategy_cfg, market_store_config):
 
     rebalance_problem = RebalanceProblemBuilder(
         strategy_cfg["rebalance_problem"], 
-        universe_meta
+        universe_meta,
+        state_config.market_frequency
     ).build()
-
-    signal_config = build_signal_config(strategy_cfg)
-    ml_config = build_machine_learning_config(strategy_cfg)    
+    signals_config = build_signal_config(strategy_cfg)
 
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
@@ -66,8 +60,7 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         portfolio,
         strategy,
         state,
-        signal_config,
-        ml_config
+        signals_config
     )
 
     portfolio = engine.run_backtest(rebalance_problem)
@@ -140,9 +133,7 @@ class ExperimentRunner:
 
         rebalance_problem = self._build_rebalance_problem(strategy_cfg, universe_meta)
 
-        signal_config = self._build_signal_config(strategy_cfg)
-
-        ml_config = self._build_machine_learning_config(strategy_cfg)
+        signals_config = self._build_signal_config(strategy_cfg)
 
         optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
         strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
@@ -151,8 +142,7 @@ class ExperimentRunner:
             portfolio,
             strategy,
             state,
-            signal_config,
-            ml_config
+            signals_config
         )
 
         portfolio = engine.run_backtest(rebalance_problem)
@@ -218,25 +208,23 @@ class ExperimentRunner:
     def _build_rebalance_problem(self, 
                                  strategy_cfg: dict, 
                                  universe_meta: dict) -> RebalanceProblem:
-        builder = RebalanceProblemBuilder(strategy_cfg["rebalance_problem"], universe_meta)
+        builder = RebalanceProblemBuilder(
+            strategy_cfg["rebalance_problem"],
+            universe_meta,
+            strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
+        )
         try:
             rebalance_problem = builder.build()
             return rebalance_problem
         except ValueError as e:
             print(f"Error building rebalance problem for {strategy_cfg['strategy_type']}: {e}")
 
-    def _build_signal_config(self, 
-                             strategy_cfg: dict) -> SignalsConfig:
-        signals_config = strategy_cfg.get("signals_config")
+    def _build_signal_config(self, strategy_cfg: dict) -> SignalsConfig:
+        signals_config = strategy_cfg.get("signals_config", None)
         if signals_config is not None:
-            return SignalsConfig.from_dict(signals_config)
-        return None
-    
-    def _build_machine_learning_config(self, strategy_cfg: dict) -> MachineLearningConfig:
-        ml_cfg = strategy_cfg.get("ml_signals_config")
-        if ml_cfg is not None:
-            return MachineLearningConfig.from_dict(ml_cfg)
-        return None
+            market_frequency = strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
+            return SignalsConfig.from_dict(signals_config, market_frequency)
+        return None    
 
     def _build_metadata(self) -> dict:
         return {

@@ -5,15 +5,17 @@ from sklearn.covariance import LedoitWolf
 from domain.signals.signals import Signals
 
 class RiskReturnSignals(Signals):
-    def __init__(self, market_state: MarketState, signals_cfg: SignalsConfig):
-        super().__init__(market_state, signals_cfg)
+    def __init__(self, 
+                 market_state: MarketState, 
+                 signals_config: SignalsConfig):
+        super().__init__(market_state, signals_config)
 
     def mean_returns(self) -> np.ndarray:
         lookback_returns = self.lookback_returns()
         return lookback_returns.mean().values * self.ann_factor
 
     def covariance_matrix(self) -> np.ndarray:
-        lookback_returns = self.lookback_returns()
+        lookback_returns = self.lookback_returns().dropna()
         lw = LedoitWolf()
         lw.fit(lookback_returns.values)
         cov = lw.covariance_ * self.ann_factor

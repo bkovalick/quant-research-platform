@@ -7,10 +7,12 @@
             "request": "launch",
             "program": "src/main.py",
             "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/src",
                 "OPENBLAS_NUM_THREADS": "1"
-            }            
+            }
         }
     ]
 }

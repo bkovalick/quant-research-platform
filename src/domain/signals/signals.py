@@ -6,12 +6,14 @@ from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
 
 class Signals(ABC):
-    def __init__(self, market_state: MarketState, signals_cfg: SignalsConfig):
+    def __init__(self, 
+                 market_state: MarketState, 
+                 signals_config: SignalsConfig):
         self.market_state = market_state
         self.ann_factor = market_state.annual_trading_days
-        self.signals_cfg = signals_cfg
-        self.apply_winsorizing = signals_cfg.apply_winsorizing
-        self.windsor_percentiles = signals_cfg.windsor_percentiles
+        self.signals_config = signals_config
+        self.apply_winsorizing = signals_config.apply_winsorizing
+        self.windsor_percentiles = signals_config.windsor_percentiles
 
     def lookback_returns(self) -> pd.DataFrame:
         r = self.market_state.lookback_returns()

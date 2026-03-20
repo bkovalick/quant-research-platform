@@ -168,9 +168,10 @@ class MetricsCompute:
 
     def _calculate_performance_metrics(self,
                                        portfolio: Portfolio,
-                                       market_str_cfg: MarketStoreConfig,
+                                       market_store_config: MarketStoreConfig,
                                        benchmark_index: pd.Series) -> dict:
         """Calculate performance metrics for the portfolio."""
+        risk_free_rate = market_store_config.risk_free_rate
         portfolio_weights = portfolio.weights
         portfolio_trades = portfolio.weights.diff().abs().fillna(0)
         if isinstance(portfolio_trades, pd.DataFrame):
@@ -186,7 +187,7 @@ class MetricsCompute:
         annualized_volatility = portfolio_returns.std() * np.sqrt(self.annual_trading_days)
 
         sharpe_ratio = (
-            annualized_return / annualized_volatility
+            (annualized_return - risk_free_rate) / annualized_volatility
             if annualized_volatility != 0 else 0.0
         )
 
@@ -218,7 +219,7 @@ class MetricsCompute:
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
             "sortino_ratio": (
-                annualized_return / portfolio_returns[portfolio_returns < 0].std() * np.sqrt(self.annual_trading_days)
+                annualized_return / (portfolio_returns[portfolio_returns < 0].std() * np.sqrt(self.annual_trading_days))
             ) if portfolio_returns[portfolio_returns < 0].std() != 0 else 0,
             "max_drawdown": max_drawdown,
             "max_drawdown_days": max_drawdown_days,
@@ -251,8 +252,9 @@ class MetricsCompute:
 
     def _calculate_max_drawdown(self, cumulative_returns: pd.Series):
         """Calculate maximum drawdown from cumulative returns."""
-        running_max = cumulative_returns.cummax()
-        drawdown = (cumulative_returns - running_max) / running_max
+        wealth = 1 + cumulative_returns
+        running_max = wealth.cummax()
+        drawdown = (wealth - running_max) / running_max
         return drawdown.min()
 
     def _calculate_max_drawdown_days(self, cumulative_returns: pd.Series) -> int:
@@ -265,10 +267,9 @@ class MetricsCompute:
 
     def _calculate_avg_drawdown(self, cumulative_returns: pd.Series) -> float:
         """Mean of all individual drawdown values at each point in time."""
-        running_max = cumulative_returns.cummax()
-        valid = running_max != 0
-        drawdown = pd.Series(0.0, index=cumulative_returns.index)
-        drawdown[valid] = (cumulative_returns[valid] - running_max[valid]) / running_max[valid]
+        wealth = 1 + cumulative_returns
+        running_max = wealth.cummax()
+        drawdown = (wealth - running_max) / running_max
         negative_drawdowns = drawdown[drawdown < 0]
         if negative_drawdowns.empty:
             return 0.0
@@ -282,7 +283,6 @@ class MetricsCompute:
     def _calculate_rolling_returns(self, returns: pd.Series, window: int):
         """Calculate rolling return over a specified window."""
         rolling_return = (1 + returns).rolling(window=window).apply(np.prod, raw=True) - 1
-        rolling_return = (1 + rolling_return) ** (window / window) - 1
         return rolling_return
 
     def _calculate_rolling_volatility(self, returns: pd.Series, window: int):

@@ -31,17 +31,17 @@ class BacktestingEngine(BacktestingEngineInterface):
                  portfolio: PortfolioInterface, 
                  strategy: StrategyInterface,
                  market_state: MarketState,
-                 signals_config: SignalsConfig,
-                 ml_signals_config: MachineLearningConfig):
+                 signals_config: SignalsConfig):
         self.portfolio = portfolio
         self.strategy = strategy
         self.market_state = market_state
         self.signals_config = signals_config
-        self.ml_signals_config = ml_signals_config
+        self.ml_signals_config = signals_config.ml_signals_config if signals_config is not None else None
         if self.ml_signals_config is not None:
             self.feature_builder = FeatureBuilder(
                 self.market_state.prices.copy(), 
-                self.market_state.returns.copy()
+                self.market_state.returns.copy(),
+                self.market_state.market_frequency
             )
             self.cs_model = CrossSectionalModel(self.ml_signals_config)
             self.ml_signals_state = MLSignalsState(
@@ -61,7 +61,11 @@ class BacktestingEngine(BacktestingEngineInterface):
         print("Running backtest...")
         start_time = time.time()
         self.rebalance_every = self._get_steps(rebalance_problem.rebalance_frequency)
-        initial_weights = np.array(list(rebalance_problem.initial_weights.values()))
+        tickers = rebalance_problem.tickers
+        initial_weights = np.array([
+            rebalance_problem.initial_weights.get(ticker, 0.0) 
+            for ticker in tickers
+        ])
         self.portfolio.initialize(
             self.market_state.prices.index, 
             self.market_state.prices.columns, 
@@ -79,6 +83,11 @@ class BacktestingEngine(BacktestingEngineInterface):
             prev_weights = self.portfolio.drift(prev_weights, current_returns, cursor)
             if cursor < self.market_state.lookback_window:
                 continue
+
+            if self.ml_signals_config is not None:
+                ml_warmup = self.ml_signals_config.training_window + self.ml_signals_config.horizon
+                if cursor >= ml_warmup:
+                    self.ml_signals_state.update(cursor, self.market_state.current_date())
 
             if not self._is_rebalance_step(cursor):
                 continue
@@ -102,15 +111,16 @@ class BacktestingEngine(BacktestingEngineInterface):
                        market_state: MarketState, 
                        signals_config: SignalsConfig, 
                        current_weights: np.ndarray) -> dict:
-        if self.ml_signals_config is not None:
-            self.ml_signals_state.update(market_state.current_date())
-
+        if self.signals_config is None:
+            return {}
+        
+        ml_state = getattr(self, "ml_signals_state", None)
         return {
             "risk_return": RiskReturnSignals(market_state, signals_config),
             "mean_reversion": MeanReversionSignals(market_state, signals_config),
             "moving_average": MovingAverageSignals(market_state, signals_config),
             "volatility_forecast": VolatilityForecastingSignals(market_state, signals_config),
             "momentum": MomentumSignals(market_state, signals_config),
-            "black_litterman": BlackLittermanSignal(market_state, signals_config, current_weights),
+            "black_litterman": BlackLittermanSignal(market_state, signals_config, ml_state, current_weights),
             "ml_cross_sectional": self.ml_signals if self.ml_signals_config is not None else None
         } 

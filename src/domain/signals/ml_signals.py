@@ -15,50 +15,71 @@ class MLSignalsState:
                  ml_config: MachineLearningConfig, 
                  feature_builder: FeatureBuilder, 
                  model: ISignalModel):
-        self._ml_config = ml_config
-        self._feature_builder = feature_builder
-        self._model = model
-        self._cadence = ml_config.rebal_cadence
-        self._cached_scores = None
-        self._last_trained = None
-        self._training_window = ml_config.training_window
-        self._horizon = ml_config.horizon        
+        self.ml_config = ml_config
+        self.feature_builder = feature_builder
+        self.model = model
+        self.cadence = ml_config.rebal_cadence
+        self.cached_scores = None
+        self.last_trained = None
+        self.training_window = ml_config.training_window
+        self.horizon = ml_config.horizon
+        self.sample_stride = ml_config.sample_stride
 
-    def update(self, as_of_date: datetime):
-        if self._should_retrain(as_of_date):
-            dates = self._feature_builder.prices.index
-            train_dates = dates[-(self._training_window + self._horizon):-self._horizon]
+    def update(self, cursor: int, as_of_date: datetime):
+        """
+        Retrains the model on a rolling window of historical features and forward returns,
+        then generates and caches predicted scores for the current date. Retraining is
+        skipped if the configured cadence has not elapsed since the last training run.
+        """
+        if not self._should_retrain(cursor):
+            return 
+        
+        train_end = cursor - self.horizon
+        train_start = train_end - self.training_window
+        if train_start < 0 or train_end <= 0:
+            # Not enough history yet, leave scores as None
+            # Strategy will fall back to non-ML signals            
+            return
 
-            X_list, y_list = [], []
-            for date in train_dates[::5]:
-                X_t = self._feature_builder.build(date)
-                y_t = self._feature_builder.build_forward_returns(
-                        date, self._horizon)
-                if X_t.empty or y_t.empty:
-                    continue
-                X_list.append(X_t)
-                y_list.append(y_t)
+        dates = self.feature_builder.prices.index
+        train_dates = dates[train_start:train_end:self.sample_stride]
 
-            if not X_list:
-                raise ValueError("Could not build training data.")
+        X_list, y_list = [], []
+        for date in train_dates:
+            X_t = self.feature_builder.build(date)
+            y_t = self.feature_builder.build_forward_returns(date, self.horizon)
+            if X_t.empty or y_t.empty:
+                continue
+            X_list.append(X_t)
+            y_list.append(y_t)
 
-            X_train = pd.concat(X_list)
-            y_train = pd.concat(y_list)
+        if not X_list:
+            return
 
-            self._model.fit(X_train, y_train)
-            X_now = self._feature_builder.build(as_of_date)
-            scores = self._model.predict(X_now)
-            self._cached_scores = np.array(scores)
-            self._last_trained = as_of_date
+        X_train = pd.concat(X_list)
+        y_train = pd.concat(y_list)
 
-    def _should_retrain(self, as_of_date: datetime) -> bool:
-        if self._last_trained is None:
+        self.model.fit(X_train, y_train)
+        X_now = self.feature_builder.build(as_of_date)
+        if X_now.empty:
+            return
+
+        scores = self.model.predict(X_now)
+        self.cached_scores = pd.Series(scores, index=X_now.index)
+        self.last_trained = cursor
+
+    def _should_retrain(self, cursor: int) -> bool:
+        if self.last_trained is None:
             return True
-        return (as_of_date - self._last_trained).days >= self._cadence
+        return (cursor - self.last_trained) >= self.cadence
     
     @property
     def scores(self):
-        return self._cached_scores
+        if self.cached_scores is None:
+            return None
+        # Reindex to full universe, NaN for any assets dropped by dropna()
+        all_tickers = self.feature_builder.prices.columns
+        return self.cached_scores.reindex(all_tickers)
 
 class MLSignals(RiskReturnSignals):
     def __init__(self, 
@@ -74,5 +95,12 @@ class MLSignals(RiskReturnSignals):
     def mean_returns(self):
         if not self.ml_config.enabled:
             return super().mean_returns()
-        
-        return self.state.scores
+        if self.state.scores is None:
+            return super().mean_returns()
+        scores = self.state.scores.to_numpy(dtype=float)
+        if np.isnan(scores).any():
+            # Fall back to historical means for any assets the model couldn't score
+            fallback = super().mean_returns()
+            nan_mask = np.isnan(scores)
+            scores[nan_mask] = fallback[nan_mask]
+        return scores

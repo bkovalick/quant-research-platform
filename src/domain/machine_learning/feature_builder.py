@@ -1,14 +1,18 @@
 import pandas as pd
 import numpy as np
+from utils.lookback_windows import LOOKBACK_WINDOWS
 
 class FeatureBuilder:
     def __init__(self, 
                  prices: pd.DataFrame, 
-                 returns: pd.DataFrame):
+                 returns: pd.DataFrame,
+                 market_frequency: str = "d"):
         self.prices = prices
         self.returns = returns
+        self._w = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
+        self._reversal_window = self._w.get("1w", 1)
 
-    def build(self, date: pd.Timestamp):
+    def build(self, date: pd.Timestamp) -> pd.DataFrame:
         """
         Build feature matrix for all assets as of a single date.
         Returns DataFrame of shape (n_assets, n_features), index=tickers.
@@ -17,14 +21,17 @@ class FeatureBuilder:
         px   = self.prices.loc[:date]
         rets = self.returns.loc[:date]
 
-        features = pd.DataFrame(index=self.prices.columns)
-        features["mom_1m"]   = px.iloc[-1] / px.iloc[-21]  - 1
-        features["mom_12m"]  = px.iloc[-21] / px.iloc[-252] - 1   # skip last month
-        features["vol_1m"]   = rets.iloc[-21:].std()
-        features["vol_3m"]   = rets.iloc[-63:].std()
-        features["reversal"] = -(px.iloc[-1] / px.iloc[-6] - 1)   # negative = reversal
+        if len(px) < self._w["1y"]:
+            return pd.DataFrame(index=self.prices.columns)
 
-        features = features.rank(True)
+        features = pd.DataFrame(index=self.prices.columns)
+        features["mom_1m"]   = px.iloc[-1] / px.iloc[-self._w["1m"]] - 1
+        features["mom_12m"]  = px.iloc[-self._w["1m"]] / px.iloc[-self._w["1y"]] - 1  # skip last month
+        features["vol_1m"]   = rets.iloc[-self._w["1m"]:].std()
+        features["vol_3m"]   = rets.iloc[-self._w["3m"]:].std()
+        features["reversal"] = -(px.iloc[-1] / px.iloc[-(self._reversal_window + 1)] - 1)
+
+        features = features.rank(axis=0, pct=True)
         return features.dropna()
     
     def build_forward_returns(self,
@@ -40,4 +47,4 @@ class FeatureBuilder:
         if idx + horizon >= len(px):
             return pd.Series(dtype=float)
         fwd = px.iloc[idx + horizon] / px.iloc[idx] - 1
-        return fwd    
+        return fwd

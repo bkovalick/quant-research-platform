@@ -3,7 +3,7 @@
 	"tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
                 "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX"
             ],
-    "start_date": "2005-01-01",
+    "start_date": "2015-01-01",
     "end_date": "2026-02-19",
     "data_source": { "yfinance": null },
     "benchmark": "SPY",
@@ -24,8 +24,26 @@
       "signals_config": {
         "apply_winsorizing": true,
         "windsor_percentiles": {"lower": 0.05, "upper": 0.95},
-        "momentum_skip_periods": 4
-      },      
+        "mean_reversion_window": 4,
+        "momentum_skip_periods": 4,
+        "black_litterman": {
+          "delta": 2.5,
+          "tau": 0.05,
+          "reversion_view": 0.03,
+          "ml_view_spread": 0.03,
+          "view_direction": "momentum"
+        },
+        "ml_signals_config": {
+            "enabled": true,
+            "features_model": "cross_sectional_model",
+            "features": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal"],
+            "signals_model": "ridge",
+            "training_window": "2y",
+            "horizon": "1m",
+            "alpha": 1.0,
+            "rebal_cadence": 5
+        }        
+      },     
       "rebalance_problem": {
         "strategy_type": "mean_variance_strategy",
         "optimizer_type": "portfolio_optimizer",
@@ -35,7 +53,7 @@
         "apply_sharpe_objective": false,
         "strategy_rules": {
             "vol_target": 0.15,
-            "vol_lookback_days": 21,
+            "vol_lookback_days": "1m",
             "vol_max_leverage": 1.5
         },
         "constraints": {

@@ -12,8 +12,8 @@ class FixedWeightOptimizer(IOptimizer):
     def __init__(self):
         super().__init__()
 
-    def optimize(self):
-        return None
+    def optimize(self, rebalance_problem, current_weights=None):
+        return current_weights
 
 class OptimizerFactory(IOptimizerFactory):
 
