@@ -97,4 +97,10 @@ class MLSignals(RiskReturnSignals):
             return super().mean_returns()
         if self.state.scores is None:
             return super().mean_returns()
-        return self.state.scores
+        scores = self.state.scores.to_numpy(dtype=float)
+        if np.isnan(scores).any():
+            # Fall back to historical means for any assets the model couldn't score
+            fallback = super().mean_returns()
+            nan_mask = np.isnan(scores)
+            scores[nan_mask] = fallback[nan_mask]
+        return scores

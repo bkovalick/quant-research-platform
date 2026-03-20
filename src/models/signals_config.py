@@ -8,7 +8,7 @@ class SignalsConfig:
     windsor_percentiles: Dict
     mean_reversion_window: int
     momentum_skip_periods: int
-    black_litterman: Dict[str, Any]
+    black_litterman: Optional[Dict[str, Any]]
     ml_signals_config: Optional[MachineLearningConfig]
     
     @classmethod

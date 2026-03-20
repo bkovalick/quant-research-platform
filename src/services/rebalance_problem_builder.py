@@ -15,7 +15,14 @@ class RebalanceProblemBuilder:
         if value is None:
             return None
         if isinstance(value, str):
-            return LOOKBACK_WINDOWS.get(self.market_frequency, LOOKBACK_WINDOWS["d"])[value]
+            freq_map = LOOKBACK_WINDOWS.get(self.market_frequency, LOOKBACK_WINDOWS["d"])
+            if value not in freq_map:
+                valid = sorted(freq_map.keys())
+                raise ValueError(
+                    f"Invalid duration key {value!r} for market_frequency={self.market_frequency!r}. "
+                    f"Valid keys: {valid}"
+                )
+            return freq_map[value]
         return int(value)
     
     def build(self) -> RebalanceProblem:

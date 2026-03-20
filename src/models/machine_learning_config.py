@@ -20,6 +20,12 @@ class MachineLearningConfig:
 
         def resolve(value, default_key: str) -> int:
             if isinstance(value, str):
+                if value not in freq_map:
+                    valid = sorted(freq_map.keys())
+                    raise ValueError(
+                        f"Invalid duration key {value!r} for market_frequency={market_frequency!r}. "
+                        f"Valid keys: {valid}"
+                    )
                 return freq_map[value]
             if value is None:
                 return freq_map[default_key]

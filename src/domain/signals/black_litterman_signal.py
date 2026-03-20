@@ -31,6 +31,8 @@ class BlackLittermanSignal(RiskReturnSignals):
         sigma = self.covariance_matrix()
         pi = self._compute_equilibrium_returns(sigma)
         P, Q, omega = self._build_views(sigma)
+        if not np.any(P):
+            return pi  # no valid view (too few assets); fall back to equilibrium returns
         return self._compute_posterior(pi, sigma, P, Q, omega)
     
     def _compute_equilibrium_returns(self, sigma):
@@ -117,7 +119,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         P = np.zeros((1, n))
 
         if winners.sum() == 0 or losers.sum() == 0:
-            return P  # too few assets to form a valid view
+            return P  # too few assets to form a valid view; express no view
 
         view_direction = self.black_litterman.get("view_direction", "momentum")
         if view_direction == "momentum":
