@@ -60,7 +60,8 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         portfolio,
         strategy,
         state,
-        signals_config
+        signals_config,
+        market_store_config.transaction_cost
     )
 
     portfolio = engine.run_backtest(rebalance_problem)
@@ -142,7 +143,8 @@ class ExperimentRunner:
             portfolio,
             strategy,
             state,
-            signals_config
+            signals_config,
+            market_store_config.transaction_cost
         )
 
         portfolio = engine.run_backtest(rebalance_problem)

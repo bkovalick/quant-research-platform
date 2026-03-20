@@ -59,8 +59,8 @@ class BlackLittermanSignal(RiskReturnSignals):
         n = len(ranked)
         quintile = n // 5
 
-        losers  = ranked <= quintile        # bottom 20%
-        winners = ranked >= n - quintile    # top 20%
+        losers  = ranked <= quintile      # bottom 20%
+        winners = ranked > n - quintile   # top 20%
 
         P = self._determine_view_direction(n, winners, losers)
 
