@@ -14,7 +14,7 @@ const TOOLTIPS: Record<string, string> = {
   Turnover: "Average annual portfolio turnover. High turnover increases transaction costs and drag on returns.",
 }
 
-export default function StrategyGrid({ runs, onSelect }: any) {
+export default function StrategyGrid({ runs, onSelect, pinnedIds, onPin }: any) {
   const [sortKey, setSortKey] = useState<SortKey>("sharpe_ratio")
   const [ascending, setAscending] = useState(false)
 
@@ -41,38 +41,48 @@ export default function StrategyGrid({ runs, onSelect }: any) {
         <span style={headerLabel}>Strategy Overview</span>
       </div>
       <div style={innerContainer}>
-      <table style={table}>
-        <thead>
-          <tr style={headerRow}>
-            <th style={leftHeader} onClick={() => handleSort("strategy_name")}>Strategy</th>
-            <SortHeader label="Return"   k="return"       sortKey={sortKey} ascending={ascending} onSort={handleSort} />
-            <SortHeader label="Vol"      k="volatility"   sortKey={sortKey} ascending={ascending} onSort={handleSort} />
-            <SortHeader label="Sharpe"   k="sharpe_ratio" sortKey={sortKey} ascending={ascending} onSort={handleSort} />
-            <SortHeader label="Max DD"   k="max_drawdown" sortKey={sortKey} ascending={ascending} onSort={handleSort} />
-            <SortHeader label="Turnover" k="turnover"     sortKey={sortKey} ascending={ascending} onSort={handleSort} />
-          </tr>
-        </thead>
-        <tbody>
-          {sortedRuns.map((run: any, i: number) => {
-            const s = run.result.summary
-            // Find original index for consistent color
-            const colorIdx = runs.findIndex((r: any) => r.run_id === run.run_id)
-            return (
-              <tr key={run.run_id} onClick={() => onSelect(run)} style={row}>
-                <td style={leftCell}>
-                  <span style={{ ...colorDot, backgroundColor: COLORS[colorIdx % COLORS.length] }} />
-                  {formatStrategyName(run.strategy_name)}
-                </td>
-                <td style={rightCellGreen(s.return)}>{formatPct(s.return)}</td>
-                <td style={rightCell}>{formatPct(s.volatility)}</td>
-                <td style={rightCell}>{formatNumber(s.sharpe_ratio)}</td>
-                <td style={rightCellRed(s.max_drawdown)}>{formatPct(s.max_drawdown)}</td>
-                <td style={rightCell}>{formatNumber(s.turnover)}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+        <table style={table}>
+          <thead>
+            <tr style={headerRow}>
+              <th style={leftHeader} onClick={() => handleSort("strategy_name")}>Strategy</th>
+              <SortHeader label="Return"   k="return"       sortKey={sortKey} ascending={ascending} onSort={handleSort} />
+              <SortHeader label="Vol"      k="volatility"   sortKey={sortKey} ascending={ascending} onSort={handleSort} />
+              <SortHeader label="Sharpe"   k="sharpe_ratio" sortKey={sortKey} ascending={ascending} onSort={handleSort} />
+              <SortHeader label="Max DD"   k="max_drawdown" sortKey={sortKey} ascending={ascending} onSort={handleSort} />
+              <SortHeader label="Turnover" k="turnover"     sortKey={sortKey} ascending={ascending} onSort={handleSort} />
+              <th style={rightHeader}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedRuns.map((run: any) => {
+              const s = run.result.summary
+              const colorIdx = runs.findIndex((r: any) => r.run_id === run.run_id)
+              const isPinned = pinnedIds?.has(run.run_id)
+              return (
+                <tr key={run.run_id} onClick={() => onSelect(run)} style={row}>
+                  <td style={leftCell}>
+                    <span style={{ ...colorDot, backgroundColor: COLORS[colorIdx % COLORS.length] }} />
+                    {formatStrategyName(run.strategy_name)}
+                    {isPinned && <span style={pinnedBadge}>pinned</span>}
+                  </td>
+                  <td style={rightCellGreen(s.return)}>{formatPct(s.return)}</td>
+                  <td style={rightCell}>{formatPct(s.volatility)}</td>
+                  <td style={rightCell}>{formatNumber(s.sharpe_ratio)}</td>
+                  <td style={rightCellRed(s.max_drawdown)}>{formatPct(s.max_drawdown)}</td>
+                  <td style={rightCell}>{formatNumber(s.turnover)}</td>
+                  <td style={rightCell}>
+                    <button
+                      style={isPinned ? unpinBtn : pinBtn}
+                      onClick={(e) => { e.stopPropagation(); onPin(run) }}
+                    >
+                      {isPinned ? "unpin" : "pin"}
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   )
@@ -145,7 +155,6 @@ const dotStyle: CSSProperties = {
   width: 12, height: 12, borderRadius: "50%", background: "#30363d",
   color: "#8b949e", fontSize: 9, fontWeight: 700, marginLeft: 3, verticalAlign: "middle"
 }
-
 const tooltipBox: CSSProperties = {
   position: "fixed", top: "auto", left: "auto",
   width: 230, background: "#161b22", border: "1px solid #30363d",
@@ -153,4 +162,15 @@ const tooltipBox: CSSProperties = {
   color: "#8b949e", lineHeight: 1.5, zIndex: 9999,
   boxShadow: "0 4px 16px rgba(0,0,0,0.5)", pointerEvents: "none",
   textAlign: "left", fontWeight: 400
+}
+const pinBtn: CSSProperties = {
+  background: "none", border: "1px solid #30363d", borderRadius: 3,
+  color: "#8b949e", fontSize: 10, cursor: "pointer", padding: "1px 6px"
+}
+const unpinBtn: CSSProperties = {
+  ...pinBtn, border: "1px solid #388bfd", color: "#388bfd"
+}
+const pinnedBadge: CSSProperties = {
+  fontSize: 9, color: "#388bfd", border: "1px solid #388bfd",
+  borderRadius: 3, padding: "0 4px", marginLeft: 4
 }

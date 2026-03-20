@@ -5,7 +5,7 @@
               "SPY", "IVW", "IWM", "SHY", "IJH", "EMB", "XLE", "IWD", "IWF", "EFA", "EEM", "TLT", "IEF", 
               "LQD", "HYG", "TIP", "GLD", "PDBC", "VNQ", "XLU", "XLV"               
             ],
-    "start_date": "2005-01-01",
+    "start_date": "2020-01-01",
     "end_date": "2026-02-19",
     "data_source": { "yfinance": null },
     "benchmark": "SPY",

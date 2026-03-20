@@ -33,7 +33,7 @@ def local_run():
     reporting_module.generate_report()
     folder_path = "backtest_results" + "/" + datetime.now().strftime('%Y-%m-%d')
     create_folder_path(folder_path)
-    with open(folder_path + "/backtest_report.xlsx", "wb") as f:
+    with open(folder_path + "/backtest_report_" + datetime.now().strftime("%Y%m%d%H%M%S%f") + ".xlsx", "wb") as f:
         f.write(buffer.getvalue())
 
 app = FastAPI()

@@ -8,22 +8,48 @@ import AnalysisPanel from "./components/AnalysisPanel"
 export default function App() {
   const [experiment, setExperiment] = useState<any>(null)
   const [selectedRun, setSelectedRun] = useState<any>(null)
+  const [pinnedRuns, setPinnedRuns] = useState<any[]>([])
+
+  const handlePin = (run: any) => {
+    setPinnedRuns(prev =>
+      prev.some(r => r.run_id === run.run_id)
+        ? prev.filter(r => r.run_id !== run.run_id)
+        : [...prev, run]
+    )
+  }
+
+  const pinnedIds = new Set(pinnedRuns.map(r => r.run_id))
+
+  // Merge current experiment runs with pinned runs, deduplicating by run_id
+  const currentRuns = experiment?.strategy_runs ?? []
+  const extraPinned = pinnedRuns.filter(r => !currentRuns.some((cr: any) => cr.run_id === r.run_id))
+  const allRuns = [...currentRuns, ...extraPinned]
 
   return (
     <div style={styles.app}>
       <div style={styles.sidebar}>
-        <Sidebar setExperiment={setExperiment} experiment={experiment} />
+        <Sidebar
+          setExperiment={setExperiment}
+          experiment={experiment}
+          pinnedRuns={pinnedRuns}
+          onClearPinned={() => setPinnedRuns([])}
+        />
       </div>
 
       <div style={styles.main}>
-        {experiment ? (
+        {allRuns.length > 0 ? (
           <div style={styles.twoCol}>
             <div style={styles.leftCol}>
-              <StrategyGrid runs={experiment.strategy_runs} onSelect={setSelectedRun} />
-              <StrategyDetails runs={experiment.strategy_runs} />
+              <StrategyGrid
+                runs={allRuns}
+                onSelect={setSelectedRun}
+                pinnedIds={pinnedIds}
+                onPin={handlePin}
+              />
+              <StrategyDetails runs={allRuns} />
             </div>
             <div style={styles.rightCol}>
-              <AnalysisPanel runs={experiment.strategy_runs} selectedRun={selectedRun} />
+              <AnalysisPanel runs={allRuns} selectedRun={selectedRun} />
             </div>
           </div>
         ) : (

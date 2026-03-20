@@ -11,7 +11,7 @@ class MomentumSignals(RiskReturnSignals):
 
     def mean_returns(self) -> np.ndarray:
         p = self.market_state.lookback_prices()
-        skip = getattr(self.signals_cfg, "momentum_skip_periods", 4)
+        skip = getattr(self.signals_config, "momentum_skip_periods", 4)
         total_return = (p.iloc[-(skip + 1)] / p.iloc[0] - 1).values
         annualized = total_return * (self.ann_factor / (len(p) - skip))
         return annualized
