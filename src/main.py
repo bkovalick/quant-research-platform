@@ -22,7 +22,7 @@ def create_folder_path(folder_name: str):
     path.mkdir(parents=True, exist_ok=True)
 
 def local_run():
-    with open(f"src/config/experiment_asset_classes.json", 'r') as f:
+    with open(f"src/config/experiment_high_risk.json", 'r') as f:
         config = json.load(f)
 
     config = config.copy()

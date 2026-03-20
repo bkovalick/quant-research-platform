@@ -99,9 +99,7 @@ class BlackLittermanSignal(RiskReturnSignals):
             and self.ml_state.scores is not None
         )
         if use_ml:
-            tickers = self.market_state.lookback_prices().columns
-            ranked = pd.Series(self.ml_state.scores, index=tickers).rank()
-            return ranked, bl.get("ml_view_spread", 0.03)
+            return self.ml_state.scores.rank(), bl.get("ml_view_spread", 0.03)
 
         window = getattr(self.signals_config, "mean_reversion_window", 4)
         short_returns = self.market_state.lookback_prices().pct_change(window).iloc[-1]

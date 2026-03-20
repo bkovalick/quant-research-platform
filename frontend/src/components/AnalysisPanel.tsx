@@ -282,7 +282,11 @@ function DrawdownView({ runs }: any) {
           <tr style={headerRow}>
             <th style={leftHeader}>Strategy</th>
             {metrics.map(m => (
-              <th key={m.key} style={rightHeader}>{m.label}</th>
+              <th key={m.key} style={rightHeader}>
+                <MetricTooltip label={m.label}>
+                  <span style={tooltipLabel}>{m.label} <span style={dotStyle}>?</span></span>
+                </MetricTooltip>
+              </th>
             ))}
           </tr>
         </thead>

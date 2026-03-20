@@ -22,8 +22,7 @@
       "rebalance_problem": {
         "strategy_type": "fwp_strategy",
         "optimizer_type": "portfolio_optimizer",
-        "rebalance_frequency": "weekly",
-        "initial_weights": [1.0]
+        "rebalance_frequency": "weekly"
       }
     },
     {

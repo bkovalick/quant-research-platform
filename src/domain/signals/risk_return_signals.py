@@ -15,7 +15,7 @@ class RiskReturnSignals(Signals):
         return lookback_returns.mean().values * self.ann_factor
 
     def covariance_matrix(self) -> np.ndarray:
-        lookback_returns = self.lookback_returns()
+        lookback_returns = self.lookback_returns().dropna()
         lw = LedoitWolf()
         lw.fit(lookback_returns.values)
         cov = lw.covariance_ * self.ann_factor

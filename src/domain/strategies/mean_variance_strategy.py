@@ -19,7 +19,8 @@ class MeanVarianceStrategy(StrategyInterface):
                   signals: dict, 
                   current_weights: np.ndarray) -> np.ndarray:
         """Calculate rebalance weights"""
-        risk_return_signals = signals.get("risk_return", None)
+        # risk_return_signals = signals.get("risk_return", None)
+        risk_return_signals = signals.get("black_litterman", None)
         optimized_weights = self.optimizer.optimize(
             self.rebalance_problem, risk_return_signals, current_weights
         )

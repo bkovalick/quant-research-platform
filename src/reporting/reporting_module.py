@@ -283,7 +283,6 @@ class MetricsCompute:
     def _calculate_rolling_returns(self, returns: pd.Series, window: int):
         """Calculate rolling return over a specified window."""
         rolling_return = (1 + returns).rolling(window=window).apply(np.prod, raw=True) - 1
-        rolling_return = (1 + rolling_return) ** (window / window) - 1
         return rolling_return
 
     def _calculate_rolling_volatility(self, returns: pd.Series, window: int):
@@ -307,7 +306,7 @@ class MetricsCompute:
         """Calculate alpha of the portfolio against a benchmark."""
         rule = {"d": "B", "w": "W-FRI", "m": "M"}[self.market_frequency]
         benchmark = benchmark_index.resample(rule).last()
-        benchmark_returns = benchmark.pct_change(fill_method=None).fillna(0)
+        benchmark_returns = benchmark.pct_change().fillna(0)
 
         aligned = pd.concat([portfolio_returns, benchmark_returns], axis=1, join='inner')
         aligned.columns = ['portfolio', 'benchmark']
