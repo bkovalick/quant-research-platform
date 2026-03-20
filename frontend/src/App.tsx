@@ -4,11 +4,13 @@ import Sidebar from "./components/Sidebar"
 import StrategyGrid from "./components/StrategyGrid"
 import StrategyDetails from "./components/StrategyDetails"
 import AnalysisPanel from "./components/AnalysisPanel"
+import type { DateWindow } from "./utils/metricsUtils"
 
 export default function App() {
   const [experiment, setExperiment] = useState<any>(null)
   const [selectedRun, setSelectedRun] = useState<any>(null)
   const [pinnedRuns, setPinnedRuns] = useState<any[]>([])
+  const [dateWindow, setDateWindow] = useState<DateWindow | null>(null)
 
   const handlePin = (run: any) => {
     setPinnedRuns(prev =>
@@ -18,9 +20,13 @@ export default function App() {
     )
   }
 
-  const pinnedIds = new Set(pinnedRuns.map(r => r.run_id))
+  // Reset window when new experiment runs
+  const handleSetExperiment = (exp: any) => {
+    setExperiment(exp)
+    setDateWindow(null)
+  }
 
-  // Merge current experiment runs with pinned runs, deduplicating by run_id
+  const pinnedIds = new Set(pinnedRuns.map(r => r.run_id))
   const currentRuns = experiment?.strategy_runs ?? []
   const extraPinned = pinnedRuns.filter(r => !currentRuns.some((cr: any) => cr.run_id === r.run_id))
   const allRuns = [...currentRuns, ...extraPinned]
@@ -29,7 +35,7 @@ export default function App() {
     <div style={styles.app}>
       <div style={styles.sidebar}>
         <Sidebar
-          setExperiment={setExperiment}
+          setExperiment={handleSetExperiment}
           experiment={experiment}
           pinnedRuns={pinnedRuns}
           onClearPinned={() => setPinnedRuns([])}
@@ -45,11 +51,20 @@ export default function App() {
                 onSelect={setSelectedRun}
                 pinnedIds={pinnedIds}
                 onPin={handlePin}
+                dateWindow={dateWindow}
               />
-              <StrategyDetails runs={allRuns} />
+              <StrategyDetails
+                runs={allRuns}
+                onWindowChange={setDateWindow}
+                dateWindow={dateWindow}
+              />
             </div>
             <div style={styles.rightCol}>
-              <AnalysisPanel runs={allRuns} selectedRun={selectedRun} />
+              <AnalysisPanel
+                runs={allRuns}
+                selectedRun={selectedRun}
+                dateWindow={dateWindow}
+              />
             </div>
           </div>
         ) : (

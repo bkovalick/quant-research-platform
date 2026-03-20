@@ -212,15 +212,13 @@ class MetricsCompute:
             "cumulative_returns": cumulative_returns,
             "rolling_returns": self._calculate_rolling_returns(portfolio_returns, self.annual_trading_days),
             "rolling_volatility": self._calculate_rolling_volatility(portfolio_returns, self.annual_trading_days),
-            "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(portfolio_returns, self.annual_trading_days),
+            "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(portfolio_returns, risk_free_rate, self.annual_trading_days),
             "rolling_drawdown": rolling_dd,
             "rolling_turnover": self._calculate_rolling_turnover(portfolio_turnover, self.annual_trading_days),
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
-            "sortino_ratio": (
-                annualized_return / (portfolio_returns[portfolio_returns < 0].std() * np.sqrt(self.annual_trading_days))
-            ) if portfolio_returns[portfolio_returns < 0].std() != 0 else 0,
+            "sortino_ratio": self._calculate_sortino_ratio(annualized_return, portfolio_returns, risk_free_rate),
             "max_drawdown": max_drawdown,
             "max_drawdown_days": max_drawdown_days,
             "avg_drawdown": self._calculate_avg_drawdown(drawdown_returns),
@@ -249,7 +247,19 @@ class MetricsCompute:
             ) if len(portfolio_returns) >= self.annual_trading_days else None
         }
         return performance_metrics
-
+    
+    def _calculate_sortino_ratio(self, annualized_return: float, portfolio_returns: pd.Series, risk_free_rate: float) -> float:
+        """
+        Annualised Sortino ratio: excess return over rf divided by downside deviation.
+        Uses only negative-return periods to compute the downside std, then annualises
+        by sqrt(annual_trading_days). Returns 0 when there are fewer than 2 negative
+        return periods (std is NaN or zero).
+        """
+        downside_std = portfolio_returns[portfolio_returns < 0].std()
+        if not pd.notna(downside_std) or downside_std == 0:
+            return 0.0
+        return (annualized_return - risk_free_rate) / (downside_std * np.sqrt(self.annual_trading_days))
+    
     def _calculate_max_drawdown(self, cumulative_returns: pd.Series):
         """Calculate maximum drawdown from cumulative returns."""
         wealth = 1 + cumulative_returns
@@ -289,11 +299,13 @@ class MetricsCompute:
         """Calculate rolling volatility over a specified window."""
         return returns.rolling(window=window).std() * np.sqrt(window)
 
-    def _calculate_rolling_sharpe_ratio(self, returns: pd.Series, window: int):
+    def _calculate_rolling_sharpe_ratio(self, returns: pd.Series, risk_free_rate: float, window: int):
         """Calculate rolling Sharpe ratio over a specified window."""
+        rf_per_period = risk_free_rate / window  # de-annualise rf to match per-period rolling_mean
         rolling_mean = returns.rolling(window=window).mean()
         rolling_std = returns.rolling(window=window).std()
-        return (rolling_mean / rolling_std) * np.sqrt(window)
+        sharpe = ((rolling_mean - rf_per_period) / rolling_std) * np.sqrt(window)
+        return sharpe.replace([np.inf, -np.inf], np.nan)
 
     def _calculate_rolling_turnover(self, turnover: pd.Series, window: int):
         """Calculate rolling turnover over a specified window."""
