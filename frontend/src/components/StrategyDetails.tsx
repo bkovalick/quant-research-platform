@@ -177,25 +177,34 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
       {/* Dual range slider */}
       <div style={sliderContainer}>
         <div style={sliderTrackWrapper}>
-          {/* Filled range highlight */}
+          {/* Background track */}
+          <div style={sliderTrack} />
+          {/* Filled range */}
           <div style={{
             ...sliderFill,
             left: `${sliderStart}%`,
             width: `${sliderEnd - sliderStart}%`
           }} />
+          {/* Start thumb — only covers left portion */}
           <input
             type="range" min={0} max={100} value={sliderStart}
-            style={{ ...sliderInput, zIndex: lastMoved === "start" ? 5 : 3 }}
+            style={{
+              ...sliderInput,
+              width: `${sliderEnd}%`,
+              zIndex: 5
+            }}
             onChange={handleStartChange}
-            onMouseDown={() => setLastMoved("start")}
-            onTouchStart={() => setLastMoved("start")}
           />
+          {/* End thumb — only covers right portion */}
           <input
             type="range" min={0} max={100} value={sliderEnd}
-            style={{ ...sliderInput, zIndex: lastMoved === "end" ? 5 : 3 }}
+            style={{
+              ...sliderInput,
+              left: `${sliderStart}%`,
+              width: `${100 - sliderStart}%`,
+              zIndex: 5
+            }}
             onChange={handleEndChange}
-            onMouseDown={() => setLastMoved("end")}
-            onTouchStart={() => setLastMoved("end")}
           />
         </div>
         <div style={sliderLabels}>
@@ -325,4 +334,14 @@ const legendDot: CSSProperties = {
 
 const legendText: CSSProperties = {
   fontSize: 11, color: "#8b949e"
+}
+
+const sliderTrack: CSSProperties = {
+  position: "absolute",
+  width: "100%",
+  height: 4,
+  background: "#2a2f3a",
+  borderRadius: 2,
+  pointerEvents: "none",
+  zIndex: 1
 }

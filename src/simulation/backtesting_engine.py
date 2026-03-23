@@ -31,13 +31,11 @@ class BacktestingEngine(BacktestingEngineInterface):
                  portfolio: PortfolioInterface, 
                  strategy: StrategyInterface,
                  market_state: MarketState,
-                 signals_config: SignalsConfig,
-                 transaction_cost: float = 0.0):
+                 signals_config: SignalsConfig):
         self.portfolio = portfolio
         self.strategy = strategy
         self.market_state = market_state
         self.signals_config = signals_config
-        self.transaction_cost = transaction_cost
         self.ml_signals_config = signals_config.ml_signals_config if signals_config is not None else None
         if self.ml_signals_config is not None:
             self.feature_builder = FeatureBuilder(
@@ -96,7 +94,7 @@ class BacktestingEngine(BacktestingEngineInterface):
 
             signals = self._build_signals(self.market_state, self.signals_config, prev_weights)
             target_weights = self.strategy.rebalance(signals, prev_weights)
-            self.portfolio.apply(target_weights, prev_weights, cursor, self.transaction_cost)
+            self.portfolio.apply(target_weights, prev_weights, cursor)
             prev_weights = target_weights
 
         print(f"Backtest duration: {time.time() - start_time} seconds")
