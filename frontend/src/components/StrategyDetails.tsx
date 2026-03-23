@@ -39,6 +39,7 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
       const wf = run.result.series?.portfolio_wealth_factors
       if (!wf) return
       const series = deserializeToArray(wf)
+      console.log(run.strategy_name, "wf type:", typeof wf, "series length:", series.length)
       series.forEach(p => dateSet.add(p.date))
     })
     return Array.from(dateSet).sort()
@@ -65,11 +66,14 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
       runs.forEach(run => {
         const map = runMaps[run.run_id]
         if (!map) return
-        const rebaseValue = map[allDates[effectiveRebaseIdx]] ?? null
+        // Find this run's own first available date as rebase point
+        const runDates = Object.keys(map).sort()
+        const rebaseDate = dateWindow?.start
+          ? runDates.find(d => d >= dateWindow.start) ?? runDates[0]
+          : runDates[0]
+        const rebaseValue = map[rebaseDate] ?? null
         const currentValue = map[date] ?? null
-        if (rebaseValue && currentValue) {
-          row[run.run_id] = currentValue / rebaseValue
-        }
+        if (rebaseValue && currentValue) row[run.run_id] = currentValue / rebaseValue
       })
       return row
     })

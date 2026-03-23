@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-class MLSignalsState:
+class MLPredictorSignalsState:
     """Long-lived. Owns model training lifecycle."""
     def __init__(self, 
                  ml_config: MachineLearningConfig, 
@@ -81,12 +81,12 @@ class MLSignalsState:
         all_tickers = self.feature_builder.prices.columns
         return self.cached_scores.reindex(all_tickers)
 
-class MLSignals(RiskReturnSignals):
+class MLPredictorSignal(RiskReturnSignals):
     def __init__(self, 
                  market_state: MarketState, 
                  signals_cfg: SignalsConfig,
                  ml_config: MachineLearningConfig,
-                 state: MLSignalsState):
+                 state: MLPredictorSignalsState):
         super().__init__(market_state, signals_cfg)
 
         self.ml_config = ml_config

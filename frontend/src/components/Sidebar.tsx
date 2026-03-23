@@ -208,15 +208,38 @@ export default function Sidebar({ setExperiment, experiment }: any) {
             <div style={emptyState}>Load a strategy set in the Experiment tab first.</div>
           ) : (
             <>
-              <div style={strategyNav}>
-                {editedStrategies.map((s: any, i: number) => (
-                  <button key={i}
-                    style={i === selectedIdx ? activeStrategyBtn : strategyBtn}
-                    onClick={() => { setSelectedIdx(i); setJsonMode(false) }}>
-                    {s.name}
-                  </button>
-                ))}
-              </div>
+            <div style={strategyNav}>
+              {editedStrategies.map((s: any, i: number) => {
+                const isNew = !strategySet.strategies.find((orig: any) => orig.name === s.name)
+                return (
+                  <div key={i} style={{ display: "flex", gap: 4 }}>
+                    <button
+                      style={{ ...(i === selectedIdx ? activeStrategyBtn : strategyBtn), flex: 1 }}
+                      onClick={() => { setSelectedIdx(i); setJsonMode(false) }}>
+                      {s.name}
+                      {isNew && <span style={newBadge}>new</span>}
+                    </button>
+                    {isNew && (
+                      <button style={removeStrategyBtn} onClick={() => {
+                        const updated = editedStrategies.filter((_: any, idx: number) => idx !== i)
+                        setEditedStrategies(updated)
+                        setSelectedIdx(Math.min(i, updated.length - 1))
+                      }}>✕</button>
+                    )}
+                    </div>
+                )
+              })}
+              <button style={addStrategyBtn} onClick={() => {
+                const template = JSON.parse(JSON.stringify(editedStrategies[0]))
+                template.name = `custom_strategy_${editedStrategies.length + 1}`
+                const updated = [...editedStrategies, template]
+                setEditedStrategies(updated)
+                setSelectedIdx(updated.length - 1)
+                setJsonMode(false)
+              }}>
+                + Add Strategy
+              </button>
+            </div>
 
               {jsonMode ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -585,3 +608,16 @@ const smallBtn: CSSProperties = { background: "none", border: "1px solid #30363d
 const loadButton: CSSProperties = { padding: "8px 12px", background: "#1f6feb", border: "none", color: "white", cursor: "pointer", borderRadius: 6, fontWeight: 600, fontSize: 12, width: "100%" }
 const exportButton: CSSProperties = { padding: "8px 12px", background: "none", border: "1px solid #238636", color: "#3fb950", cursor: "pointer", borderRadius: 6, fontWeight: 600, fontSize: 12, width: "100%" }
 const changeLinkBtn: CSSProperties = { background: "none", border: "none", color: "#8b949e", fontSize: 10, cursor: "pointer", padding: 0, textDecoration: "underline" }
+const addStrategyBtn: CSSProperties = {
+  background: "none", border: "1px dashed #30363d", borderRadius: 4,
+  color: "#8b949e", padding: "4px 8px", fontSize: 11, cursor: "pointer",
+  textAlign: "left", marginTop: 2
+}
+const newBadge: CSSProperties = {
+  fontSize: 9, color: "#3fb950", border: "1px solid #238636",
+  borderRadius: 3, padding: "0 4px", marginLeft: 6
+}
+const removeStrategyBtn: CSSProperties = {
+  background: "none", border: "1px solid #30363d", borderRadius: 4,
+  color: "#8b949e", fontSize: 10, cursor: "pointer", padding: "2px 6px"
+}

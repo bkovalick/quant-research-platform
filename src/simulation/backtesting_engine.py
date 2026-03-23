@@ -12,7 +12,7 @@ from domain.signals.momentum_signals import MomentumSignals
 from domain.signals.black_litterman_signal import BlackLittermanSignal
 from domain.machine_learning.cross_sectional_model import CrossSectionalModel
 from domain.machine_learning.feature_builder import FeatureBuilder
-from domain.signals.ml_signals import MLSignals, MLSignalsState
+from domain.signals.machine_learning_signals import MLPredictorSignal, MLPredictorSignalsState
 from models.rebalance_problem import RebalanceProblem
 from models.signals_config import SignalsConfig
 from models.machine_learning_config import MachineLearningConfig
@@ -44,12 +44,12 @@ class BacktestingEngine(BacktestingEngineInterface):
                 self.market_state.market_frequency
             )
             self.cs_model = CrossSectionalModel(self.ml_signals_config)
-            self.ml_signals_state = MLSignalsState(
+            self.ml_signals_state = MLPredictorSignalsState(
                 self.ml_signals_config,
                 self.feature_builder,
                 self.cs_model
             )
-            self.ml_signals = MLSignals(
+            self.ml_signals = MLPredictorSignal(
                 self.market_state, 
                 self.signals_config, 
                 self.ml_signals_config, 
