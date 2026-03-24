@@ -39,7 +39,6 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
       const wf = run.result.series?.portfolio_wealth_factors
       if (!wf) return
       const series = deserializeToArray(wf)
-      console.log(run.strategy_name, "wf type:", typeof wf, "series length:", series.length)
       series.forEach(p => dateSet.add(p.date))
     })
     return Array.from(dateSet).sort()
