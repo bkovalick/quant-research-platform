@@ -3,12 +3,9 @@ import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
 
-from models.backtest_result import BacktestResult
-from reporting.reporting_module import deserialize_dataframe, deserialize_series
-
 class PerformanceMonitor(abc.ABC):
-    def __init__(self, backtest_results: BacktestResult):
-        self.backtest_results = backtest_results
+    def __init__(self):
+        pass
 
     def analyze(self) -> dict:
         return {
@@ -24,16 +21,17 @@ class PerformanceMonitor(abc.ABC):
 
 class SignalDecayMonitor(PerformanceMonitor):
     def __init__(self, 
-                 backtest_results: BacktestResult,
-                 signal: pd.Series,
+                 forward_returns: pd.DataFrame,
+                 signal: pd.DataFrame,
                  window: int = 20):
         """Monitors signal decay by computing rolling Information Coefficient and half-life of those signals."""
-        super().__init__(backtest_results)
+        super().__init__()
 
-        self.portfolio_returns = deserialize_series(self.backtest_results.series["portfolio_returns"])
+        self.forward_returns = forward_returns
         self.signal = signal
         self.window = window
-        assert len(self.signal) == len(self.portfolio_returns), "Signal and returns must be the same length"
+        if not self.signal.index.equals(self.forward_returns.index):
+            raise ValueError("Signal and returns indices must be aligned")
 
     def _compute_ic_statistics(self) -> pd.Series:
         """
@@ -41,12 +39,18 @@ class SignalDecayMonitor(PerformanceMonitor):
         over a rolling window to detect decay.
         """
         ic_values = []
-        for i in range(self.window, len(self.signal)):
-            ic, _ = spearmanr(self.signal.iloc[i-self.window : i], 
-                              self.portfolio_returns.iloc[i - self.window + 1 : i + 1])
-            ic_values.append(ic)
-        
-        return pd.Series(ic_values, index=self.signal.index[self.window:])        
+        for date in self.signal.index:
+            scores = self.signal.loc[date].dropna()
+            fwd_returns = self.forward_returns.loc[date].dropna()
+            common = scores.index.intersection(fwd_returns.index)
+            if len(common) < 5:
+                continue
+
+            ic, _ = spearmanr(scores.loc[common], fwd_returns.loc[common])
+            ic_values.append((date, ic))
+    
+        dates, ics = zip(*ic_values)
+        return pd.Series(ics, index=dates)      
 
     def _compute_half_life(self) -> float:
         """
@@ -57,7 +61,8 @@ class SignalDecayMonitor(PerformanceMonitor):
         Returns np.nan when phi is outside (0, 1), i.e. the series is non-stationary,
         mean-reverting with no persistence, or negatively autocorrelated.
         """
-        phi = self.signal.autocorr(lag=1)
+        ic_series = self._compute_ic_statistics()
+        phi = ic_series.autocorr(lag=1)
 
         if phi <= 0 or phi >= 1:
             return np.nan

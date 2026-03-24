@@ -1,5 +1,5 @@
 from application.experiment_runner import ExperimentRunner
-from reporting.reporting_module import ExcelGenerator
+from reporting.report_generation import ExcelGenerator
 from models.experiment import Experiment
 from models.backtest_result import BacktestResult
 from models.strategy_run import StrategyRun
@@ -22,7 +22,7 @@ def create_folder_path(folder_name: str):
     path.mkdir(parents=True, exist_ok=True)
 
 def local_run():
-    with open(f"src/config/experiment_high_risk.json", 'r') as f:
+    with open(f"src/config/experiment_asset_classes.json", 'r') as f:
         config = json.load(f)
 
     config = config.copy()

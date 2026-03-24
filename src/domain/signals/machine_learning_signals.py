@@ -24,6 +24,8 @@ class MLPredictorSignalsState:
         self.training_window = ml_config.training_window
         self.horizon = ml_config.horizon
         self.sample_stride = ml_config.sample_stride
+        self.scores_history = {}
+        self.fwd_returns_history = {}
 
     def update(self, cursor: int, as_of_date: datetime):
         """
@@ -66,6 +68,12 @@ class MLPredictorSignalsState:
 
         scores = self.model.predict(X_now)
         self.cached_scores = pd.Series(scores, index=X_now.index)
+        self.scores_history[as_of_date] = self.cached_scores.copy()
+        fwd_label_date = dates[cursor - self.horizon] if cursor >= self.horizon else None
+        if fwd_label_date is not None and fwd_label_date in self.scores_history:
+            fwd = self.feature_builder.build_forward_returns(fwd_label_date, self.horizon)
+            if not fwd.empty:
+                self.fwd_returns_history[fwd_label_date] = fwd.copy()
         self.last_trained = cursor
 
     def _should_retrain(self, cursor: int) -> bool:
@@ -77,7 +85,7 @@ class MLPredictorSignalsState:
     def scores(self):
         if self.cached_scores is None:
             return None
-        # Reindex to full universe, NaN for any assets dropped by dropna()
+
         all_tickers = self.feature_builder.prices.columns
         return self.cached_scores.reindex(all_tickers)
 

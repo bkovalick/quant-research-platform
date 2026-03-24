@@ -1,5 +1,6 @@
 from domain.portfolio.portfolio import Portfolio
-from reporting.reporting_module import MetricsCompute
+from reporting.metrics import MetricsCompute
+from reporting.signal_monitoring import SignalDecayMonitor
 from simulation.backtesting_engine import BacktestingEngine
 from simulation.market_state import MarketState
 from services.strategy_factory import StrategyFactory
@@ -10,11 +11,11 @@ from models.market_config import MarketStoreConfig, MarketStateConfig
 from models.signals_config import SignalsConfig
 from models.rebalance_problem import RebalanceProblem
 from models.experiment import Experiment
-from models.machine_learning_config import MachineLearningConfig
 from infrastructure.market_data_gateway import MarketDataStore
 
 import uuid
 from datetime import datetime
+import pandas as pd
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -63,15 +64,24 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         signals_config
     )
 
-    portfolio = engine.run_backtest(rebalance_problem)
+    run = engine.run_backtest(rebalance_problem)
 
     result = metrics_computer.compute(
         rebalance_problem, 
-        portfolio, 
+        run.portfolio, 
         market_store_config, 
         state_config,
         market_store.prices[market_store_config.benchmark]
     )
+    
+    if run.scores_history and run.fwd_returns_history:
+        scores_history_df = pd.DataFrame(run.scores_history).T
+        fwd_df = pd.DataFrame(run.fwd_returns_history).T
+        monitor = SignalDecayMonitor(
+            scores_history_df,
+            fwd_df
+        )
+        monitoring_stats = monitor.analyze()
 
     run_id = str(uuid.uuid4())
     return StrategyRun(
@@ -145,11 +155,11 @@ class ExperimentRunner:
             signals_config
         )
 
-        portfolio = engine.run_backtest(rebalance_problem)
+        run = engine.run_backtest(rebalance_problem)
 
         result = metrics_computer.compute(
             rebalance_problem, 
-            portfolio, 
+            run.portfolio, 
             market_store_config, 
             state_config,
             market_store.prices[market_store_config.benchmark]
