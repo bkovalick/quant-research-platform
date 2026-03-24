@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
 
-class PerformanceMonitor(abc.ABC):
+class BaseSignalMonitor(abc.ABC):
     def __init__(self):
         pass
 
@@ -19,7 +19,7 @@ class PerformanceMonitor(abc.ABC):
     @abc.abstractmethod
     def _compute_half_life(self): ...
 
-class SignalDecayMonitor(PerformanceMonitor):
+class SignalDecayMonitor(BaseSignalMonitor):
     def __init__(self, 
                  forward_returns: pd.DataFrame,
                  signal: pd.DataFrame,
