@@ -26,7 +26,7 @@ class FeatureBuilder:
 
         features = pd.DataFrame(index=self.prices.columns)
         features["mom_1m"]   = px.iloc[-1] / px.iloc[-self._w["1m"]] - 1
-        features["mom_12m"]  = px.iloc[-self._w["1m"]] / px.iloc[-self._w["1y"]] - 1  # skip last month
+        features["mom_12m"]  = px.iloc[-self._w["1m"]] / px.iloc[-self._w["1y"]] - 1
         features["vol_1m"]   = rets.iloc[-self._w["1m"]:].std()
         features["vol_3m"]   = rets.iloc[-self._w["3m"]:].std()
         features["reversal"] = -(px.iloc[-1] / px.iloc[-(self._reversal_window + 1)] - 1)
@@ -35,7 +35,7 @@ class FeatureBuilder:
         return features.dropna()
     
     def build_forward_returns(self,
-                               as_of_date: pd.Timestamp, # I think we can pass cursor instead
+                               as_of_date: pd.Timestamp,
                                horizon: int = 21) -> pd.Series:
         """
         Forward returns starting from as_of_date over `horizon` days.

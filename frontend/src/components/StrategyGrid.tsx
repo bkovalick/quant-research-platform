@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react"
 import type { CSSProperties } from "react"
 import type React from "react"
+import { getEffectiveSummary } from "../utils/metricsUtils"
+import type { DateWindow } from "../utils/metricsUtils"
 
 type SortKey = "strategy_name" | "return" | "volatility" | "sharpe_ratio" | "max_drawdown" | "turnover"
 
@@ -14,7 +16,15 @@ const TOOLTIPS: Record<string, string> = {
   Turnover: "Average annual portfolio turnover. High turnover increases transaction costs and drag on returns.",
 }
 
-export default function StrategyGrid({ runs, onSelect, pinnedIds, onPin }: any) {
+interface Props {
+  runs: any[]
+  onSelect: (run: any) => void
+  pinnedIds: Set<string>
+  onPin: (run: any) => void
+  dateWindow: DateWindow | null
+}
+
+export default function StrategyGrid({ runs, onSelect, pinnedIds, onPin, dateWindow }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("sharpe_ratio")
   const [ascending, setAscending] = useState(false)
 
@@ -23,22 +33,40 @@ export default function StrategyGrid({ runs, onSelect, pinnedIds, onPin }: any) 
     else { setSortKey(key); setAscending(false) }
   }
 
+  // Precompute effective summaries for all runs given current window
+  const effectiveSummaries = useMemo(() => {
+    const map: Record<string, any> = {}
+    runs.forEach(run => {
+      map[run.run_id] = getEffectiveSummary(run, dateWindow)
+    })
+    return map
+  }, [runs, dateWindow])
+
   const sortedRuns = useMemo(() => {
     return [...runs].sort((a, b) => {
-      const getValue = (run: any) => keyIsSummary(sortKey) ? run.result.summary[sortKey] : run[sortKey]
-      const valA = getValue(a)
-      const valB = getValue(b)
+      const getSummaryVal = (run: any) => {
+        const s = effectiveSummaries[run.run_id]
+        if (sortKey === "strategy_name") return run.strategy_name
+        return s?.[sortKey] ?? null
+      }
+      const valA = getSummaryVal(a)
+      const valB = getSummaryVal(b)
       if (valA == null) return 1
       if (valB == null) return -1
       if (typeof valA === "string") return ascending ? valA.localeCompare(valB) : valB.localeCompare(valA)
       return ascending ? valA - valB : valB - valA
     })
-  }, [runs, sortKey, ascending])
+  }, [runs, sortKey, ascending, effectiveSummaries])
 
   return (
     <div style={outerContainer}>
       <div style={headerBar}>
         <span style={headerLabel}>Strategy Overview</span>
+        {dateWindow && (
+          <span style={windowIndicator}>
+            {formatDate(dateWindow.start)} – {formatDate(dateWindow.end)}
+          </span>
+        )}
       </div>
       <div style={innerContainer}>
         <table style={table}>
@@ -55,7 +83,7 @@ export default function StrategyGrid({ runs, onSelect, pinnedIds, onPin }: any) 
           </thead>
           <tbody>
             {sortedRuns.map((run: any) => {
-              const s = run.result.summary
+              const s = effectiveSummaries[run.run_id]
               const colorIdx = runs.findIndex((r: any) => r.run_id === run.run_id)
               const isPinned = pinnedIds?.has(run.run_id)
               return (
@@ -65,11 +93,11 @@ export default function StrategyGrid({ runs, onSelect, pinnedIds, onPin }: any) 
                     {formatStrategyName(run.strategy_name)}
                     {isPinned && <span style={pinnedBadge}>pinned</span>}
                   </td>
-                  <td style={rightCellGreen(s.return)}>{formatPct(s.return)}</td>
-                  <td style={rightCell}>{formatPct(s.volatility)}</td>
-                  <td style={rightCell}>{formatNumber(s.sharpe_ratio)}</td>
-                  <td style={rightCellRed(s.max_drawdown)}>{formatPct(s.max_drawdown)}</td>
-                  <td style={rightCell}>{formatNumber(s.turnover)}</td>
+                  <td style={rightCellGreen(s?.return)}>{formatPct(s?.return)}</td>
+                  <td style={rightCell}>{formatPct(s?.volatility)}</td>
+                  <td style={rightCell}>{formatNumber(s?.sharpe_ratio)}</td>
+                  <td style={rightCellRed(s?.max_drawdown)}>{formatPct(s?.max_drawdown)}</td>
+                  <td style={rightCell}>{formatNumber(s?.turnover)}</td>
                   <td style={rightCell}>
                     <button
                       style={isPinned ? unpinBtn : pinBtn}
@@ -123,23 +151,27 @@ function MetricTooltip({ label, children }: { label: string; children: React.Rea
   )
 }
 
+function formatDate(d: string): string {
+  return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short" })
+}
+
 function formatStrategyName(name: string) {
   return name.replace("_portfolio", "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }
-function keyIsSummary(key: string) { return key !== "strategy_name" }
 function formatPct(v: number | null | undefined) { return v == null ? "-" : (v * 100).toFixed(2) + "%" }
 function formatNumber(v: number | null | undefined) { return v == null ? "-" : v.toFixed(2) }
 
 const outerContainer: CSSProperties = { background: "#161b22", borderRadius: 8, border: "1px solid #2a2f3a", overflow: "hidden" }
-const headerBar: CSSProperties = { background: "#0d1117", borderBottom: "1px solid #2a2f3a", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "center" }
+const headerBar: CSSProperties = { background: "#0d1117", borderBottom: "1px solid #2a2f3a", padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }
 const headerLabel: CSSProperties = { fontSize: 12, fontWeight: 600, color: "#e6edf3", letterSpacing: "0.3px" }
+const windowIndicator: CSSProperties = { fontSize: 10, color: "#388bfd", fontWeight: 500 }
 const innerContainer: CSSProperties = { padding: "0" }
 const table: CSSProperties = { width: "100%", borderCollapse: "collapse" }
 const headerRow: CSSProperties = { borderBottom: "1px solid #2a2f3a" }
 const leftHeader: CSSProperties = { padding: "8px 10px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "#8b949e", cursor: "pointer", userSelect: "none" }
 const rightHeader: CSSProperties = { padding: "8px 10px", textAlign: "right", fontSize: 12, fontWeight: 600, cursor: "pointer", userSelect: "none" }
 const row: CSSProperties = { borderBottom: "1px solid #21262d", cursor: "pointer" }
-const leftCell: CSSProperties = { padding: "8px 10px", textAlign: "left", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }
+const leftCell: CSSProperties = { padding: "8px 10px", textAlign: "left", fontSize: 12, display: "flex", alignItems: "flex-start", gap: 6 }
 const rightCell: CSSProperties = { padding: "8px 10px", textAlign: "right", fontSize: 12 }
 const rightCellGreen = (val: number | null | undefined): CSSProperties => ({
   ...rightCell, color: val != null && val > 0 ? "#3fb950" : "#f85149"
@@ -148,7 +180,7 @@ const rightCellRed = (_: number | null | undefined): CSSProperties => ({
   ...rightCell, color: "#f85149"
 })
 const colorDot: CSSProperties = {
-  display: "inline-block", width: 8, height: 8, borderRadius: "50%", flexShrink: 0
+  display: "inline-block", width: 8, height: 8, borderRadius: "50%", flexShrink: 0, marginTop: 3
 }
 const dotStyle: CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",

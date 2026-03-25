@@ -1,5 +1,5 @@
 from domain.signals.risk_return_signals import RiskReturnSignals
-from domain.signals.ml_signals import MLSignalsState
+from domain.signals.machine_learning_signals import MLPredictorSignalsState
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
 
@@ -11,7 +11,7 @@ class BlackLittermanSignal(RiskReturnSignals):
     def __init__(self, 
                  market_state: MarketState, 
                  signals_config: SignalsConfig,
-                 ml_state: Optional[MLSignalsState],
+                 ml_state: Optional[MLPredictorSignalsState],
                  current_weights: np.ndarray):
         super().__init__(market_state, signals_config)
 
@@ -59,8 +59,8 @@ class BlackLittermanSignal(RiskReturnSignals):
         n = len(ranked)
         quintile = n // 5
 
-        losers  = ranked <= quintile        # bottom 20%
-        winners = ranked >= n - quintile    # top 20%
+        losers  = ranked <= quintile      # bottom 20%
+        winners = ranked > n - quintile   # top 20%
 
         P = self._determine_view_direction(n, winners, losers)
 

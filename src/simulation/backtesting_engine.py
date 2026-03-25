@@ -10,12 +10,12 @@ from domain.signals.volatility_forecasting_signals import VolatilityForecastingS
 from domain.signals.mean_reversion_signals import MeanReversionSignals
 from domain.signals.momentum_signals import MomentumSignals
 from domain.signals.black_litterman_signal import BlackLittermanSignal
-from domain.machine_learning.cross_sectional_model import CrossSectionalModel
+from domain.machine_learning.cross_sectional_model import CrossSectionalModel 
 from domain.machine_learning.feature_builder import FeatureBuilder
-from domain.signals.ml_signals import MLSignals, MLSignalsState
+from domain.signals.machine_learning_signals import MLPredictorSignal, MLPredictorSignalsState
 from models.rebalance_problem import RebalanceProblem
 from models.signals_config import SignalsConfig
-from models.machine_learning_config import MachineLearningConfig
+from models.backtest_run import BacktestRun
 from simulation.market_state import MarketState
 from utils.rebalance_steps import FREQ_TO_STEPS
 
@@ -44,12 +44,12 @@ class BacktestingEngine(BacktestingEngineInterface):
                 self.market_state.market_frequency
             )
             self.cs_model = CrossSectionalModel(self.ml_signals_config)
-            self.ml_signals_state = MLSignalsState(
+            self.ml_signals_state = MLPredictorSignalsState(
                 self.ml_signals_config,
                 self.feature_builder,
                 self.cs_model
             )
-            self.ml_signals = MLSignals(
+            self.ml_signals = MLPredictorSignal(
                 self.market_state, 
                 self.signals_config, 
                 self.ml_signals_config, 
@@ -98,7 +98,11 @@ class BacktestingEngine(BacktestingEngineInterface):
             prev_weights = target_weights
 
         print(f"Backtest duration: {time.time() - start_time} seconds")
-        return self.portfolio
+        return BacktestRun(
+            portfolio=self.portfolio,
+            scores_history=self.ml_signals_state.scores_history if self.ml_signals_config is not None else {},
+            fwd_returns_history=self.ml_signals_state.fwd_returns_history if self.ml_signals_config is not None else {}
+        )
 
     def _is_rebalance_step(self, step):
         return step % self.rebalance_every == 0

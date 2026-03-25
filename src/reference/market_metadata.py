@@ -1,7 +1,4 @@
-import os
 import pandas as pd
-from os import path
-
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -9,8 +6,11 @@ DATA_DIR = BASE_DIR / "data"
 
 FIXED_INCOME_FILE = DATA_DIR / "fixed_income_universe.csv"
 EQUITY_FILE = DATA_DIR / "equity_universe.csv"
+ALTERNATIVE_FILE = DATA_DIR / "alternatives_universe.csv"
 
 class MarketMetadata:
+    """Provides methods to access market metadata such as asset class and sector mappings for the investable universe."""
+
     @staticmethod
     def build_asset_class_map(tickers_with_cash: list) -> dict:
         """Build a mapping from asset class to list of indices in tickers_with_cash."""
@@ -40,19 +40,20 @@ class MarketMetadata:
             cash_idx = tickers_with_cash.index("CASH")
             sector_map.update({"Cash": (cash_idx, "CASH")})
         return sector_map
-        
     
     def get_universe_tickers() -> list:
         """ Get combined universe tickers from fixed income and equity """
         fi_tickers = MarketMetadata.get_fixed_income_mapping_universe()['ticker'].tolist()
         equity_tickers = MarketMetadata.get_equity_mapping_universe()['ticker'].tolist()
-        return fi_tickers + equity_tickers
+        alternative_tickers = MarketMetadata.get_alternative_mapping_universe()['ticker'].tolist()
+        return fi_tickers + equity_tickers + alternative_tickers
     
     @staticmethod
     def get_full_mapping_universe() -> dict:
         fixed_income_df = MarketMetadata.get_fixed_income_mapping_universe()
         equity_df = MarketMetadata.get_equity_mapping_universe()
-        combined = pd.concat([fixed_income_df, equity_df], axis = 0)
+        alternative_df = MarketMetadata.get_alternative_mapping_universe()
+        combined = pd.concat([fixed_income_df, equity_df, alternative_df], axis = 0)
         return combined
     
     @staticmethod
@@ -80,7 +81,7 @@ class MarketMetadata:
     def get_equity_mapping_universe() -> pd.DataFrame:
         """ Get equity universe dataframe """
         if not EQUITY_FILE.exists():
-            raise FileNotFoundError("Fixed income universe file not found.")
+            raise FileNotFoundError("Equity universe file not found.")
         return pd.read_csv(EQUITY_FILE)
 
     @staticmethod
@@ -94,5 +95,26 @@ class MarketMetadata:
     def get_equity_asset_class_mapping() -> dict:
         """ Get asset class mapping for equities """
         df = MarketMetadata.get_equity_mapping_universe()
+        asset_class_mapping = df.set_index('ticker')['asset_class'].to_dict()
+        return asset_class_mapping
+    
+    @staticmethod
+    def get_alternative_mapping_universe() -> pd.DataFrame:
+        """ Get alternative data universe dataframe """
+        if not ALTERNATIVE_FILE.exists():
+            raise FileNotFoundError("Fixed income universe file not found.")
+        return pd.read_csv(ALTERNATIVE_FILE)
+
+    @staticmethod
+    def get_alternative_sector_mapping() -> dict:
+        """ Get sector mapping for alternative data """
+        df = MarketMetadata.get_alternative_mapping_universe()
+        sector_mapping = df.set_index('ticker')['sector'].to_dict()
+        return sector_mapping
+    
+    @staticmethod
+    def get_alternative_asset_class_mapping() -> dict:
+        """ Get asset class mapping for alternative data """
+        df = MarketMetadata.get_alternative_mapping_universe()
         asset_class_mapping = df.set_index('ticker')['asset_class'].to_dict()
         return asset_class_mapping    

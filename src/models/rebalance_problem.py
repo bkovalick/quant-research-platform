@@ -105,4 +105,8 @@ class RebalanceProblem:
     
     @property
     def vol_max_leverage(self) -> float:
-        return self._data.get("vol_max_leverage", None)    
+        return self._data.get("vol_max_leverage", None)
+    
+    @property
+    def signal_source(self) -> str:
+        return self._data.get("signal_source", "risk_return")
