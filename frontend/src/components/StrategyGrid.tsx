@@ -171,7 +171,7 @@ const headerRow: CSSProperties = { borderBottom: "1px solid #2a2f3a" }
 const leftHeader: CSSProperties = { padding: "8px 10px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "#8b949e", cursor: "pointer", userSelect: "none" }
 const rightHeader: CSSProperties = { padding: "8px 10px", textAlign: "right", fontSize: 12, fontWeight: 600, cursor: "pointer", userSelect: "none" }
 const row: CSSProperties = { borderBottom: "1px solid #21262d", cursor: "pointer" }
-const leftCell: CSSProperties = { padding: "8px 10px", textAlign: "left", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }
+const leftCell: CSSProperties = { padding: "8px 10px", textAlign: "left", fontSize: 12, display: "flex", alignItems: "flex-start", gap: 6 }
 const rightCell: CSSProperties = { padding: "8px 10px", textAlign: "right", fontSize: 12 }
 const rightCellGreen = (val: number | null | undefined): CSSProperties => ({
   ...rightCell, color: val != null && val > 0 ? "#3fb950" : "#f85149"
@@ -180,7 +180,7 @@ const rightCellRed = (_: number | null | undefined): CSSProperties => ({
   ...rightCell, color: "#f85149"
 })
 const colorDot: CSSProperties = {
-  display: "inline-block", width: 8, height: 8, borderRadius: "50%", flexShrink: 0
+  display: "inline-block", width: 8, height: 8, borderRadius: "50%", flexShrink: 0, marginTop: 3
 }
 const dotStyle: CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",
