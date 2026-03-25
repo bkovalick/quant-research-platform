@@ -1,5 +1,5 @@
 from domain.portfolio.portfolio import Portfolio
-from reporting.metrics import MetricsCompute
+from reporting.performance_analyzer import PerformanceAnalyzer
 from reporting.signal_monitoring import SignalDecayMonitor
 from simulation.backtesting_engine import BacktestingEngine
 from simulation.market_state import MarketState
@@ -35,7 +35,7 @@ def build_market_state_config(strategy_cfg: dict) -> MarketStateConfig:
 def run_strategy_worker(strategy_cfg, market_store_config):
     market_store = MarketDataStore(market_store_config)
     portfolio = Portfolio()
-    metrics_computer = MetricsCompute()
+    metrics_computer = PerformanceAnalyzer()
 
     state_config = build_market_state_config(strategy_cfg)
     state = MarketState(market_store, state_config)
@@ -78,8 +78,8 @@ def run_strategy_worker(strategy_cfg, market_store_config):
         scores_history_df = pd.DataFrame(run.scores_history).T
         fwd_df = pd.DataFrame(run.fwd_returns_history).T
         monitor = SignalDecayMonitor(
-            scores_history_df,
-            fwd_df
+            fwd_df,
+            scores_history_df
         )
         monitoring_stats = monitor.analyze()
 
@@ -134,7 +134,7 @@ class ExperimentRunner:
                       market_store: MarketDataStore, 
                       market_store_config: MarketStoreConfig) -> StrategyRun:
         portfolio = Portfolio()
-        metrics_computer = MetricsCompute()
+        metrics_computer = PerformanceAnalyzer()
 
         state_config = self._build_market_state_config(strategy_cfg)
         state = self._build_market_state(market_store, state_config)

@@ -1,30 +1,56 @@
 {
+  "_description": "Fixed weight portfolio benchmark. Equal allocation across 7 diversified ETFs covering equity, fixed income, commodities, international, and real estate. Simple rebalance-to-target benchmark.",
   "market_store_config": {
-	"tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-                "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX"
-            ],
+    "tickers": [
+      "SPY",
+      "AGG",
+      "GLD",
+      "EFA",
+      "EEM",
+      "TLT",
+      "VNQ"
+    ],
     "start_date": "2005-01-01",
     "end_date": "2026-02-19",
-    "data_source": { "yfinance": null },
+    "data_source": {
+      "yfinance": null
+    },
     "benchmark": "SPY",
     "risk_free_rate": 0.03,
     "transaction_cost": 0.003
   },
   "strategies": [
     {
-      "name": "fixed_weight_portfolio",
+      "name": "fixed_weight_diversified",
+      "_description": "7-ETF fixed weight benchmark. Rebalances weekly to target. No signal.",
       "market_state_config": {
         "lookback_window_key": "1y",
         "market_frequency": "w",
-        "cash_allocation": 0.0,        
-        "universe_tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "BIDU", "AGG", "NFLX"]
+        "cash_allocation": 0.0,
+        "universe_tickers": [
+          "SPY",
+          "AGG",
+          "GLD",
+          "EFA",
+          "EEM",
+          "TLT",
+          "VNQ"
+        ]
       },
-      "signals_config": {},      
+      "signals_config": {},
       "rebalance_problem": {
         "strategy_type": "fwp_strategy",
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
-        "initial_weights": [0.25, 0.20, 0.15, 0.15, 0.10, 0.025, 0.125]
+        "initial_weights": {
+          "SPY": 0.1429,
+          "AGG": 0.1429,
+          "GLD": 0.1429,
+          "EFA": 0.1429,
+          "EEM": 0.1429,
+          "TLT": 0.1429,
+          "VNQ": 0.1429
+        }
       }
     }
   ]

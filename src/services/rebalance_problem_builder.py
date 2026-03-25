@@ -69,7 +69,8 @@ class RebalanceProblemBuilder:
             "optimizer_vol_constraint": constraints.get("optimizer_vol_constraint", None),
             "vol_target": strategy_rules.get("vol_target", None),
             "vol_lookback_days": self._resolve_window(strategy_rules.get("vol_lookback_days", None)),
-            "vol_max_leverage": strategy_rules.get("vol_max_leverage", None)
+            "vol_max_leverage": strategy_rules.get("vol_max_leverage", None),
+            "signal_source": strategy_rules.get("signal_source", "risk_return")
         }
 
         return RebalanceProblem(prepared_data)
