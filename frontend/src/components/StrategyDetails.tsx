@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import {
   LineChart,
   Line,
   XAxis,
   YAxis,
   ResponsiveContainer,
+  Tooltip,
 } from "recharts"
 import type { CSSProperties } from "react"
 import { deserializeToArray } from "../utils/metricsUtils"
@@ -28,7 +29,8 @@ interface Props {
 export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Props) {
   const [sliderStart, setSliderStart] = useState(0)
   const [sliderEnd, setSliderEnd] = useState(100)
-  const [lastMoved, setLastMoved] = useState<"start" | "end">("end")
+  const trackRef = useRef<HTMLDivElement>(null)
+  const dragging = useRef<"start" | "end" | null>(null)
 
   if (!runs || runs.length === 0) return null
 
@@ -38,34 +40,27 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
     runs.forEach(run => {
       const wf = run.result.series?.portfolio_wealth_factors
       if (!wf) return
-      const series = deserializeToArray(wf)
-      series.forEach(p => dateSet.add(p.date))
+      deserializeToArray(wf).forEach(p => dateSet.add(p.date))
     })
     return Array.from(dateSet).sort()
   }, [runs])
 
-  // Build chart data — rebase each strategy to 1.0 at the window start date
+  // Build chart data — each run rebases to its own first available date
   const data = useMemo(() => {
-    const rebaseDate = dateWindow?.start ?? allDates[0]
-    const rebaseIdx = allDates.findIndex(d => d >= rebaseDate)
-    const effectiveRebaseIdx = rebaseIdx === -1 ? 0 : rebaseIdx
-
     const runMaps: Record<string, Record<string, number>> = {}
     runs.forEach(run => {
       const wf = run.result.series?.portfolio_wealth_factors
       if (!wf) return
-      const series = deserializeToArray(wf)
       const map: Record<string, number> = {}
-      series.forEach(p => { map[p.date] = p.value })
+      deserializeToArray(wf).forEach(p => { map[p.date] = p.value })
       runMaps[run.run_id] = map
     })
 
-    return allDates.map((date) => {
+    return allDates.map(date => {
       const row: any = { date }
       runs.forEach(run => {
         const map = runMaps[run.run_id]
         if (!map) return
-        // Find this run's own first available date as rebase point
         const runDates = Object.keys(map).sort()
         const rebaseDate = dateWindow?.start
           ? runDates.find(d => d >= dateWindow.start) ?? runDates[0]
@@ -85,25 +80,54 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
     return data.filter((_: any, i: number) => i % step === 0 || i === data.length - 1)
   }, [data])
 
+  const visibleData = useMemo(() => {
+    if (!dateWindow) return chartData
+    return chartData.filter((d: any) => d.date >= dateWindow.start && d.date <= dateWindow.end)
+  }, [chartData, dateWindow])
+
   const getDateAtPct = (pct: number) => {
     const idx = Math.round(pct / 100 * (allDates.length - 1))
     return allDates[Math.min(Math.max(idx, 0), allDates.length - 1)]
   }
 
-  const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Math.min(Number(e.target.value), sliderEnd - 5)
-    setSliderStart(val)
-    const startDate = getDateAtPct(val)
-    const endDate = getDateAtPct(sliderEnd)
-    if (startDate && endDate) onWindowChange({ start: startDate, end: endDate })
+  const getPctFromMouseX = (clientX: number) => {
+    if (!trackRef.current) return 0
+    const rect = trackRef.current.getBoundingClientRect()
+    return Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100))
   }
 
-  const handleEndChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Math.max(Number(e.target.value), sliderStart + 5)
-    setSliderEnd(val)
-    const startDate = getDateAtPct(sliderStart)
-    const endDate = getDateAtPct(val)
-    if (startDate && endDate) onWindowChange({ start: startDate, end: endDate })
+  const handleThumbMouseDown = (e: React.MouseEvent, thumb: "start" | "end") => {
+    e.preventDefault()
+    dragging.current = thumb
+
+    const onMove = (ev: MouseEvent) => {
+      const pct = getPctFromMouseX(ev.clientX)
+      if (dragging.current === "start") {
+        const val = Math.min(pct, sliderEnd - 5)
+        setSliderStart(val)
+        onWindowChange({ start: getDateAtPct(val), end: getDateAtPct(sliderEnd) })
+      } else {
+        const val = Math.max(pct, sliderStart + 5)
+        setSliderEnd(val)
+        onWindowChange({ start: getDateAtPct(sliderStart), end: getDateAtPct(val) })
+      }
+    }
+
+    const onUp = () => {
+      dragging.current = null
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }
+
+  const handleTrackMouseDown = (e: React.MouseEvent) => {
+    const pct = getPctFromMouseX(e.clientX)
+    const distStart = Math.abs(pct - sliderStart)
+    const distEnd = Math.abs(pct - sliderEnd)
+    handleThumbMouseDown(e, distStart < distEnd ? "start" : "end")
   }
 
   const handleReset = () => {
@@ -112,31 +136,22 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
     onWindowChange(null)
   }
 
-  const startDateLabel = getDateAtPct(sliderStart)
-  const endDateLabel = getDateAtPct(sliderEnd)
   const isWindowed = sliderStart > 0 || sliderEnd < 100
-
-  // Filter chartData to window
-  const visibleData = useMemo(() => {
-    if (!dateWindow) return chartData
-    return chartData.filter((d: any) => d.date >= dateWindow.start && d.date <= dateWindow.end)
-  }, [chartData, dateWindow])
 
   return (
     <div style={container}>
       {/* Header */}
       <div style={headerBar}>
         <span style={headerLabel}>Cumulative Performance (Log Scale)</span>
-        {isWindowed && (
+        {isWindowed ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={windowBadge}>
-              {formatDate(startDateLabel)} → {formatDate(endDateLabel)}
+              {formatDate(getDateAtPct(sliderStart))} → {formatDate(getDateAtPct(sliderEnd))}
             </span>
             <span style={rebaseNote}>Rebased</span>
             <button style={resetBtn} onClick={handleReset}>Reset</button>
           </div>
-        )}
-        {!isWindowed && (
+        ) : (
           <span style={hintText}>Drag sliders below to zoom</span>
         )}
       </div>
@@ -159,9 +174,28 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
               tick={{ fill: "#8b949e", fontSize: 11 }}
               width={40}
             />
-            {/* Custom tooltip */}
-            {/* Using recharts Tooltip with custom content */}
-            <foreignObject x={0} y={0} width={0} height={0} />
+            <Tooltip
+              content={({ active, payload, label }: any) => {
+                if (!active || !payload?.length) return null
+                return (
+                  <div style={{
+                    background: "#161b22", border: "1px solid #2a2f3a",
+                    padding: "8px 12px", fontSize: 12, borderRadius: 6
+                  }}>
+                    <div style={{ color: "#8b949e", marginBottom: 6 }}>{formatDate(label)}</div>
+                    {payload.map((entry: any) => {
+                      const run = runs.find((r: any) => r.run_id === entry.dataKey)
+                      const name = run ? formatStrategyName(run.strategy_name) : entry.dataKey
+                      return (
+                        <div key={entry.dataKey} style={{ color: entry.stroke, marginBottom: 2 }}>
+                          {name}: {entry.value?.toFixed(3)}x
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              }}
+            />
             {runs.map((run: any, i: number) => (
               <Line
                 key={run.run_id}
@@ -177,37 +211,35 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
         </ResponsiveContainer>
       </div>
 
-      {/* Dual range slider */}
+      {/* Dual drag slider */}
       <div style={sliderContainer}>
-        <div style={sliderTrackWrapper}>
+        <div
+          ref={trackRef}
+          style={sliderTrackWrapper}
+          onMouseDown={handleTrackMouseDown}
+        >
           {/* Background track */}
-          <div style={sliderTrack} />
-          {/* Filled range */}
+          <div style={sliderTrackBg} />
+          {/* Active range fill */}
           <div style={{
-            ...sliderFill,
+            position: "absolute",
+            height: 4,
+            background: "#238636",
+            borderRadius: 2,
+            pointerEvents: "none",
+            zIndex: 2,
             left: `${sliderStart}%`,
             width: `${sliderEnd - sliderStart}%`
           }} />
-          {/* Start thumb — only covers left portion */}
-          <input
-            type="range" min={0} max={100} value={sliderStart}
-            style={{
-              ...sliderInput,
-              width: `${sliderEnd}%`,
-              zIndex: 5
-            }}
-            onChange={handleStartChange}
+          {/* Start thumb */}
+          <div
+            style={{ ...thumbStyle, left: `${sliderStart}%` }}
+            onMouseDown={(e) => { e.stopPropagation(); handleThumbMouseDown(e, "start") }}
           />
-          {/* End thumb — only covers right portion */}
-          <input
-            type="range" min={0} max={100} value={sliderEnd}
-            style={{
-              ...sliderInput,
-              left: `${sliderStart}%`,
-              width: `${100 - sliderStart}%`,
-              zIndex: 5
-            }}
-            onChange={handleEndChange}
+          {/* End thumb */}
+          <div
+            style={{ ...thumbStyle, left: `${sliderEnd}%` }}
+            onMouseDown={(e) => { e.stopPropagation(); handleThumbMouseDown(e, "end") }}
           />
         </div>
         <div style={sliderLabels}>
@@ -239,108 +271,34 @@ function formatStrategyName(name: string) {
 }
 
 const container: CSSProperties = {
-  background: "#161b22",
-  borderRadius: 8,
-  border: "1px solid #2a2f3a",
-  overflow: "hidden",
-  marginTop: 16
+  background: "#161b22", borderRadius: 8,
+  border: "1px solid #2a2f3a", overflow: "hidden", marginTop: 16
 }
-
 const headerBar: CSSProperties = {
-  background: "#0d1117",
-  borderBottom: "1px solid #2a2f3a",
-  padding: "10px 16px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between"
+  background: "#0d1117", borderBottom: "1px solid #2a2f3a",
+  padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between"
 }
-
 const headerLabel: CSSProperties = {
   fontSize: 12, fontWeight: 600, color: "#e6edf3", letterSpacing: "0.3px"
 }
-
-const windowBadge: CSSProperties = {
-  fontSize: 11, color: "#388bfd", fontWeight: 600
-}
-
-const rebaseNote: CSSProperties = {
-  fontSize: 10, color: "#8b949e", fontStyle: "italic"
-}
-
+const windowBadge: CSSProperties = { fontSize: 11, color: "#388bfd", fontWeight: 600 }
+const rebaseNote: CSSProperties = { fontSize: 10, color: "#8b949e", fontStyle: "italic" }
 const resetBtn: CSSProperties = {
   background: "none", border: "1px solid #30363d", borderRadius: 3,
   color: "#8b949e", fontSize: 10, cursor: "pointer", padding: "1px 8px"
 }
-
-const hintText: CSSProperties = {
-  fontSize: 10, color: "#8b949e", fontStyle: "italic"
-}
-
-const sliderContainer: CSSProperties = {
-  padding: "12px 20px 4px"
-}
-
+const hintText: CSSProperties = { fontSize: 10, color: "#8b949e", fontStyle: "italic" }
+const sliderContainer: CSSProperties = { padding: "16px 20px 4px" }
 const sliderTrackWrapper: CSSProperties = {
   position: "relative",
   height: 20,
-  display: "flex",
-  alignItems: "center"
-}
-
-const sliderFill: CSSProperties = {
-  position: "absolute",
-  height: 4,
-  background: "#238636",
-  borderRadius: 2,
-  pointerEvents: "none",
-  zIndex: 2
-}
-
-const sliderInput: CSSProperties = {
-  position: "absolute",
-  width: "100%",
-  height: 4,
-  background: "transparent",
-  appearance: "none",
-  outline: "none",
   cursor: "pointer",
-  margin: 0,
-  padding: 0
+  userSelect: "none"
 }
-
-const sliderLabels: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  marginTop: 4
-}
-
-const sliderLabelText: CSSProperties = {
-  fontSize: 10, color: "#8b949e"
-}
-
-const legendContainer: CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  gap: 24,
-  padding: "10px 16px",
-  flexWrap: "wrap"
-}
-
-const legendItem: CSSProperties = {
-  display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap"
-}
-
-const legendDot: CSSProperties = {
-  width: 8, height: 8, borderRadius: "50%", display: "inline-block"
-}
-
-const legendText: CSSProperties = {
-  fontSize: 11, color: "#8b949e"
-}
-
-const sliderTrack: CSSProperties = {
+const sliderTrackBg: CSSProperties = {
   position: "absolute",
+  top: "50%",
+  transform: "translateY(-50%)",
   width: "100%",
   height: 4,
   background: "#2a2f3a",
@@ -348,3 +306,27 @@ const sliderTrack: CSSProperties = {
   pointerEvents: "none",
   zIndex: 1
 }
+const thumbStyle: CSSProperties = {
+  position: "absolute",
+  top: "50%",
+  transform: "translate(-50%, -50%)",
+  width: 16,
+  height: 16,
+  borderRadius: "50%",
+  background: "#388bfd",
+  border: "2px solid #0d1117",
+  cursor: "grab",
+  zIndex: 5,
+  boxSizing: "border-box"
+}
+const sliderLabels: CSSProperties = {
+  display: "flex", justifyContent: "space-between", marginTop: 6
+}
+const sliderLabelText: CSSProperties = { fontSize: 10, color: "#8b949e" }
+const legendContainer: CSSProperties = {
+  display: "flex", justifyContent: "center", alignItems: "center",
+  gap: 24, padding: "10px 16px", flexWrap: "wrap"
+}
+const legendItem: CSSProperties = { display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }
+const legendDot: CSSProperties = { width: 8, height: 8, borderRadius: "50%", display: "inline-block" }
+const legendText: CSSProperties = { fontSize: 11, color: "#8b949e" }

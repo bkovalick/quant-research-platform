@@ -383,8 +383,16 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                     }
 
                     const equalise = () => {
-                      const eq = tickers.length > 0 ? +(1 / tickers.length).toFixed(4) : 0
-                      const updated = Object.fromEntries(tickers.map(t => [t, eq]))
+                      if (tickers.length === 0) return
+                      const base = 1 / tickers.length
+                      const updated = Object.fromEntries(
+                        tickers.map((t: string, i: number) => [
+                          t,
+                          i === tickers.length - 1
+                            ? 1 - base * (tickers.length - 1)
+                            : base
+                        ])
+                      )
                       updateField(["rebalance_problem", "initial_weights"], updated)
                     }
 
@@ -400,7 +408,7 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                           <Row key={ticker} label={ticker}>
                             <input
                               type="number" step={0.005} min={0} max={1} style={inputStyle}
-                              value={weightsDict[ticker] ?? 0}
+                              value={+((weightsDict[ticker] ?? 0).toFixed(6))}
                               onChange={(e) => updateWeight(ticker, Number(e.target.value))}
                             />
                           </Row>
