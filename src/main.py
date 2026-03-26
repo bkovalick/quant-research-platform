@@ -7,15 +7,13 @@ from models.experiment_model import ExperimentModel
 
 import json
 from datetime import datetime
-
+import os
 from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi import Response
 from io import BytesIO
 from pathlib import Path
-
-import warnings
-warnings.filterwarnings("ignore", module="cvxpy")
+import uvicorn
 
 def create_folder_path(folder_name: str):
     path = Path(folder_name)
@@ -55,8 +53,6 @@ def run_experiment(config: dict = Body(...)):
     experiment_results = runner.run_parallel()
     return experiment_results.to_dict()
 
-from fastapi import Response
-
 @app.post("/download")
 def download(body: ExperimentModel = Body(...)):
     experiment = Experiment(
@@ -93,11 +89,9 @@ def list_experiments(config: dict):
     pass
 
 if __name__ == '__main__':
-    import os
     run_mode = os.environ.get("RUN_MODE", "api").lower()
     run_mode = "local"
     if run_mode == "local":
         local_run()
     else:
-        import uvicorn
         uvicorn.run("main:app", reload=True)

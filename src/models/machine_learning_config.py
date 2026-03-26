@@ -13,6 +13,9 @@ class MachineLearningConfig:
     alpha: float
     rebal_cadence: int
     sample_stride: int
+    n_estimators: int
+    max_depth: int
+    learning_rate: float
 
     @classmethod
     def from_dict(cls, d: dict, market_frequency: str = "d"):
@@ -49,5 +52,8 @@ class MachineLearningConfig:
             horizon = resolve(d.get("horizon"), default_horizon_key),
             alpha = d.get("alpha", 1.0),
             rebal_cadence = d.get("rebal_cadence", 5),
-            sample_stride = d.get("sample_stride", 5)
+            sample_stride = d.get("sample_stride", 5),
+            n_estimators = d.get("n_estimators", 100),
+            max_depth = d.get("max_depth", 3),
+            learning_rate = d.get("learning_rate", 0.05)
         )

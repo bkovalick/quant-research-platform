@@ -40,7 +40,7 @@ class MLPredictorSignalsState:
         train_start = train_end - self.training_window
         if train_start < 0 or train_end <= 0:
             # Not enough history yet, leave scores as None
-            # Strategy will fall back to non-ML signals            
+            # Strategy will fall back to non-ML signals
             return
 
         dates = self.feature_builder.prices.index
@@ -69,11 +69,17 @@ class MLPredictorSignalsState:
         scores = self.model.predict(X_now)
         self.cached_scores = pd.Series(scores, index=X_now.index)
         self.scores_history[as_of_date] = self.cached_scores.copy()
-        fwd_label_date = dates[cursor - self.horizon] if cursor >= self.horizon else None
-        if fwd_label_date is not None and fwd_label_date in self.scores_history:
-            fwd = self.feature_builder.build_forward_returns(fwd_label_date, self.horizon)
-            if not fwd.empty:
-                self.fwd_returns_history[fwd_label_date] = fwd.copy()
+
+        # Back-fill realized forward returns for any prediction dates that have now matured
+        for pred_date, pred_scores in list(self.scores_history.items()):
+            if pred_date in self.fwd_returns_history:
+                continue
+            pred_idx = dates.get_loc(pred_date)
+            if pred_idx + self.horizon <= cursor:
+                fwd = self.feature_builder.build_forward_returns(pred_date, self.horizon)
+                if not fwd.empty:
+                    self.fwd_returns_history[pred_date] = fwd.copy()
+
         self.last_trained = cursor
 
     def _should_retrain(self, cursor: int) -> bool:

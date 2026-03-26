@@ -30,8 +30,6 @@ class SignalDecayMonitor(BaseSignalMonitor):
         self.forward_returns = forward_returns
         self.signal = signal
         self.window = window
-        if not self.signal.index.equals(self.forward_returns.index):
-            raise ValueError("Signal and returns indices must be aligned")
 
     def _compute_ic_statistics(self) -> pd.Series:
         """

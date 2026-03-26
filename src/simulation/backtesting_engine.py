@@ -43,6 +43,9 @@ class BacktestingEngine(BacktestingEngineInterface):
                 self.market_state.returns.copy(),
                 self.market_state.market_frequency
             )
+            start_time = time.time()
+            self.feature_builder.precompute(self.ml_signals_config.horizon)
+            print(f"Feature Building duration: {time.time() - start_time} seconds")
             self.cs_model = CrossSectionalModel(self.ml_signals_config)
             self.ml_signals_state = MLPredictorSignalsState(
                 self.ml_signals_config,

@@ -282,8 +282,8 @@
           "training_window": "2y",
           "horizon": "1m",
           "alpha": 1.0,
-          "rebal_cadence": 5,
-          "sample_stride": 5
+          "rebal_cadence": 20,
+          "sample_stride": 10
         }
       },
       "rebalance_problem": {
