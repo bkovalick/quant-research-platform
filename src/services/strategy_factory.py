@@ -3,6 +3,7 @@ from domain.strategies.mean_variance_strategy import MeanVarianceStrategy
 from domain.strategies.mean_reversion_strategy import MeanReversionStrategy
 from domain.strategies.fixed_weight_strategy import FixedWeightStrategy
 from domain.strategies.equal_weight_strategy import EqualWeightStrategy
+from domain.strategies.systematic_strategy import SystematicStrategy
 
 class IStrategyFactory(abc.ABC):
     """Interface for optimizer factories."""
@@ -16,7 +17,8 @@ class StrategyFactory(IStrategyFactory):
         "mean_variance_strategy": MeanVarianceStrategy,
         "mean_reversion_strategy": MeanReversionStrategy,
         "fwp_strategy": FixedWeightStrategy,
-        "ewp_strategy": EqualWeightStrategy
+        "ewp_strategy": EqualWeightStrategy,
+        "systematic_strategy": SystematicStrategy
     }
 
     """Concrete implementation of an optimizer factory."""

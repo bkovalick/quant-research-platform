@@ -2,6 +2,7 @@ from domain.strategies.istrategy import StrategyInterface
 from models.rebalance_problem import RebalanceProblem
 
 import numpy as np
+import time
 
 class MeanReversionStrategy(StrategyInterface):
     """Mean reversion strategy.
@@ -20,7 +21,7 @@ class MeanReversionStrategy(StrategyInterface):
         
         if reversion_signals is None:
             return current_weights
-        
+
         optimized_weights = self.optimizer.optimize(
             self.rebalance_problem, reversion_signals, current_weights
         )

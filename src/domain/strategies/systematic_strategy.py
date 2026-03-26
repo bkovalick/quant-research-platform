@@ -19,8 +19,11 @@ class SystematicStrategy(StrategyInterface):
                   signals: dict, 
                   current_weights: np.ndarray) -> np.ndarray:
         """Calculate rebalance weights"""
-        signal_key = self.rebalance_problem.signal_source  # "black_litterman", "risk_return", etc.
+        signal_key = self.rebalance_problem.signal_source
         active_signals = signals.get(signal_key)
+        
+        if active_signals is None:
+            return current_weights
         
         optimized = self.optimizer.optimize(
             self.rebalance_problem, active_signals, current_weights

@@ -38,6 +38,9 @@ class SignalDecayMonitor(BaseSignalMonitor):
         """
         ic_values = []
         for date in self.signal.index:
+            if date not in self.forward_returns.index:
+                continue
+
             scores = self.signal.loc[date].dropna()
             fwd_returns = self.forward_returns.loc[date].dropna()
             common = scores.index.intersection(fwd_returns.index)
@@ -47,6 +50,9 @@ class SignalDecayMonitor(BaseSignalMonitor):
             ic, _ = spearmanr(scores.loc[common], fwd_returns.loc[common])
             ic_values.append((date, ic))
     
+        if not ic_values:
+            return pd.Series(dtype=float)
+        
         dates, ics = zip(*ic_values)
         return pd.Series(ics, index=dates)      
 

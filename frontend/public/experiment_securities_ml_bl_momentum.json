@@ -287,8 +287,9 @@
         }
       },
       "rebalance_problem": {
-        "strategy_type": "mean_reversion_strategy",
+        "strategy_type": "systematic_strategy",
         "optimizer_type": "portfolio_optimizer",
+        "signal_source": "black_litterman",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
         "strategy_rules": {

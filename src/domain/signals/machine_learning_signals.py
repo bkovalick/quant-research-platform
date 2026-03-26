@@ -39,8 +39,6 @@ class MLPredictorSignalsState:
         train_end = cursor - self.horizon
         train_start = train_end - self.training_window
         if train_start < 0 or train_end <= 0:
-            # Not enough history yet, leave scores as None
-            # Strategy will fall back to non-ML signals
             return
 
         dates = self.feature_builder.prices.index
@@ -113,7 +111,6 @@ class MLPredictorSignal(RiskReturnSignals):
             return super().mean_returns()
         scores = self.state.scores.to_numpy(dtype=float)
         if np.isnan(scores).any():
-            # Fall back to historical means for any assets the model couldn't score
             fallback = super().mean_returns()
             nan_mask = np.isnan(scores)
             scores[nan_mask] = fallback[nan_mask]

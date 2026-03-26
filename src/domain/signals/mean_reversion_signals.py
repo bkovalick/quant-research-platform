@@ -6,6 +6,7 @@ from simulation.market_state import MarketState
 from domain.signals.risk_return_signals import RiskReturnSignals
 
 class MeanReversionSignals(RiskReturnSignals):
+    """Mean Reversion Signals drive by window of price deviation from moving average."""
     def __init__(self, 
                  market_state: MarketState, 
                  signals_cfg: SignalsConfig):
