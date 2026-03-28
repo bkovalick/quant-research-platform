@@ -22,7 +22,6 @@
   "strategies": [
     {
       "name": "fixed_weight_diversified",
-      "_description": "7-ETF fixed weight benchmark. Rebalances weekly to target. No signal.",
       "market_state_config": {
         "lookback_window_key": "1y",
         "market_frequency": "w",

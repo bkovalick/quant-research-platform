@@ -21,7 +21,9 @@ class MarketState:
         self.annual_trading_days = state_config.annual_trading_days
         self.cursor = 0
         self.prices = self._resample(self.market_frequency, self._parse_universe(self.universe_tickers))
-        self.exogenous_universe = self._resample(self.market_frequency, self._parse_universe(self.exogenous_tickers))
+        self.exogenous_universe = self._resample(self.market_frequency, 
+                                                 self._parse_universe(self.exogenous_tickers)) \
+                            if set(self.exogenous_tickers).issubset(self.store.prices.columns) else None
         self.returns = self.prices.pct_change().fillna(0)
     
     @property

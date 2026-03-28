@@ -1,5 +1,5 @@
 {
-  "_description": "ETF-only universe. Traditional signals only \u2014 BL momentum. ETFs lack cross-sectional dispersion for ML; use as control experiment.",
+  "_description": "ETF-only universe. BL momentum \u2014 no ML. ETFs lack cross-sectional dispersion for ML. Control experiment.",
   "market_store_config": {
     "start_date": "2005-01-01",
     "end_date": "2026-02-19",
@@ -147,7 +147,7 @@
     },
     {
       "name": "etf_mean_variance_only",
-      "_description": "Raw mean-variance baseline on ETF universe. No signal.",
+      "_description": "Raw mean-variance baseline on ETF universe.",
       "market_state_config": {
         "lookback_window_key": "1y",
         "market_frequency": "d",
@@ -201,11 +201,6 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
-        "strategy_rules": {
-          "vol_target": 0.12,
-          "vol_lookback_days": "1m",
-          "vol_max_leverage": 1.3
-        },
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,

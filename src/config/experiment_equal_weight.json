@@ -25,7 +25,6 @@
   "strategies": [
     {
       "name": "equal_weight_diversified",
-      "_description": "10-ETF equal weight benchmark. 1/N per asset, rebalances weekly.",
       "market_state_config": {
         "lookback_window_key": "1y",
         "market_frequency": "w",

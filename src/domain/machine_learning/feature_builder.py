@@ -16,7 +16,8 @@ class FeatureBuilder:
         self.prices = market_state.prices.copy()
         self.returns = market_state.returns.copy()
         self.exogenous_universe = market_state.exogenous_universe.copy()
-        self.benchmark = benchmark 
+        self.benchmark = benchmark
+        self.benchmark_returns = benchmark.pct_change().fillna(0) 
         self.lookbacks = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
         self.reversal_window = self.lookbacks.get("1w", 1)
         self.features_cache = None
@@ -58,10 +59,9 @@ class FeatureBuilder:
         """
         px   = self.prices.loc[:date]
         rets = self.returns.loc[:date]
-        market_rets = self.benchmark.loc[:date]
+        market_rets = self.benchmark_returns.loc[:date]
         vix_prices = self.exogenous_universe["^VIX"].loc[:date]
         high_vol = self._compute_high_vol(vix_prices)
-        rolling_beta = self._compute_rolling_beta(rets, market_rets, self.lookbacks)
 
         if len(px) < self.lookbacks["1y"]:
             return pd.DataFrame(index=self.prices.columns)
@@ -78,7 +78,6 @@ class FeatureBuilder:
         features["high_52w"] = px.iloc[-1] / px.iloc[-self.lookbacks["1y"]:].max()
         features["beta_1m"] = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1m"])
         features["beta_1y"] = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1y"])
-        # features["turnover"] = volume.iloc[-self.w["1m"]:].mean()
         features = features.rank(axis=0, pct=True)
         return features.dropna()
     
@@ -116,7 +115,7 @@ class FeatureBuilder:
     def _compute_rolling_beta(self, 
                               stock_returns: pd.DataFrame, 
                               market_returns: pd.Series, 
-                              window: int = 21):
+                              window: int = 21) -> pd.Series:
         """ Compute rolling beta of each stock to the market over the specified window. """
         cov_with_market = stock_returns.iloc[-window:].apply(
             lambda col: col.cov(market_returns.iloc[-window:])
