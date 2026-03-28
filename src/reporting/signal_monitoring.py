@@ -79,5 +79,7 @@ class SignalDecayMonitor(BaseSignalMonitor):
         Perform a one-sample t-test to determine if the mean IC is significantly different from zero.
         Returns the t-statistic and p-value.
         """
+        if len(ic_series.dropna()) < 2:
+            return {"t_statistic": np.nan, "p_value": np.nan}
         t_stat, p_value = stats.ttest_1samp(ic_series.dropna(), 0)
         return {"t_statistic": t_stat, "p_value": p_value}

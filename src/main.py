@@ -90,7 +90,6 @@ def list_experiments(config: dict):
 
 if __name__ == '__main__':
     run_mode = os.environ.get("RUN_MODE", "api").lower()
-    run_mode = "local"
     if run_mode == "local":
         local_run()
     else:

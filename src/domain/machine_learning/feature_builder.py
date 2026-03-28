@@ -17,7 +17,7 @@ class FeatureBuilder:
         self.returns = market_state.returns.copy()
         self.exogenous_universe = market_state.exogenous_universe.copy()
         self.benchmark = benchmark
-        self.benchmark_returns = benchmark.pct_change().fillna(0) 
+        self.benchmark_returns = benchmark.pct_change(fill_method=None).fillna(0)
         self.lookbacks = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
         self.reversal_window = self.lookbacks.get("1w", 1)
         self.features_cache = None
@@ -60,7 +60,8 @@ class FeatureBuilder:
         px   = self.prices.loc[:date]
         rets = self.returns.loc[:date]
         market_rets = self.benchmark_returns.loc[:date]
-        vix_prices = self.exogenous_universe["^VIX"].loc[:date]
+        vix_prices = self.exogenous_universe["^VIX"].loc[:date] \
+            if "^VIX" in self.exogenous_universe else pd.Series(dtype=float)
         high_vol = self._compute_high_vol(vix_prices)
 
         if len(px) < self.lookbacks["1y"]:
@@ -107,6 +108,8 @@ class FeatureBuilder:
         return fwd
     
     def _compute_high_vol(self, vix_prices: pd.Series) -> float:
+        if vix_prices.empty:
+            return 0.0
         vix_now = vix_prices.iloc[-1]
         vix_median = vix_prices.iloc[-self.lookbacks["1y"]:].median()
         high_vol = (vix_now > vix_median).astype(float)

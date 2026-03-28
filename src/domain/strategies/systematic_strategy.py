@@ -29,6 +29,4 @@ class SystematicStrategy(StrategyInterface):
             self.rebalance_problem, active_signals, current_weights
         )
         
-        # if getattr(self.rebalance_problem, 'vol_target', None):
-            # return self._apply_vol_targeting(active_signals, optimized)
         return optimized

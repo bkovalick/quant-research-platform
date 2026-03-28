@@ -34,7 +34,7 @@ class BacktestingEngine(BacktestingEngineInterface):
                  strategy: StrategyInterface,
                  market_state: MarketState,
                  signals_config: SignalsConfig,
-                 benchmark: pd.Series):
+                 benchmark: pd.Series = None):
         self.portfolio = portfolio
         self.strategy = strategy
         self.market_state = market_state

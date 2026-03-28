@@ -23,7 +23,7 @@ class MarketState:
         self.prices = self._resample(self.market_frequency, self._parse_universe(self.universe_tickers))
         self.exogenous_universe = self._resample(self.market_frequency, 
                                                  self._parse_universe(self.exogenous_tickers)) \
-                            if set(self.exogenous_tickers).issubset(self.store.prices.columns) else None
+                            if set(self.exogenous_tickers).issubset(self.store.prices.columns) else pd.DataFrame()
         self.returns = self.prices.pct_change().fillna(0)
     
     @property

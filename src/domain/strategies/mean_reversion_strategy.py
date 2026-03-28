@@ -2,7 +2,6 @@ from domain.strategies.istrategy import StrategyInterface
 from models.rebalance_problem import RebalanceProblem
 
 import numpy as np
-import time
 
 class MeanReversionStrategy(StrategyInterface):
     """Mean reversion strategy.
