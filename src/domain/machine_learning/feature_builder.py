@@ -55,6 +55,7 @@ class FeatureBuilder:
         """
         px   = self.prices.loc[:date]
         rets = self.returns.loc[:date]
+        exg_uni = self.exogenous_universe.loc[:date]
 
         if len(px) < self.w["1y"]:
             return pd.DataFrame(index=self.prices.columns)
@@ -65,7 +66,7 @@ class FeatureBuilder:
         features["vol_1m"]   = rets.iloc[-self.w["1m"]:].std()
         features["vol_3m"]   = rets.iloc[-self.w["3m"]:].std()
         features["reversal"] = -(px.iloc[-1] / px.iloc[-(self.reversal_window + 1)] - 1)
-        features["vix_level"] = self.exogenous_universe.loc[:date].iloc[-1]
+        features["vix_level"] = exg_uni.iloc[-1]
         features = features.rank(axis=0, pct=True)
         return features.dropna()
     

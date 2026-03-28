@@ -2,6 +2,7 @@
   "_description": "Baseline. No BL, no ML. Raw mean-variance with Ledoit-Wolf covariance. Floor for signal comparison.",
   "market_store_config": {
     "tickers": [
+      "^VIX",
       "ACN",
       "AKAM",
       "APH",
@@ -149,6 +150,7 @@
         "lookback_window_key": "1y",
         "market_frequency": "d",
         "cash_allocation": 0.05,
+        "exogenous_tickers": ["^VIX"],
         "universe_tickers": [
           "ACN",
           "AKAM",

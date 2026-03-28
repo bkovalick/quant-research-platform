@@ -33,11 +33,8 @@ class SignalDecayMonitor(BaseSignalMonitor):
 
     def _compute_ic_statistics(self) -> pd.Series:
         """
-        Calculates the Information Coefficient (IC) over a rolling window to detect decay.
-
-        The IC is the Spearman rank correlation between predicted signal scores and
-        realized forward returns — a rank-based, non-parametric measure of how well
-        the signal monotonically predicts future returns, ranging from -1 to +1.
+        Calculates the Information Coefficient (Spearman Rank Correlation) 
+        over a rolling window to detect decay.
         """
         ic_values = []
         for date in self.signal.index:

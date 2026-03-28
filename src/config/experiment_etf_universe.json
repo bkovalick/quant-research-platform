@@ -2,6 +2,7 @@
   "_description": "ETF-only universe. Traditional signals only (no ML) \u2014 time-series momentum via BL. ETFs lack cross-sectional dispersion for ML; use as control experiment and for future time-series momentum strategy.",
   "market_store_config": {
     "tickers": [
+      "^VIX",
       "SPY",
       "IVW",
       "IWD",
@@ -51,6 +52,7 @@
         "lookback_window_key": "1y",
         "market_frequency": "d",
         "cash_allocation": 0.05,
+        "exogenous_tickers": ["VIX"],
         "universe_tickers": [
           "SPY",
           "IVW",

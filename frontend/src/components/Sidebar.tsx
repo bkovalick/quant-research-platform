@@ -344,6 +344,20 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                             )
                           })}
                       </div>
+                    <Row label="Exogenous">
+                      <input
+                        style={inputStyle}
+                        placeholder="e.g. ^VIX, ^TNX"
+                        value={(currentStrategy.market_state_config?.exogenous_tickers ?? []).join(", ")}
+                        onChange={(e) => {
+                          const tickers = e.target.value
+                            .split(",")
+                            .map((t: string) => t.trim())
+                            .filter((t: string) => t.length > 0)
+                          updateField(["market_state_config", "exogenous_tickers"], tickers)
+                        }}
+                      />
+                    </Row>
                   </Section>
                   
                   <Section title="Strategy Type">

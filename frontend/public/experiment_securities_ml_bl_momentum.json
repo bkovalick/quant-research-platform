@@ -2,6 +2,7 @@
   "_description": "Primary experiment. ML cross-sectional Ridge scores feed BL momentum view on 100-stock universe.",
   "market_store_config": {
     "tickers": [
+      "^VIX",
       "ACN",
       "AKAM",
       "APH",
@@ -149,6 +150,7 @@
         "lookback_window_key": "1y",
         "market_frequency": "d",
         "cash_allocation": 0.05,
+        "exogenous_tickers": ["^VIX"],
         "universe_tickers": [
           "ACN",
           "AKAM",

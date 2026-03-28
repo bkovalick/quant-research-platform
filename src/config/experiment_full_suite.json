@@ -2,6 +2,7 @@
   "_description": "Full ablation suite. All four signal configurations on 100-stock universe. Isolates marginal contribution of ML, BL, and view direction.",
   "market_store_config": {
     "tickers": [
+      "^VIX",
       "ACN",
       "AKAM",
       "APH",
@@ -150,6 +151,7 @@
         "lookback_window_key": "1y",
         "market_frequency": "d",
         "cash_allocation": 0.05,
+        "exogenous_tickers": ["^VIX"],
         "universe_tickers": [
           "ACN",
           "AKAM",
@@ -372,6 +374,7 @@
         "lookback_window_key": "1y",
         "market_frequency": "d",
         "cash_allocation": 0.05,
+        "exogenous_tickers": ["^VIX"],
         "universe_tickers": [
           "ACN",
           "AKAM",
@@ -594,6 +597,7 @@
         "lookback_window_key": "1y",
         "market_frequency": "d",
         "cash_allocation": 0.05,
+        "exogenous_tickers": ["^VIX"],
         "universe_tickers": [
           "ACN",
           "AKAM",
@@ -799,6 +803,7 @@
         "lookback_window_key": "1y",
         "market_frequency": "d",
         "cash_allocation": 0.05,
+        "exogenous_tickers": ["^VIX"],
         "universe_tickers": [
           "ACN",
           "AKAM",
