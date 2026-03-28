@@ -1,6 +1,14 @@
 {
-  "_description": "Equal weight portfolio benchmark. 1/N allocation across 10 diversified ETFs. Rebalances weekly. Simplest possible benchmark \u2014 no signal, no optimization.",
+  "_description": "Equal weight portfolio benchmark. 1/N allocation across 10 diversified ETFs.",
   "market_store_config": {
+    "start_date": "2005-01-01",
+    "end_date": "2026-02-19",
+    "data_source": {
+      "yfinance": null
+    },
+    "benchmark": "SPY",
+    "risk_free_rate": 0.03,
+    "transaction_cost": 0.003,
     "tickers": [
       "SPY",
       "AGG",
@@ -12,15 +20,7 @@
       "XLK",
       "XLV",
       "XLE"
-    ],
-    "start_date": "2005-01-01",
-    "end_date": "2026-02-19",
-    "data_source": {
-      "yfinance": null
-    },
-    "benchmark": "SPY",
-    "risk_free_rate": 0.03,
-    "transaction_cost": 0.003
+    ]
   },
   "strategies": [
     {

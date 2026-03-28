@@ -1,5 +1,8 @@
 import pandas as pd
+import numpy as np
+
 from utils.lookback_windows import LOOKBACK_WINDOWS
+from simulation.market_state import MarketState
 
 class FeatureBuilder:
     """
@@ -7,15 +10,15 @@ class FeatureBuilder:
     returns for ML model training and inference.
     """
     def __init__(self, 
-                 prices: pd.DataFrame, 
-                 returns: pd.DataFrame,
-                 exogenous_universe: pd.DataFrame,
+                 market_state: MarketState,
+                 benchmark: pd.Series,
                  market_frequency: str = "d"):
-        self.prices = prices
-        self.returns = returns
-        self.exogenous_universe = exogenous_universe
-        self.w = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
-        self.reversal_window = self.w.get("1w", 1)
+        self.prices = market_state.prices.copy()
+        self.returns = market_state.returns.copy()
+        self.exogenous_universe = market_state.exogenous_universe.copy()
+        self.benchmark = benchmark 
+        self.lookbacks = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
+        self.reversal_window = self.lookbacks.get("1w", 1)
         self.features_cache = None
         self.forward_returns_cache = None
 
@@ -26,7 +29,7 @@ class FeatureBuilder:
         """
         features_cache = {}
         fwd_returns_cache = {}
-        for date in self.prices.index[self.w["1y"]:]:
+        for date in self.prices.index[self.lookbacks["1y"]:]:
             features = self._build_single_date(date)
             if not features.empty:
                 features_cache[date] = features
@@ -55,18 +58,27 @@ class FeatureBuilder:
         """
         px   = self.prices.loc[:date]
         rets = self.returns.loc[:date]
-        exg_uni = self.exogenous_universe.loc[:date]
+        market_rets = self.benchmark.loc[:date]
+        vix_prices = self.exogenous_universe["^VIX"].loc[:date]
+        high_vol = self._compute_high_vol(vix_prices)
+        rolling_beta = self._compute_rolling_beta(rets, market_rets, self.lookbacks)
 
-        if len(px) < self.w["1y"]:
+        if len(px) < self.lookbacks["1y"]:
             return pd.DataFrame(index=self.prices.columns)
 
         features = pd.DataFrame(index=self.prices.columns)
-        features["mom_1m"]   = px.iloc[-1] / px.iloc[-self.w["1m"]] - 1
-        features["mom_12m"]  = px.iloc[-self.w["1m"]] / px.iloc[-self.w["1y"]] - 1
-        features["vol_1m"]   = rets.iloc[-self.w["1m"]:].std()
-        features["vol_3m"]   = rets.iloc[-self.w["3m"]:].std()
-        features["reversal"] = -(px.iloc[-1] / px.iloc[-(self.reversal_window + 1)] - 1)
-        features["vix_level"] = exg_uni.iloc[-1]
+        features["mom_1m"]   = px.iloc[-1] / px.iloc[-self.lookbacks["1m"]] - 1          # Short-term momentum: 1-month price return
+        features["mom_12m"]  = px.iloc[-self.lookbacks["1m"]] / px.iloc[-self.lookbacks["1y"]] - 1  # Long-term momentum: 2–12 month price return, skipping the most recent month to avoid reversal contamination
+        features["vol_1m"]   = rets.iloc[-self.lookbacks["1m"]:].std()                    # Realised volatility over the past month
+        features["vol_3m"]   = rets.iloc[-self.lookbacks["3m"]:].std()                    # Realised volatility over the past quarter
+        features["reversal"] = -(px.iloc[-1] / px.iloc[-(self.reversal_window + 1)] - 1)  # Short-term reversal: negative 1-week return, capturing mean-reversion of recent winners/losers
+        features["mom_x_vol_regime"] = features["mom_12m"] * (1 - high_vol)  # momentum only in low vol
+        features["reversal_x_vol_regime"] = features["reversal"] * high_vol  # reversal only in high vol
+        features["max_return"] = rets.iloc[-self.lookbacks["1m"]:].max()
+        features["high_52w"] = px.iloc[-1] / px.iloc[-self.lookbacks["1y"]:].max()
+        features["beta_1m"] = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1m"])
+        features["beta_1y"] = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1y"])
+        # features["turnover"] = volume.iloc[-self.w["1m"]:].mean()
         features = features.rank(axis=0, pct=True)
         return features.dropna()
     
@@ -94,3 +106,25 @@ class FeatureBuilder:
             return pd.Series(dtype=float)
         fwd = px.iloc[idx + horizon] / px.iloc[idx] - 1
         return fwd
+    
+    def _compute_high_vol(self, vix_prices: pd.Series) -> float:
+        vix_now = vix_prices.iloc[-1]
+        vix_median = vix_prices.iloc[-self.lookbacks["1y"]:].median()
+        high_vol = (vix_now > vix_median).astype(float)
+        return high_vol
+
+    def _compute_rolling_beta(self, 
+                              stock_returns: pd.DataFrame, 
+                              market_returns: pd.Series, 
+                              window: int = 21):
+        """ Compute rolling beta of each stock to the market over the specified window. """
+        cov_with_market = stock_returns.iloc[-window:].apply(
+            lambda col: col.cov(market_returns.iloc[-window:])
+        )
+
+        market_variance = market_returns.iloc[-window:].var()
+
+        if market_variance == 0:
+            return pd.Series(np.nan, index=stock_returns.columns)
+        
+        return cov_with_market / market_variance

@@ -1,6 +1,14 @@
 {
   "_description": "Primary experiment. ML cross-sectional Ridge scores feed BL momentum view on 100-stock universe.",
   "market_store_config": {
+    "start_date": "2005-01-01",
+    "end_date": "2026-02-19",
+    "data_source": {
+      "yfinance": null
+    },
+    "benchmark": "SPY",
+    "risk_free_rate": 0.03,
+    "transaction_cost": 0.003,
     "tickers": [
       "^VIX",
       "ACN",
@@ -133,15 +141,7 @@
       "GLD",
       "PDBC",
       "VNQ"
-    ],
-    "start_date": "2005-01-01",
-    "end_date": "2026-02-19",
-    "data_source": {
-      "yfinance": null
-    },
-    "benchmark": "SPY",
-    "risk_free_rate": 0.03,
-    "transaction_cost": 0.003
+    ]
   },
   "strategies": [
     {
@@ -149,8 +149,10 @@
       "market_state_config": {
         "lookback_window_key": "1y",
         "market_frequency": "d",
-        "cash_allocation": 0.05,
-        "exogenous_tickers": ["^VIX"],
+        "cash_allocation": 0.005,
+        "exogenous_tickers": [
+          "^VIX"
+        ],
         "universe_tickers": [
           "ACN",
           "AKAM",
@@ -289,9 +291,7 @@
         }
       },
       "rebalance_problem": {
-        "strategy_type": "systematic_strategy",
         "optimizer_type": "portfolio_optimizer",
-        "signal_source": "black_litterman",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
         "strategy_rules": {
@@ -310,18 +310,18 @@
           "max_positions": 50,
           "asset_class_constraints": {
             "Equity": [
-              0.7,
-              0.9
+              0.75,
+              0.95
             ],
             "Fixed Income": [
-              0.05,
-              0.25
+              0.03,
+              0.2
             ]
           },
           "sector_constraints": {
             "Information Technology": [
-              0.1,
-              0.25
+              0.06,
+              0.35
             ],
             "Health Care": [
               0.05,
@@ -332,12 +332,12 @@
               0.2
             ],
             "Consumer Discretionary": [
-              0.05,
+              0.04,
               0.15
             ],
             "Industrials": [
               0.05,
-              0.15
+              0.18
             ],
             "Consumer Staples": [
               0.03,
@@ -345,26 +345,28 @@
             ],
             "Communication Services": [
               0.03,
-              0.12
+              0.14
             ],
             "Energy": [
-              0.0,
-              0.08
+              0.02,
+              0.09
             ],
             "Utilities": [
-              0.0,
-              0.06
+              0.02,
+              0.09
             ],
             "Materials": [
-              0.0,
-              0.06
+              0.02,
+              0.09
             ],
             "Real Estate": [
-              0.0,
-              0.05
+              0.02,
+              0.08
             ]
           }
-        }
+        },
+        "strategy_type": "systematic_strategy",
+        "signal_source": "black_litterman"
       }
     }
   ]
