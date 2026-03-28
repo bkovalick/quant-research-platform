@@ -25,19 +25,66 @@ class FeatureBuilder:
 
     def precompute(self, horizon: int = 21):
         """
-        Precompute features for all dates and cache them in memory for 
+        Precompute features for all dates and cache them in memory for
         fast retrieval during training/inference.
-        """
-        features_cache = {}
-        fwd_returns_cache = {}
-        for date in self.prices.index[self.lookbacks["1y"]:]:
-            features = self._build_single_date(date)
-            if not features.empty:
-                features_cache[date] = features
 
-            fwd_returns = self._build_forward_returns_single(date, horizon)
-            if not fwd_returns.empty:
-                fwd_returns_cache[date] = fwd_returns
+        All rolling computations are vectorized over the full history first
+        (one O(T) pass each), then a single O(T) loop assembles per-date
+        feature matrices — avoiding the O(T²) cost of growing .loc[:date]
+        slices inside the loop.
+        """
+        w   = self.lookbacks
+        px  = self.prices
+        rets = self.returns
+        mret = self.benchmark_returns.reindex(rets.index).fillna(0)
+
+        # vectorized rolling features
+        mom_1m   = px / px.shift(w["1m"]) - 1
+        mom_12m  = px.shift(w["1m"]) / px.shift(w["1y"]) - 1
+        vol_1m   = rets.rolling(w["1m"]).std()
+        vol_3m   = rets.rolling(w["3m"]).std()
+        reversal = -(px / px.shift(self.reversal_window) - 1)
+        max_ret  = rets.rolling(w["1m"]).max()
+        high_52w = px / px.rolling(w["1y"]).max()
+        
+        market_var_1m = mret.rolling(w["1m"]).var()
+        market_var_1y = mret.rolling(w["1y"]).var()
+        beta_1m = rets.rolling(w["1m"]).cov(mret).div(market_var_1m.replace(0, np.nan), axis=0)
+        beta_1y = rets.rolling(w["1y"]).cov(mret).div(market_var_1y.replace(0, np.nan), axis=0)
+
+        if "^VIX" in self.exogenous_universe.columns:
+            vix = self.exogenous_universe["^VIX"].reindex(px.index).ffill()
+            high_vol_series = (vix > vix.rolling(w["1y"]).median()).astype(float)
+        else:
+            high_vol_series = pd.Series(0.0, index=px.index)
+
+        # forward returns
+        fwd_returns_cache = {}
+        for i in range(len(px) - horizon):
+            fwd = px.iloc[i + horizon] / px.iloc[i] - 1
+            if not fwd.empty:
+                fwd_returns_cache[px.index[i]] = fwd
+
+        # assemble per-date feature matrices
+        features_cache = {}
+        for date in px.index[w["1y"]:]:
+            hv = float(high_vol_series.get(date, 0.0))
+            feat = pd.DataFrame({
+                "mom_1m":                mom_1m.loc[date],
+                "mom_12m":               mom_12m.loc[date],
+                "vol_1m":                vol_1m.loc[date],
+                "vol_3m":                vol_3m.loc[date],
+                "reversal":              reversal.loc[date],
+                "mom_x_vol_regime":      mom_12m.loc[date] * (1 - hv),
+                "reversal_x_vol_regime": reversal.loc[date] * hv,
+                "max_return":            max_ret.loc[date],
+                "high_52w":              high_52w.loc[date],
+                "beta_1m":               beta_1m.loc[date],
+                "beta_1y":               beta_1y.loc[date],
+            })
+            feat = feat.rank(axis=0, pct=True).dropna()
+            if not feat.empty:
+                features_cache[date] = feat
 
         self.features_cache = features_cache
         self.forward_returns_cache = fwd_returns_cache
@@ -59,7 +106,7 @@ class FeatureBuilder:
         """
         px   = self.prices.loc[:date]
         rets = self.returns.loc[:date]
-        market_rets = self.benchmark_returns.loc[:date]
+        market_rets = self.benchmark_returns.reindex(rets.index).fillna(0)
         vix_prices = self.exogenous_universe["^VIX"].loc[:date] \
             if "^VIX" in self.exogenous_universe else pd.Series(dtype=float)
         high_vol = self._compute_high_vol(vix_prices)
