@@ -9,9 +9,11 @@ class FeatureBuilder:
     def __init__(self, 
                  prices: pd.DataFrame, 
                  returns: pd.DataFrame,
+                 exogenous_universe: pd.DataFrame,
                  market_frequency: str = "d"):
         self.prices = prices
         self.returns = returns
+        self.exogenous_universe = exogenous_universe
         self.w = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
         self.reversal_window = self.w.get("1w", 1)
         self.features_cache = None
@@ -63,6 +65,7 @@ class FeatureBuilder:
         features["vol_1m"]   = rets.iloc[-self.w["1m"]:].std()
         features["vol_3m"]   = rets.iloc[-self.w["3m"]:].std()
         features["reversal"] = -(px.iloc[-1] / px.iloc[-(self.reversal_window + 1)] - 1)
+        features["vix_level"] = self.exogenous_universe.loc[:date].iloc[-1]
         features = features.rank(axis=0, pct=True)
         return features.dropna()
     

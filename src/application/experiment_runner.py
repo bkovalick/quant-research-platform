@@ -32,7 +32,7 @@ def build_market_state_config(strategy_cfg: dict) -> MarketStateConfig:
         raise ValueError("Error: Market state configuration must be present to run a backtest")
     return MarketStateConfig.from_dict(market_state_config)
 
-def run_strategy_worker(strategy_cfg, market_store_config):
+def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConfig):
     market_store = MarketDataStore(market_store_config)
     portfolio = Portfolio()
     metrics_computer = PerformanceAnalyzer()
@@ -108,7 +108,6 @@ class ExperimentRunner:
         for strategy_cfg in self.config["strategies"]:
             run = self._run_strategy(strategy_cfg, market_store, market_store_config)
             experiment.add_run(run)
-
         return experiment
     
     def run_parallel(self) -> Experiment:

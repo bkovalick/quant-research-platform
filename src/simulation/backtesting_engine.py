@@ -41,6 +41,7 @@ class BacktestingEngine(BacktestingEngineInterface):
             self.feature_builder = FeatureBuilder(
                 self.market_state.prices.copy(), 
                 self.market_state.returns.copy(),
+                self.market_state.temp.copy(),
                 self.market_state.market_frequency
             )
             self.feature_builder.precompute(self.ml_signals_config.horizon)

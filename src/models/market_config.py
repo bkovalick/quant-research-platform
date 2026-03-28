@@ -9,6 +9,7 @@ class MarketStateConfig:
     lookback_window: int
     cash_allocation: float
     universe_tickers: List[str]
+    exogenous_tickers: List[str]
     annual_trading_days: int
 
     @classmethod
@@ -19,6 +20,7 @@ class MarketStateConfig:
         annual_trading_days = LOOKBACK_WINDOWS[market_frequency]["1y"]
         cash_allocation = d.get("cash_allocation", 0.0)
         universe_tickers = list(d.get("universe_tickers", ["AAPL"]))
+        exogenous_tickers = list(d.get("exogenous_tickers", ["VIX"]))
         if cash_allocation > 0:
             universe_tickers = universe_tickers + ["CASH"] 
 
@@ -28,6 +30,7 @@ class MarketStateConfig:
             lookback_window = lookback_window,
             cash_allocation = cash_allocation,
             universe_tickers = universe_tickers,
+            exogenous_tickers = exogenous_tickers,
             annual_trading_days = annual_trading_days
         )
 
