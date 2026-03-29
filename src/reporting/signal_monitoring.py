@@ -2,22 +2,25 @@ import abc
 import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
+from scipy import stats
 
 class BaseSignalMonitor(abc.ABC):
-    def __init__(self):
-        pass
-
     def analyze(self) -> dict:
+        ic_series = self._compute_ic_statistics()
         return {
-            "ic_statistics": self._compute_ic_statistics(),
-            "half_life": self._compute_half_life()
+            "ic_statistics": ic_series,
+            "half_life": self._compute_half_life(ic_series),
+            "t_test": self._one_sample_t_test(ic_series)
         }
 
     @abc.abstractmethod
     def _compute_ic_statistics(self): ...
 
     @abc.abstractmethod
-    def _compute_half_life(self): ...
+    def _compute_half_life(self, ic_series: pd.Series): ...
+
+    @abc.abstractmethod
+    def _one_sample_t_test(self, ic_series: pd.Series): ...    
 
 class SignalDecayMonitor(BaseSignalMonitor):
     def __init__(self, 
@@ -25,13 +28,9 @@ class SignalDecayMonitor(BaseSignalMonitor):
                  signal: pd.DataFrame,
                  window: int = 20):
         """Monitors signal decay by computing rolling Information Coefficient and half-life of those signals."""
-        super().__init__()
-
         self.forward_returns = forward_returns
         self.signal = signal
         self.window = window
-        if not self.signal.index.equals(self.forward_returns.index):
-            raise ValueError("Signal and returns indices must be aligned")
 
     def _compute_ic_statistics(self) -> pd.Series:
         """
@@ -40,6 +39,9 @@ class SignalDecayMonitor(BaseSignalMonitor):
         """
         ic_values = []
         for date in self.signal.index:
+            if date not in self.forward_returns.index:
+                continue
+
             scores = self.signal.loc[date].dropna()
             fwd_returns = self.forward_returns.loc[date].dropna()
             common = scores.index.intersection(fwd_returns.index)
@@ -49,10 +51,13 @@ class SignalDecayMonitor(BaseSignalMonitor):
             ic, _ = spearmanr(scores.loc[common], fwd_returns.loc[common])
             ic_values.append((date, ic))
     
+        if not ic_values:
+            return pd.Series(dtype=float)
+        
         dates, ics = zip(*ic_values)
-        return pd.Series(ics, index=dates)      
+        return pd.Series(ics, index=dates)
 
-    def _compute_half_life(self) -> float:
+    def _compute_half_life(self, ic_series: pd.Series) -> float:
         """
         Estimate the signal decay half-life from signals using AR(1) autocorrelation.
 
@@ -61,7 +66,6 @@ class SignalDecayMonitor(BaseSignalMonitor):
         Returns np.nan when phi is outside (0, 1), i.e. the series is non-stationary,
         mean-reverting with no persistence, or negatively autocorrelated.
         """
-        ic_series = self._compute_ic_statistics()
         phi = ic_series.autocorr(lag=1)
 
         if phi <= 0 or phi >= 1:
@@ -69,3 +73,13 @@ class SignalDecayMonitor(BaseSignalMonitor):
 
         half_life = np.log(0.5) / np.log(phi)
         return half_life
+    
+    def _one_sample_t_test(self, ic_series: pd.Series) -> dict:
+        """
+        Perform a one-sample t-test to determine if the mean IC is significantly different from zero.
+        Returns the t-statistic and p-value.
+        """
+        if len(ic_series.dropna()) < 2:
+            return {"t_statistic": np.nan, "p_value": np.nan}
+        t_stat, p_value = stats.ttest_1samp(ic_series.dropna(), 0)
+        return {"t_statistic": t_stat, "p_value": p_value}

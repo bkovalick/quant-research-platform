@@ -1,6 +1,14 @@
 {
-  "_description": "Fixed weight portfolio benchmark. Equal allocation across 7 diversified ETFs covering equity, fixed income, commodities, international, and real estate. Simple rebalance-to-target benchmark.",
+  "_description": "Fixed weight portfolio benchmark. Equal allocation across 7 diversified ETFs.",
   "market_store_config": {
+    "start_date": "2005-01-01",
+    "end_date": "2026-02-19",
+    "data_source": {
+      "yfinance": null
+    },
+    "benchmark": "SPY",
+    "risk_free_rate": 0.03,
+    "transaction_cost": 0.003,
     "tickers": [
       "SPY",
       "AGG",
@@ -9,20 +17,11 @@
       "EEM",
       "TLT",
       "VNQ"
-    ],
-    "start_date": "2005-01-01",
-    "end_date": "2026-02-19",
-    "data_source": {
-      "yfinance": null
-    },
-    "benchmark": "SPY",
-    "risk_free_rate": 0.03,
-    "transaction_cost": 0.003
+    ]
   },
   "strategies": [
     {
       "name": "fixed_weight_diversified",
-      "_description": "7-ETF fixed weight benchmark. Rebalances weekly to target. No signal.",
       "market_state_config": {
         "lookback_window_key": "1y",
         "market_frequency": "w",
@@ -43,13 +42,13 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "initial_weights": {
-          "SPY": 0.142857142857143,
-          "AGG": 0.142857142857143,
-          "GLD": 0.142857142857143,
-          "EFA": 0.142857142857143,
-          "EEM": 0.142857142857143,
-          "TLT": 0.142857142857143,
-          "VNQ": 0.142857142857143
+          "SPY": 0.142857,
+          "AGG": 0.142857,
+          "GLD": 0.142857,
+          "EFA": 0.142857,
+          "EEM": 0.142857,
+          "TLT": 0.142857,
+          "VNQ": 0.142857
         }
       }
     }

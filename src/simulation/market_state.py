@@ -6,7 +6,9 @@ import pandas as pd
 from datetime import datetime
 
 class MarketState:
-    def __init__(self, store: MarketDataStore, state_config: MarketStateConfig):
+    def __init__(self, 
+                 store: MarketDataStore, 
+                 state_config: MarketStateConfig):
         """ Stores the current state of the market """
         self.store = store
         self.state_config = state_config
@@ -14,11 +16,14 @@ class MarketState:
         self.market_frequency = state_config.market_frequency
         self.lookback_window = state_config.lookback_window
         self.universe_tickers = state_config.universe_tickers
+        self.exogenous_tickers = state_config.exogenous_tickers
         self.cash_allocation = state_config.cash_allocation
         self.annual_trading_days = state_config.annual_trading_days
         self.cursor = 0
-        self.parsed_prices = self._parse_universe(self.universe_tickers)
-        self.prices = self._resample(self.market_frequency)
+        self.prices = self._resample(self.market_frequency, self._parse_universe(self.universe_tickers))
+        self.exogenous_universe = self._resample(self.market_frequency, 
+                                                 self._parse_universe(self.exogenous_tickers)) \
+                            if set(self.exogenous_tickers).issubset(self.store.prices.columns) else pd.DataFrame()
         self.returns = self.prices.pct_change().fillna(0)
     
     @property
@@ -29,15 +34,15 @@ class MarketState:
     def sector_map(self):
         return MarketMetadata.build_sector_map(self.universe_tickers)
     
-    def _parse_universe(self, universe_tickers) -> pd.DataFrame:
-        return self.store.prices[universe_tickers]
-    
-    def _resample(self, market_frequency) -> pd.DataFrame:
-        if market_frequency == "d":
-            return self.parsed_prices
+    def _parse_universe(self, tickers: list) -> pd.DataFrame:
+        return self.store.prices[tickers]
         
-        rule = {"w": "W-FRI", "m": "M"}[market_frequency]
-        return self.parsed_prices.resample(rule).last()
+    def _resample(self, market_frequency: str, universe: pd.DataFrame) -> pd.DataFrame:
+        if market_frequency == "d":
+            return universe
+        
+        rule = {"w": "W-FRI", "m": "ME"}[market_frequency]
+        return universe.resample(rule).last()
     
     def advance(self):
         self.cursor += 1

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import type { CSSProperties } from "react"
 import Sidebar from "./components/Sidebar"
 import StrategyGrid from "./components/StrategyGrid"
@@ -26,10 +26,12 @@ export default function App() {
     setDateWindow(null)
   }
 
-  const pinnedIds = new Set(pinnedRuns.map(r => r.run_id))
-  const currentRuns = experiment?.strategy_runs ?? []
-  const extraPinned = pinnedRuns.filter(r => !currentRuns.some((cr: any) => cr.run_id === r.run_id))
-  const allRuns = [...currentRuns, ...extraPinned]
+  const pinnedIds = useMemo(() => new Set(pinnedRuns.map(r => r.run_id)), [pinnedRuns])
+  const allRuns = useMemo(() => {
+    const currentRuns = experiment?.strategy_runs ?? []
+    const extraPinned = pinnedRuns.filter(r => !currentRuns.some((cr: any) => cr.run_id === r.run_id))
+    return [...currentRuns, ...extraPinned]
+  }, [experiment, pinnedRuns])
 
   return (
     <div style={styles.app}>

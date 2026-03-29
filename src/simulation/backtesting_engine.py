@@ -19,6 +19,8 @@ from models.backtest_run import BacktestRun
 from simulation.market_state import MarketState
 from utils.rebalance_steps import FREQ_TO_STEPS
 
+import pandas as pd
+
 class BacktestingEngineInterface(abc.ABC):
     """Interface for backtesting engines."""
     @abc.abstractmethod
@@ -31,18 +33,21 @@ class BacktestingEngine(BacktestingEngineInterface):
                  portfolio: PortfolioInterface, 
                  strategy: StrategyInterface,
                  market_state: MarketState,
-                 signals_config: SignalsConfig):
+                 signals_config: SignalsConfig,
+                 benchmark: pd.Series):
         self.portfolio = portfolio
         self.strategy = strategy
         self.market_state = market_state
         self.signals_config = signals_config
+        self.benchmark = benchmark
         self.ml_signals_config = signals_config.ml_signals_config if signals_config is not None else None
         if self.ml_signals_config is not None:
             self.feature_builder = FeatureBuilder(
-                self.market_state.prices.copy(), 
-                self.market_state.returns.copy(),
+                self.market_state,
+                self.benchmark,
                 self.market_state.market_frequency
             )
+            self.feature_builder.precompute(self.ml_signals_config.horizon)
             self.cs_model = CrossSectionalModel(self.ml_signals_config)
             self.ml_signals_state = MLPredictorSignalsState(
                 self.ml_signals_config,

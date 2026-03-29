@@ -32,7 +32,7 @@ def build_market_state_config(strategy_cfg: dict) -> MarketStateConfig:
         raise ValueError("Error: Market state configuration must be present to run a backtest")
     return MarketStateConfig.from_dict(market_state_config)
 
-def run_strategy_worker(strategy_cfg, market_store_config):
+def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConfig):
     market_store = MarketDataStore(market_store_config)
     portfolio = Portfolio()
     metrics_computer = PerformanceAnalyzer()
@@ -57,11 +57,13 @@ def run_strategy_worker(strategy_cfg, market_store_config):
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
 
+    benchmark = market_store.prices[market_store_config.benchmark]
     engine = BacktestingEngine(
         portfolio,
         strategy,
         state,
-        signals_config
+        signals_config,
+        benchmark
     )
 
     run = engine.run_backtest(rebalance_problem)
@@ -108,7 +110,6 @@ class ExperimentRunner:
         for strategy_cfg in self.config["strategies"]:
             run = self._run_strategy(strategy_cfg, market_store, market_store_config)
             experiment.add_run(run)
-
         return experiment
     
     def run_parallel(self) -> Experiment:
@@ -148,11 +149,13 @@ class ExperimentRunner:
         optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
         strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
 
+        benchmark = market_store.prices[market_store_config.benchmark]
         engine = BacktestingEngine(
             portfolio,
             strategy,
             state,
-            signals_config
+            signals_config,
+            benchmark
         )
 
         run = engine.run_backtest(rebalance_problem)
@@ -162,7 +165,7 @@ class ExperimentRunner:
             run.portfolio, 
             market_store_config, 
             state_config,
-            market_store.prices[market_store_config.benchmark]
+            benchmark
         )
 
         run_id = str(uuid.uuid4())

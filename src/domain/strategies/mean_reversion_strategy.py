@@ -20,7 +20,7 @@ class MeanReversionStrategy(StrategyInterface):
         
         if reversion_signals is None:
             return current_weights
-        
+
         optimized_weights = self.optimizer.optimize(
             self.rebalance_problem, reversion_signals, current_weights
         )

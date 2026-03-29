@@ -16,7 +16,6 @@ export interface ComputedMetrics {
   kurtosis: number | null
   var_95: number | null
   cvar_95: number | null
-  // alpha and tracking_error omitted — need benchmark series
   alpha: null
   tracking_error: null
 }
@@ -24,6 +23,12 @@ export interface ComputedMetrics {
 export interface DateWindow {
   start: string
   end: string
+}
+
+export interface DeserializedSeries {
+  returns: { date: string; value: number }[]
+  turnover: { date: string; value: number }[]
+  wealth: { date: string; value: number }[]
 }
 
 /** Deserialize a series from JSON round-trip into {date, value} pairs */
@@ -38,6 +43,26 @@ export function deserializeToArray(data: any): { date: string; value: number }[]
   return []
 }
 
+/**
+ * Cache deserialized series on the run object itself.
+ * This means deserialization only happens once per run regardless of
+ * how many times getEffectiveSummary is called.
+ */
+const seriesCache = new WeakMap<object, DeserializedSeries>()
+
+export function getCachedSeries(run: any): DeserializedSeries {
+  if (seriesCache.has(run)) {
+    return seriesCache.get(run)!
+  }
+  const series: DeserializedSeries = {
+    returns: deserializeToArray(run.result.series?.portfolio_returns),
+    turnover: deserializeToArray(run.result.series?.portfolio_turnover),
+    wealth: deserializeToArray(run.result.series?.portfolio_wealth_factors),
+  }
+  seriesCache.set(run, series)
+  return series
+}
+
 /** Slice a series array to a date window */
 export function sliceSeries(
   series: { date: string; value: number }[],
@@ -47,16 +72,15 @@ export function sliceSeries(
   return series.filter(p => p.date >= window.start && p.date <= window.end)
 }
 
-/** Compute annualization factor from frequency guess based on series length and date range */
 function guessAnnualFactor(series: { date: string; value: number }[]): number {
   if (series.length < 2) return 252
   const first = new Date(series[0].date).getTime()
   const last = new Date(series[series.length - 1].date).getTime()
   const years = (last - first) / (1000 * 60 * 60 * 24 * 365.25)
   const periodsPerYear = series.length / years
-  if (periodsPerYear < 60) return 52   // weekly
-  if (periodsPerYear < 200) return 12  // monthly
-  return 252 // daily
+  if (periodsPerYear < 60) return 52
+  if (periodsPerYear < 200) return 12
+  return 252
 }
 
 function mean(arr: number[]): number {
@@ -131,7 +155,6 @@ function maxDrawdownDays(wealthFactors: number[]): number {
   return maxStreak
 }
 
-/** Recompute all metrics from sliced return and wealth factor series */
 export function computeMetrics(
   returnSeries: { date: string; value: number }[],
   turnoverSeries: { date: string; value: number }[],
@@ -153,7 +176,6 @@ export function computeMetrics(
   const n = returns.length
   const years = n / af
 
-  // Rebase wealth factors to start at 1
   const wfBase = wf[0]
   const rebasedWf = wf.map(v => v / wfBase)
 
@@ -206,13 +228,12 @@ export function computeMetrics(
 export function getEffectiveSummary(run: any, window: DateWindow | null): any {
   if (!window) return run.result.summary
 
-  const returnSeries = deserializeToArray(run.result.series?.portfolio_returns)
-  const turnoverSeries = deserializeToArray(run.result.series?.portfolio_turnover)
-  const wealthSeries = deserializeToArray(run.result.series?.portfolio_wealth_factors)
+  // Use cached deserialized series — avoids re-parsing on every render
+  const cached = getCachedSeries(run)
 
-  const slicedReturns = sliceSeries(returnSeries, window)
-  const slicedTurnover = sliceSeries(turnoverSeries, window)
-  const slicedWealth = sliceSeries(wealthSeries, window)
+  const slicedReturns = sliceSeries(cached.returns, window)
+  const slicedTurnover = sliceSeries(cached.turnover, window)
+  const slicedWealth = sliceSeries(cached.wealth, window)
 
   if (slicedReturns.length < 2) return run.result.summary
 

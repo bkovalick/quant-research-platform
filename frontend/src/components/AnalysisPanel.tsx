@@ -27,6 +27,7 @@ const TOOLTIPS: Record<string, string> = {
   "Sortino Ratio": "Like Sharpe, but only penalizes downside volatility.",
   "Calmar Ratio": "Annualized return divided by maximum drawdown.",
   "Tracking Error": "Annualized standard deviation of returns relative to the benchmark.",
+  "Info Ratio": "Annualized active return divided by tracking error. Measures how consistently the strategy generates returns above the benchmark per unit of active risk.",
   VaR: "Value at Risk (95%). The return threshold exceeded only 5% of the time.",
   CVaR: "Conditional VaR (95%). The average return in the worst 5% of periods.",
   Skewness: "Asymmetry of the return distribution.",
@@ -122,7 +123,8 @@ function RiskProfile({ runs }: any) {
     { key: "volatility",     label: "Volatility",     fmt: "pct" },
     { key: "max_drawdown",   label: "Max Drawdown",   fmt: "pct" },
     { key: "sharpe_ratio",   label: "Sharpe",         fmt: "num" },
-    { key: "tracking_error", label: "Tracking Error", fmt: "pct" },
+    { key: "tracking_error",    label: "Tracking Error", fmt: "pct" },
+    { key: "information_ratio", label: "Info Ratio",      fmt: "num" },
     { key: "sortino_ratio",  label: "Sortino Ratio",  fmt: "num" },
     { key: "calmar_ratio",   label: "Calmar Ratio",   fmt: "num" },
   ]
@@ -156,6 +158,7 @@ function RiskProfile({ runs }: any) {
                 <td style={rightCellRed(s.max_drawdown)}>{fmt(s.max_drawdown, "pct")}</td>
                 <td style={rightCell}>{fmt(s.sharpe_ratio, "num")}</td>
                 <td style={rightCell}>{s.tracking_error != null ? fmt(s.tracking_error, "pct") : "-"}</td>
+                <td style={rightCell}>{s.information_ratio != null ? fmt(s.information_ratio, "num") : "-"}</td>
                 <td style={rightCell}>{fmt(s.sortino_ratio, "num")}</td>
                 <td style={rightCell}>{fmt(s.calmar_ratio, "num")}</td>
               </tr>

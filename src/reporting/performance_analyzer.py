@@ -40,6 +40,10 @@ class PerformanceAnalyzer:
 
         portfolio_returns = portfolio.returns
         portfolio_turnover = portfolio.turnover
+        _rule = {"d": "B", "w": "W-FRI", "m": "ME"}[self.market_frequency]
+        benchmark_resampled = benchmark_index.resample(_rule).last()
+        benchmark_returns = benchmark_resampled.pct_change(fill_method=None).fillna(0)
+        benchmark_returns = benchmark_returns.reindex(portfolio_returns.index).fillna(0)
         wealth_factors = (1 + portfolio_returns).cumprod()
         cumulative_returns = wealth_factors - 1
         num_periods = cumulative_returns.shape[0]
@@ -63,6 +67,8 @@ class PerformanceAnalyzer:
 
         max_drawdown = abs(self._calculate_max_drawdown(drawdown_returns))
         max_drawdown_days = self._calculate_max_drawdown_days(drawdown_returns)
+        tracking_error = self._calculate_tracking_error(portfolio_returns, benchmark_returns)
+        information_ratio = self._calculate_information_ratio(annualized_return, portfolio_returns, benchmark_returns)
 
         performance_metrics = {
             "portfolio_wealth_factors": wealth_factors,
@@ -86,9 +92,8 @@ class PerformanceAnalyzer:
             "turnover": portfolio_turnover.mean() * self.annual_trading_days,
             "alpha": self._calculate_alpha(portfolio_returns, self.annual_trading_days, benchmark_index),
             "calmar_ratio": annualized_return / max_drawdown if max_drawdown != 0 else 0.0,
-            "tracking_error": np.sqrt(
-                ((portfolio_returns - benchmark_index.pct_change(fill_method=None).fillna(0)) ** 2).mean()
-            ) * np.sqrt(self.annual_trading_days),
+            "tracking_error": tracking_error,
+            "information_ratio": information_ratio,
             "win_rate": (portfolio_returns > 0).mean(),
             "loss_rate": (portfolio_returns < 0).mean(),
             "average_win": portfolio_returns[portfolio_returns > 0].mean() if (portfolio_returns > 0).any() else 0.0,
@@ -172,12 +177,25 @@ class PerformanceAnalyzer:
         """Calculate rolling annualised turnover over a specified window."""
         return turnover.rolling(window=window).mean() * self.annual_trading_days
 
+    def _calculate_tracking_error(self, portfolio_returns, benchmark_returns):
+        """Calculate tracking error as the annualised standard deviation of excess returns."""
+        return (portfolio_returns - benchmark_returns).std() * np.sqrt(self.annual_trading_days)
+
+    def _calculate_information_ratio(self, annualized_return: float, portfolio_returns: pd.Series, benchmark_returns: pd.Series) -> float:
+        """Calculate Information Ratio: annualised active return divided by tracking error."""
+        benchmark_annualized = (1 + benchmark_returns).prod() ** (self.annual_trading_days / len(benchmark_returns)) - 1
+        active_return = annualized_return - benchmark_annualized
+        tracking_error = self._calculate_tracking_error(portfolio_returns, benchmark_returns)
+        if tracking_error == 0:
+            return 0.0
+        return active_return / tracking_error        
+
     def _calculate_alpha(self,
                          portfolio_returns: pd.Series,
                          annualization_factor: int,
                          benchmark_index: pd.Series):
         """Calculate alpha of the portfolio against a benchmark."""
-        rule = {"d": "B", "w": "W-FRI", "m": "M"}[self.market_frequency]
+        rule = {"d": "B", "w": "W-FRI", "m": "ME"}[self.market_frequency]
         benchmark = benchmark_index.resample(rule).last()
         benchmark_returns = benchmark.pct_change(fill_method=None).fillna(0)
 
@@ -222,6 +240,7 @@ class PerformanceAnalyzer:
             "alpha": performance_metrics["alpha"],
             "calmar_ratio": performance_metrics["calmar_ratio"],
             "tracking_error": performance_metrics["tracking_error"],
+            "information_ratio": performance_metrics["information_ratio"],
             "win_rate": performance_metrics["win_rate"],
             "loss_rate": performance_metrics["loss_rate"],
             "average_win": performance_metrics["average_win"],

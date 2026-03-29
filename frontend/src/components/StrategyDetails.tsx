@@ -8,7 +8,7 @@ import {
   Tooltip,
 } from "recharts"
 import type { CSSProperties } from "react"
-import { deserializeToArray } from "../utils/metricsUtils"
+import { getCachedSeries } from "../utils/metricsUtils"
 import type { DateWindow } from "../utils/metricsUtils"
 
 const COLORS = [
@@ -34,13 +34,11 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
 
   if (!runs || runs.length === 0) return null
 
-  // Build unified date index across all runs
+  // Build unified date index across all runs — uses cache, no repeated deserialization
   const allDates = useMemo(() => {
     const dateSet = new Set<string>()
     runs.forEach(run => {
-      const wf = run.result.series?.portfolio_wealth_factors
-      if (!wf) return
-      deserializeToArray(wf).forEach(p => dateSet.add(p.date))
+      getCachedSeries(run).wealth.forEach(p => dateSet.add(p.date))
     })
     return Array.from(dateSet).sort()
   }, [runs])
@@ -48,12 +46,16 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
   // Build chart data — each run rebases to its own first available date
   const data = useMemo(() => {
     const runMaps: Record<string, Record<string, number>> = {}
+    const rebaseDates: Record<string, string> = {}
+
     runs.forEach(run => {
-      const wf = run.result.series?.portfolio_wealth_factors
-      if (!wf) return
       const map: Record<string, number> = {}
-      deserializeToArray(wf).forEach(p => { map[p.date] = p.value })
+      getCachedSeries(run).wealth.forEach(p => { map[p.date] = p.value })
       runMaps[run.run_id] = map
+      const sortedDates = Object.keys(map).sort()
+      rebaseDates[run.run_id] = dateWindow?.start
+        ? (sortedDates.find(d => d >= dateWindow.start) ?? sortedDates[0])
+        : sortedDates[0]
     })
 
     return allDates.map(date => {
@@ -61,11 +63,7 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
       runs.forEach(run => {
         const map = runMaps[run.run_id]
         if (!map) return
-        const runDates = Object.keys(map).sort()
-        const rebaseDate = dateWindow?.start
-          ? runDates.find(d => d >= dateWindow.start) ?? runDates[0]
-          : runDates[0]
-        const rebaseValue = map[rebaseDate] ?? null
+        const rebaseValue = map[rebaseDates[run.run_id]] ?? null
         const currentValue = map[date] ?? null
         if (rebaseValue && currentValue) row[run.run_id] = currentValue / rebaseValue
       })

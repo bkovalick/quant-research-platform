@@ -14,8 +14,11 @@ class CrossSectionalModel(ISignalModel):
         self.config = config
         self.model_type = config.signals_model
         self.alpha = config.alpha
+        self.n_estimators = config.n_estimators
+        self.max_depth = config.max_depth
+        self.learning_rate = config.learning_rate
         self.scaler = StandardScaler()
-        self._model = None
+        self.model = None
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
         common = X.index.intersection(y.index)
@@ -23,21 +26,17 @@ class CrossSectionalModel(ISignalModel):
         y_arr = y.loc[common].values
 
         if self.model_type == "ridge":
-            self._model = Ridge(alpha=self.alpha)
+            self.model = Ridge(alpha=self.alpha)
         else:
-            self._model = GradientBoostingRegressor(
-                n_estimators=100, max_depth=3, learning_rate=0.05 # add as params
+            self.model = GradientBoostingRegressor(
+                n_estimators=self.n_estimators, max_depth=self.max_depth, learning_rate=self.learning_rate
             )
-        self._model.fit(X_arr, y_arr)
+        self.model.fit(X_arr, y_arr)
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
-        if self._model is None:
+        if self.model is None:
             raise RuntimeError("Model must be fit before predicting.")
         X_scaled = self.scaler.transform(X)
-        raw_scores = self._model.predict(X_scaled)
-
-        # Rank-normalize predictions → uniform [0,1] cross-sectionally
-        # This converts raw predicted returns into relative scores,
-        # which is what the optimizer actually needs.
+        raw_scores = self.model.predict(X_scaled)
         ranked = pd.Series(raw_scores, index=X.index).rank(pct=True)
-        return ranked.values        
+        return ranked.values
