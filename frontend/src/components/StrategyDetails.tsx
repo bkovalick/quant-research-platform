@@ -46,10 +46,16 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
   // Build chart data — each run rebases to its own first available date
   const data = useMemo(() => {
     const runMaps: Record<string, Record<string, number>> = {}
+    const rebaseDates: Record<string, string> = {}
+
     runs.forEach(run => {
       const map: Record<string, number> = {}
       getCachedSeries(run).wealth.forEach(p => { map[p.date] = p.value })
       runMaps[run.run_id] = map
+      const sortedDates = Object.keys(map).sort()
+      rebaseDates[run.run_id] = dateWindow?.start
+        ? (sortedDates.find(d => d >= dateWindow.start) ?? sortedDates[0])
+        : sortedDates[0]
     })
 
     return allDates.map(date => {
@@ -57,11 +63,7 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
       runs.forEach(run => {
         const map = runMaps[run.run_id]
         if (!map) return
-        const runDates = Object.keys(map).sort()
-        const rebaseDate = dateWindow?.start
-          ? runDates.find(d => d >= dateWindow.start) ?? runDates[0]
-          : runDates[0]
-        const rebaseValue = map[rebaseDate] ?? null
+        const rebaseValue = map[rebaseDates[run.run_id]] ?? null
         const currentValue = map[date] ?? null
         if (rebaseValue && currentValue) row[run.run_id] = currentValue / rebaseValue
       })
