@@ -38,9 +38,12 @@ class PerformanceAnalyzer:
         if isinstance(portfolio_trades, pd.DataFrame):
             portfolio_trades = portfolio_trades.sum(axis=1)
 
-        benchmark_returns = benchmark_index.pct_change(fill_method=None).fillna(0)
         portfolio_returns = portfolio.returns
         portfolio_turnover = portfolio.turnover
+        _rule = {"d": "B", "w": "W-FRI", "m": "ME"}[self.market_frequency]
+        benchmark_resampled = benchmark_index.resample(_rule).last()
+        benchmark_returns = benchmark_resampled.pct_change(fill_method=None).fillna(0)
+        benchmark_returns = benchmark_returns.reindex(portfolio_returns.index).fillna(0)
         wealth_factors = (1 + portfolio_returns).cumprod()
         cumulative_returns = wealth_factors - 1
         num_periods = cumulative_returns.shape[0]
@@ -192,7 +195,7 @@ class PerformanceAnalyzer:
                          annualization_factor: int,
                          benchmark_index: pd.Series):
         """Calculate alpha of the portfolio against a benchmark."""
-        rule = {"d": "B", "w": "W-FRI", "m": "M"}[self.market_frequency]
+        rule = {"d": "B", "w": "W-FRI", "m": "ME"}[self.market_frequency]
         benchmark = benchmark_index.resample(rule).last()
         benchmark_returns = benchmark.pct_change(fill_method=None).fillna(0)
 

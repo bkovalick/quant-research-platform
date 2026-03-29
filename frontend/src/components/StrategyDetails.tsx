@@ -8,7 +8,7 @@ import {
   Tooltip,
 } from "recharts"
 import type { CSSProperties } from "react"
-import { deserializeToArray } from "../utils/metricsUtils"
+import { getCachedSeries } from "../utils/metricsUtils"
 import type { DateWindow } from "../utils/metricsUtils"
 
 const COLORS = [
@@ -34,13 +34,11 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
 
   if (!runs || runs.length === 0) return null
 
-  // Build unified date index across all runs
+  // Build unified date index across all runs — uses cache, no repeated deserialization
   const allDates = useMemo(() => {
     const dateSet = new Set<string>()
     runs.forEach(run => {
-      const wf = run.result.series?.portfolio_wealth_factors
-      if (!wf) return
-      deserializeToArray(wf).forEach(p => dateSet.add(p.date))
+      getCachedSeries(run).wealth.forEach(p => dateSet.add(p.date))
     })
     return Array.from(dateSet).sort()
   }, [runs])
@@ -49,10 +47,8 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
   const data = useMemo(() => {
     const runMaps: Record<string, Record<string, number>> = {}
     runs.forEach(run => {
-      const wf = run.result.series?.portfolio_wealth_factors
-      if (!wf) return
       const map: Record<string, number> = {}
-      deserializeToArray(wf).forEach(p => { map[p.date] = p.value })
+      getCachedSeries(run).wealth.forEach(p => { map[p.date] = p.value })
       runMaps[run.run_id] = map
     })
 
