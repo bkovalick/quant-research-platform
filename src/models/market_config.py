@@ -20,7 +20,7 @@ class MarketStateConfig:
         annual_trading_days = LOOKBACK_WINDOWS[market_frequency]["1y"]
         cash_allocation = d.get("cash_allocation", 0.0)
         universe_tickers = list(d.get("universe_tickers", ["AAPL"]))
-        exogenous_tickers = list(d.get("exogenous_tickers", ["^VIX"]))
+        exogenous_tickers = list(d.get("exogenous_tickers", []))
         if cash_allocation > 0:
             universe_tickers = universe_tickers + ["CASH"] 
 
