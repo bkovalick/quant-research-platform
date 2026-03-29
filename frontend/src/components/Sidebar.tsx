@@ -6,6 +6,8 @@ type Tab = "experiment" | "lab"
 
 export default function Sidebar({ setExperiment, experiment }: any) {
   const [tab, setTab] = useState<Tab>("experiment")
+  const [loading, setLoading] = useState(false)
+  const [runError, setRunError] = useState<string | null>(null)
   const [startDate, setStartDate] = useState("2005-01-01")
   const [endDate, setEndDate] = useState("2020-12-31")
   const [transactionCost, setTransactionCost] = useState(0)
@@ -81,8 +83,18 @@ export default function Sidebar({ setExperiment, experiment }: any) {
       },
       strategies: editedStrategies.length ? editedStrategies : strategySet.strategies
     }
-    const res = await axios.post("http://localhost:8000/run-experiment", config)
-    setExperiment(res.data)
+
+    setLoading(true)
+    setRunError(null)
+    try {
+      const res = await axios.post("http://localhost:8000/run-experiment", config)
+      setExperiment(res.data)
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail ?? err?.message ?? "Unknown error"
+      setRunError(detail)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const currentStrategy = editedStrategies[selectedIdx]
@@ -180,11 +192,13 @@ export default function Sidebar({ setExperiment, experiment }: any) {
           </Section>
 
           <button
-            style={strategySet ? runButton : loadButton}
+            style={strategySet && !loading ? runButton : loadButton}
+            disabled={loading}
             onClick={strategySet ? runExperiment : () => document.getElementById("strategy-file-input")?.click()}
           >
-            {strategySet ? "Run Experiment" : "Load a Strategy Set"}
+            {loading ? `Running ${editedStrategies.length || strategySet?.strategies?.length || 0} strategies…` : strategySet ? "Run Experiment" : "Load a Strategy Set"}
           </button>
+          {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}
 
           {quickStats && (
             <>
@@ -536,6 +550,50 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                           </Row>
                         </div>
                       )}
+
+                      {/* ML Signals block */}
+                      {currentStrategy.signals_config.ml_signals_config?.enabled && (
+                        <>
+                          <div style={blHeader}>
+                            <span style={blLabel}>ML Signals</span>
+                          </div>
+                          <div style={blBlock}>
+                            <Row label="Training">
+                              <select style={inputStyle}
+                                value={currentStrategy.signals_config.ml_signals_config.training_window ?? "2y"}
+                                onChange={(e) => updateField(["signals_config", "ml_signals_config", "training_window"], e.target.value)}>
+                                {["6m", "1y", "2y", "3y", "5y"].map(o => <option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </Row>
+                            <Row label="Horizon">
+                              <select style={inputStyle}
+                                value={currentStrategy.signals_config.ml_signals_config.horizon ?? "1m"}
+                                onChange={(e) => updateField(["signals_config", "ml_signals_config", "horizon"], e.target.value)}>
+                                {["1w", "2w", "1m", "3m"].map(o => <option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </Row>
+                            <Row label="Rebal Cadence">
+                              <select style={inputStyle}
+                                value={currentStrategy.signals_config.ml_signals_config.rebal_cadence ?? "1m"}
+                                onChange={(e) => updateField(["signals_config", "ml_signals_config", "rebal_cadence"], e.target.value)}>
+                                {["1w", "2w", "1m", "3m"].map(o => <option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </Row>
+                            <Row label="Sample Stride">
+                              <select style={inputStyle}
+                                value={currentStrategy.signals_config.ml_signals_config.sample_stride ?? "1w"}
+                                onChange={(e) => updateField(["signals_config", "ml_signals_config", "sample_stride"], e.target.value)}>
+                                {["1d", "1w", "2w", "1m"].map(o => <option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </Row>
+                            <Row label="Alpha">
+                              <input type="number" step={0.1} style={inputStyle}
+                                value={currentStrategy.signals_config.ml_signals_config.alpha ?? 1.0}
+                                onChange={(e) => updateField(["signals_config", "ml_signals_config", "alpha"], Number(e.target.value))} />
+                            </Row>
+                          </div>
+                        </>
+                      )}
                     </Section>
                   )}
 
@@ -546,7 +604,9 @@ export default function Sidebar({ setExperiment, experiment }: any) {
           )}
 
           <hr style={divider} />
-          <button style={runButton} onClick={runExperiment}>Run Experiment</button>
+          <button style={loading ? loadButton : runButton} disabled={loading} onClick={runExperiment}>
+            {loading ? "Running…" : "Run Experiment"}
+          </button>
         </>
       )}
     </div>
