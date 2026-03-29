@@ -20,12 +20,14 @@ class MachineLearningConfig:
     @classmethod
     def from_dict(cls, d: dict, market_frequency: str = "d"):
         freq_map = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
-
-        # Default duration keys vary by frequency: coarser frequencies lack sub-month keys.
         _default_training = {"d": "2y", "w": "2y", "m": "2y", "q": "2y", "y": "5y"}
         _default_horizon  = {"d": "1m", "w": "1m", "m": "1m", "q": "3m", "y": "1y"}
+        _default_cadence = {"d": "1m", "w": "1m", "m": "3m", "q": "3m"}
+        _default_stride  = {"d": "1w", "w": "1w", "m": "1m", "q": "1m"}        
         default_training_key = _default_training.get(market_frequency, "2y")
         default_horizon_key  = _default_horizon.get(market_frequency, "1m")
+        default_cadence_key  = _default_cadence.get(market_frequency, "1m")
+        default_stride_key   = _default_stride.get(market_frequency, "1w")
 
         def resolve(value, default_key: str) -> int:
             if isinstance(value, str):
@@ -40,7 +42,8 @@ class MachineLearningConfig:
                 return freq_map[default_key]
             return int(value)
 
-        if d.get("sample_stride", 5) < 1:
+        resolved_stride = resolve(d.get("sample_stride"), default_stride_key)
+        if resolved_stride < 1:
             raise ValueError("Sample Stride must be positive and greater than 0.")
         
         return cls(
@@ -51,8 +54,8 @@ class MachineLearningConfig:
             training_window = resolve(d.get("training_window"), default_training_key),
             horizon = resolve(d.get("horizon"), default_horizon_key),
             alpha = d.get("alpha", 1.0),
-            rebal_cadence = d.get("rebal_cadence", 5),
-            sample_stride = d.get("sample_stride", 5),
+            rebal_cadence = resolve(d.get("rebal_cadence"), default_cadence_key),
+            sample_stride = resolved_stride,
             n_estimators = d.get("n_estimators", 100),
             max_depth = d.get("max_depth", 3),
             learning_rate = d.get("learning_rate", 0.05)

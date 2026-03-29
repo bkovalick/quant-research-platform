@@ -22,6 +22,7 @@ class FeatureBuilder:
         self.reversal_window = self.lookbacks.get("1w", 1)
         self.features_cache = None
         self.forward_returns_cache = None
+        self.precomputed_horizon = None
 
     def precompute(self, horizon: int = 21):
         """
@@ -33,6 +34,7 @@ class FeatureBuilder:
         feature matrices — avoiding the O(T²) cost of growing .loc[:date]
         slices inside the loop.
         """
+        self.precomputed_horizon = horizon
         w   = self.lookbacks
         px  = self.prices
         rets = self.returns
@@ -94,9 +96,12 @@ class FeatureBuilder:
         Build feature matrix for all assets as of a single date, 
         using cached values if available.
         """
+        if self.features_cache is None:
+            import warnings
+            warnings.warn("FeatureBuilder.precompute() has not been called. Falling back to _build_single_date() which is significantly slower.")
         if self.features_cache is not None:
-            return self.features_cache.get(date, pd.DataFrame(index = self.prices.columns))
-        return self._build_single_date(date)
+            return self.features_cache.get(date, pd.DataFrame(index=self.prices.columns))
+        return self._build_single_date(date)    
 
     def _build_single_date(self, date: pd.Timestamp) -> pd.DataFrame:
         """
@@ -115,13 +120,13 @@ class FeatureBuilder:
             return pd.DataFrame(index=self.prices.columns)
 
         features = pd.DataFrame(index=self.prices.columns)
-        features["mom_1m"]   = px.iloc[-1] / px.iloc[-self.lookbacks["1m"]] - 1          # Short-term momentum: 1-month price return
-        features["mom_12m"]  = px.iloc[-self.lookbacks["1m"]] / px.iloc[-self.lookbacks["1y"]] - 1  # Long-term momentum: 2–12 month price return, skipping the most recent month to avoid reversal contamination
-        features["vol_1m"]   = rets.iloc[-self.lookbacks["1m"]:].std()                    # Realised volatility over the past month
-        features["vol_3m"]   = rets.iloc[-self.lookbacks["3m"]:].std()                    # Realised volatility over the past quarter
-        features["reversal"] = -(px.iloc[-1] / px.iloc[-(self.reversal_window + 1)] - 1)  # Short-term reversal: negative 1-week return, capturing mean-reversion of recent winners/losers
-        features["mom_x_vol_regime"] = features["mom_12m"] * (1 - high_vol)  # momentum only in low vol
-        features["reversal_x_vol_regime"] = features["reversal"] * high_vol  # reversal only in high vol
+        features["mom_1m"]   = px.iloc[-1] / px.iloc[-self.lookbacks["1m"]] - 1
+        features["mom_12m"]  = px.iloc[-self.lookbacks["1m"]] / px.iloc[-self.lookbacks["1y"]] - 1
+        features["vol_1m"]   = rets.iloc[-self.lookbacks["1m"]:].std()
+        features["vol_3m"]   = rets.iloc[-self.lookbacks["3m"]:].std()
+        features["reversal"] = -(px.iloc[-1] / px.iloc[-(self.reversal_window + 1)] - 1)
+        features["mom_x_vol_regime"] = features["mom_12m"] * (1 - high_vol)
+        features["reversal_x_vol_regime"] = features["reversal"] * high_vol
         features["max_return"] = rets.iloc[-self.lookbacks["1m"]:].max()
         features["high_52w"] = px.iloc[-1] / px.iloc[-self.lookbacks["1y"]:].max()
         features["beta_1m"] = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1m"])
@@ -136,7 +141,7 @@ class FeatureBuilder:
         Build forward returns for all assets starting from as_of_date 
         over `horizon` days, using cached values if available.
         """
-        if self.forward_returns_cache is not None:
+        if self.forward_returns_cache is not None and horizon == self.precomputed_horizon:
             return self.forward_returns_cache.get(as_of_date, pd.Series(dtype=float))
         return self._build_forward_returns_single(as_of_date, horizon)
 
