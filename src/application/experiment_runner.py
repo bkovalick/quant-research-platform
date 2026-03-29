@@ -149,11 +149,13 @@ class ExperimentRunner:
         optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
         strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
 
+        benchmark = market_store.prices[market_store_config.benchmark]
         engine = BacktestingEngine(
             portfolio,
             strategy,
             state,
-            signals_config
+            signals_config,
+            benchmark
         )
 
         run = engine.run_backtest(rebalance_problem)
@@ -163,7 +165,7 @@ class ExperimentRunner:
             run.portfolio, 
             market_store_config, 
             state_config,
-            market_store.prices[market_store_config.benchmark]
+            benchmark
         )
 
         run_id = str(uuid.uuid4())
