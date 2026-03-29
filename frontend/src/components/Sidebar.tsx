@@ -447,15 +447,16 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                   {currentStrategy.rebalance_problem?.constraints && (
                     <Section title="Constraints">
                       {[
-                        ["Max Pos", "max_position_size"],
-                        ["Min Pos", "min_position_size"],
-                        ["Max #", "max_positions"],
-                        ["Turnover", "turnover_limit"],
-                        ["Risk Aversion", "risk_aversion"],
-                        ["Vol Limit", "optimizer_vol_constraint"],
-                      ].map(([labelText, key]) => (
+                        ["Max Pos", "max_position_size", undefined],
+                        ["Min Pos", "min_position_size", undefined],
+                        ["Max #", "max_positions", undefined],
+                        ["Turnover", "turnover_limit", undefined],
+                        ["Risk Aversion", "risk_aversion", "0.10 — barely penalizes risk, near pure return maximization\n1.0 — balanced, textbook mean-variance\n2.5 — moderately risk averse, common in institutional settings\n5.0+ — conservative, heavily penalizes variance"],
+                        ["Vol Limit", "optimizer_vol_constraint", undefined],
+                      ].map(([labelText, key, tooltip]) => (
                         <Row key={key} label={labelText}>
                           <input type="number" step={0.01} style={inputStyle}
+                            title={tooltip}
                             value={currentStrategy.rebalance_problem.constraints[key] ?? ""}
                             onChange={(e) => updateField(["rebalance_problem", "constraints", key], Number(e.target.value))} />
                         </Row>
