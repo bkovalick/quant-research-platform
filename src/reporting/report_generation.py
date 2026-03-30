@@ -71,9 +71,9 @@ class ExcelGenerator:
                 for c_idx, value in enumerate(row, 1):
                     ts_ws.cell(row=r_idx, column=c_idx, value=value)               
 
-        if "ic_statistics" in results and results["ic_statistics"] is not None:
-            ts_ws = wb.create_sheet(title="IC Statistics")
-            for r_idx, row in enumerate(dataframe_to_rows(results["ic_statistics"], header=True, index=False), 1):
+        if "ic_series" in results and results["ic_series"] is not None:
+            ts_ws = wb.create_sheet(title="IC Series")
+            for r_idx, row in enumerate(dataframe_to_rows(results["ic_series"], header=True, index=False), 1):
                 for c_idx, value in enumerate(row, 1):
                     ts_ws.cell(row=r_idx, column=c_idx, value=value)                    
 
@@ -88,25 +88,23 @@ class ExcelGenerator:
             strategy_name = strategy_run.strategy_name 
 
             row = {"strategy": strategy_name}
-            for k, v in strategy_run.monitoring_stats["t_test"]:
+            for k, v in strategy_run.monitoring_stats["ic_summary"].items():
                 if isinstance(v, (pd.Series, pd.DataFrame)):
                     continue
                 row[k] = v
-            last_row = len(strategy_run.monitoring_stats["t_test"]) + 1
-            row[last_row] = strategy_run.monitoring_stats["half_life"]
             ic_summary_rwos.append(row)
 
-            ic_statistics_series = deserialize_series(strategy_run.monitoring_stats["ic_statistics"])
+            ic_statistics_series = deserialize_series(strategy_run.monitoring_stats["ic_series"])
             ic_statistics_series.insert(0, "Date", pd.to_datetime(ic_statistics_series.index))
             ic_statistics_series.insert(1, "Strategy", strategy_name)
-            ic_statistics_series.insert(2, "IC_Statistics", ic_statistics_series.values)
+            ic_statistics_series.insert(2, "IC_Series", ic_statistics_series.values)
             ic_series_dfs.append(ic_statistics_series)
 
         ic_summary_rwos = pd.concat(ic_series_dfs, axis=0, ignore_index=True) if ic_series_dfs else None
         final_ic_series_dfs = pd.concat(ic_series_dfs, axis=0, ignore_index=True) if ic_series_dfs else None
         return {
             "ic_summary": ic_summary_rwos,
-            "ic_statistics": final_ic_series_dfs
+            "ic_series": final_ic_series_dfs
         }              
 
     def aggregate_performance_metrics(self):

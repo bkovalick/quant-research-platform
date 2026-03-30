@@ -5,8 +5,8 @@ import pandas as pd
 @dataclass(frozen=True)
 class MonitoringStats:
     ic_statistics: pd.Series
+    ic_summary: Dict[str, Any]
     half_life: float
-    t_test: Dict[str, Any]
 
     def to_dict(self):
         return {
@@ -14,6 +14,6 @@ class MonitoringStats:
                 "index": self.ic_statistics.index.astype(str).tolist(),
                 "values": self.ic_statistics.values.tolist()
             },
-            "half_life": self.half_life if not pd.isna(self.half_life) else None,
-            "t_test": self.t_test
+            "ic_summary": self.ic_summary,
+            "half_life": self.half_life if not pd.isna(self.half_life) else None
         }
