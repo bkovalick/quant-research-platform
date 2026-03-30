@@ -49,8 +49,8 @@ class Optimizer(IOptimizer):
 		"""Setup decision variables for the optimization problem."""
 		n_assets = rebalance_problem.n_assets
 		portfolio_weights = cp.Variable(n_assets)
-		portfolio_buys = cp.Variable(n_assets)
-		portfolio_sells = cp.Variable(n_assets)
+		portfolio_buys = cp.Variable(n_assets - 1, nonneg=True)
+		portfolio_sells = cp.Variable(n_assets - 1, nonneg=True)
 		return {
 			'portfolio_weights': portfolio_weights,
 			'portfolio_buys': portfolio_buys,
@@ -94,7 +94,7 @@ class Optimizer(IOptimizer):
 		max_position_size = getattr(rebalance_problem, 'max_position_size', 1.0)
 		return [
 				cp.sum(portfolio_weights) == 1,
-				[portfolio_weights[:-1] - risky_current == portfolio_buys - portfolio_sells],
+				portfolio_weights[:-1] - risky_current == portfolio_buys - portfolio_sells,
 				portfolio_weights >= min_position_size,
 				portfolio_weights <= max_position_size
 			]
