@@ -1,5 +1,5 @@
 {
-  "_description": "Baseline. No BL, no ML. Raw mean-variance with Ledoit-Wolf covariance. Floor for signal comparison.",
+  "_description": "Primary experiment. ML cross-sectional Ridge with extended feature set feeds BL momentum view. 130-stock sector-balanced universe.",
   "market_store_config": {
     "start_date": "2005-01-01",
     "end_date": "2026-02-19",
@@ -176,7 +176,7 @@
   },
   "strategies": [
     {
-      "name": "securities_mean_variance_only",
+      "name": "securities_ml_bl_momentum",
       "market_state_config": {
         "lookback_window_key": "1y",
         "market_frequency": "d",
@@ -326,16 +326,51 @@
           "upper": 0.95
         },
         "mean_reversion_window": 4,
-        "momentum_skip_periods": 4
+        "momentum_skip_periods": 4,
+        "black_litterman": {
+          "delta": 2.5,
+          "tau": 0.05,
+          "reversion_view": 0.03,
+          "ml_view_spread": 0.03,
+          "view_direction": "momentum"
+        },
+        "ml_signals_config": {
+          "enabled": true,
+          "features_model": "cross_sectional_model",
+          "features": [
+            "mom_1m",
+            "mom_12m",
+            "vol_1m",
+            "vol_3m",
+            "reversal",
+            "mom_x_vol_regime",
+            "reversal_x_vol_regime",
+            "max_return",
+            "high_52w",
+            "beta_1m",
+            "beta_1y"
+          ],
+          "signals_model": "ridge",
+          "training_window": "2y",
+          "horizon": "1m",
+          "alpha": 1.0,
+          "rebal_cadence": "1m",
+          "sample_stride": "1w"
+        }
       },
       "rebalance_problem": {
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
+        "strategy_rules": {
+          "vol_target": 0.15,
+          "vol_lookback_days": "1m",
+          "vol_max_leverage": 1.5
+        },
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
+          "risk_aversion": 0.1,
           "optimizer_vol_constraint": 0.2,
           "turnover_limit": 0.3,
           "min_position_size": 0.0,
@@ -398,8 +433,8 @@
             ]
           }
         },
-        "strategy_type": "mean_variance_strategy",
-        "signal_source": "risk_return"
+        "strategy_type": "systematic_strategy",
+        "signal_source": "ml_cross_sectional"
       }
     }
   ]

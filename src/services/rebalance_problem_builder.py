@@ -4,7 +4,10 @@ from utils.lookback_windows import LOOKBACK_WINDOWS
 class RebalanceProblemBuilder:
     """Orchestrates the pipeline to build a RebalanceProblem from input configuration."""
 
-    def __init__(self, config: dict, universe_meta: dict, market_frequency: str = "d"):
+    def __init__(self, 
+                 config: dict, 
+                 universe_meta: dict, 
+                 market_frequency: str = "d"):
         """Initialize with configuration dictionary."""
         self.config = config
         self.universe_meta = universe_meta

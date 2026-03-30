@@ -49,7 +49,13 @@ class Optimizer(IOptimizer):
 		"""Setup decision variables for the optimization problem."""
 		n_assets = rebalance_problem.n_assets
 		portfolio_weights = cp.Variable(n_assets)
-		return {'portfolio_weights': portfolio_weights}
+		portfolio_buys = cp.Variable(n_assets)
+		portfolio_sells = cp.Variable(n_assets)
+		return {
+			'portfolio_weights': portfolio_weights,
+			'portfolio_buys': portfolio_buys,
+			'portfolio_sells': portfolio_sells
+		}
 
 	def _setup_constraints(self, 
 						   decision_variables: dict,
