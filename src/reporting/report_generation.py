@@ -39,7 +39,10 @@ class ExcelGenerator:
         self.buffer = buffer
 
     def generate_report(self):
-        results = self.aggregate_performance_metrics()
+        ic_results = self.aggregate_ic_series()
+        perf_results = self.aggregate_performance_metrics()
+        results = perf_results.update(ic_results)
+
         wb = Workbook()
         default_sheet = wb.active
         wb.remove(default_sheet)
@@ -62,8 +65,49 @@ class ExcelGenerator:
                 for c_idx, value in enumerate(row, 1):
                     ts_ws.cell(row=r_idx, column=c_idx, value=value)
 
+        if "ic_summary" in results and results["ic_summary"] is not None:
+            ts_ws = wb.create_sheet(title="IC Summary")
+            for r_idx, row in enumerate(dataframe_to_rows(results["ic_summary"], header=True, index=False), 1):
+                for c_idx, value in enumerate(row, 1):
+                    ts_ws.cell(row=r_idx, column=c_idx, value=value)               
+
+        if "ic_statistics" in results and results["ic_statistics"] is not None:
+            ts_ws = wb.create_sheet(title="IC Statistics")
+            for r_idx, row in enumerate(dataframe_to_rows(results["ic_statistics"], header=True, index=False), 1):
+                for c_idx, value in enumerate(row, 1):
+                    ts_ws.cell(row=r_idx, column=c_idx, value=value)                    
+
         wb.save(self.buffer)
         self.buffer.seek(0)
+
+    def aggregate_ic_series(self):
+        ic_summary_rwos = []
+        ic_series_dfs = []
+
+        for strategy_run in self.experiment.strategy_runs:
+            strategy_name = strategy_run.strategy_name 
+
+            row = {"strategy": strategy_name}
+            for k, v in strategy_run.monitoring_stats["t_test"]:
+                if isinstance(v, (pd.Series, pd.DataFrame)):
+                    continue
+                row[k] = v
+            last_row = len(strategy_run.monitoring_stats["t_test"]) + 1
+            row[last_row] = strategy_run.monitoring_stats["half_life"]
+            ic_summary_rwos.append(row)
+
+            ic_statistics_series = deserialize_series(strategy_run.monitoring_stats["ic_statistics"])
+            ic_statistics_series.insert(0, "Date", pd.to_datetime(ic_statistics_series.index))
+            ic_statistics_series.insert(1, "Strategy", strategy_name)
+            ic_statistics_series.insert(2, "IC_Statistics", ic_statistics_series.values)
+            ic_series_dfs.append(ic_statistics_series)
+
+        ic_summary_rwos = pd.concat(ic_series_dfs, axis=0, ignore_index=True) if ic_series_dfs else None
+        final_ic_series_dfs = pd.concat(ic_series_dfs, axis=0, ignore_index=True) if ic_series_dfs else None
+        return {
+            "ic_summary": ic_summary_rwos,
+            "ic_statistics": final_ic_series_dfs
+        }              
 
     def aggregate_performance_metrics(self):
         """Aggregate performance metrics from multiple strategies into summary and time series DataFrames."""

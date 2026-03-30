@@ -22,7 +22,7 @@ class BaseSignalMonitor(abc.ABC):
     @abc.abstractmethod
     def _one_sample_t_test(self, ic_series: pd.Series): ...    
 
-class SignalDecayMonitor(BaseSignalMonitor):
+class SignalICDiagnostics(BaseSignalMonitor):
     def __init__(self, 
                  forward_returns: pd.DataFrame,
                  signal: pd.DataFrame,

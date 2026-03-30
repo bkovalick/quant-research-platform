@@ -233,13 +233,18 @@ export default function Sidebar({ setExperiment, experiment }: any) {
                       {s.name}
                       {isNew && <span style={newBadge}>new</span>}
                     </button>
-                    {isNew && (
-                      <button style={removeStrategyBtn} onClick={() => {
+                    <button
+                      style={{ ...removeStrategyBtn, opacity: editedStrategies.length <= 1 ? 0.5 : 1, cursor: editedStrategies.length <= 1 ? "not-allowed" : "pointer" }}
+                      disabled={editedStrategies.length <= 1}
+                      onClick={() => {
+                        if (editedStrategies.length <= 1) return
                         const updated = editedStrategies.filter((_: any, idx: number) => idx !== i)
                         setEditedStrategies(updated)
                         setSelectedIdx(Math.min(i, updated.length - 1))
-                      }}>✕</button>
-                    )}
+                        setJsonMode(false)
+                      }}
+                      title={editedStrategies.length <= 1 ? "At least one strategy is required" : "Delete strategy"}
+                    >✕</button>
                     </div>
                 )
               })}

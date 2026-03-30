@@ -1,6 +1,6 @@
 from domain.portfolio.portfolio import Portfolio
 from reporting.performance_analyzer import PerformanceAnalyzer
-from reporting.signal_monitoring import SignalDecayMonitor
+from reporting.signal_monitoring import SignalICDiagnostics
 from simulation.backtesting_engine import BacktestingEngine
 from simulation.market_state import MarketState
 from services.strategy_factory import StrategyFactory
@@ -69,7 +69,7 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
 
     run = engine.run_backtest(rebalance_problem)
 
-    result = metrics_computer.compute(
+    backtest_result = metrics_computer.compute(
         rebalance_problem, 
         run.portfolio, 
         market_store_config, 
@@ -80,7 +80,7 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
     if run.scores_history and run.fwd_returns_history:
         scores_history_df = pd.DataFrame(run.scores_history).T
         fwd_df = pd.DataFrame(run.fwd_returns_history).T
-        monitor = SignalDecayMonitor(
+        monitor = SignalICDiagnostics(
             fwd_df,
             scores_history_df
         )
@@ -91,7 +91,8 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
         run_id, 
         strategy_cfg["name"],
         rebalance_problem, 
-        result, 
+        backtest_result, 
+        monitoring_stats,
         {
             "timestamp": datetime.now(), 
             "username": "bkovalick", 

@@ -237,7 +237,7 @@ class Optimizer(IOptimizer):
 									  decision_variables: dict): 
 		"""Set transaction cost penalty based on turnover from current weights to new weights."""
 		portfolio_buys = decision_variables.get('portfolio_buys')
-		portfolio_sells = decision_variables.get('portfolio_sells')		
+		portfolio_sells = decision_variables.get('portfolio_sells')
 		return transaction_cost * (cp.sum(portfolio_buys) + cp.sum(portfolio_sells))
 	
 	def _get_risky_current(self, 
