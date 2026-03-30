@@ -108,7 +108,7 @@ class Optimizer(IOptimizer):
 			return []
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		risky_weights = portfolio_weights[:-1]
-		cov_matrix = signals.covariance_matrix()
+		cov_matrix = signals.covariance_matrix()[:-1, :-1]
 		portfolio_risk = cp.quad_form(risky_weights, cov_matrix)
 		return [
 			portfolio_risk <= optimizer_vol_constraint ** 2
