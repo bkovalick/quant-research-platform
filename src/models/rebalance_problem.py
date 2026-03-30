@@ -110,3 +110,7 @@ class RebalanceProblem:
     @property
     def signal_source(self) -> str:
         return self._data.get("signal_source", "risk_return")
+    
+    @property
+    def transaction_cost(self) -> float:
+        return self._data.get("transaction_cost", 0.003)

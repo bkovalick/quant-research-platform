@@ -44,7 +44,8 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
             "tickers": state.universe_tickers,
             "cash_allocation": state.cash_allocation,
             "asset_class_map": state.asset_class_map,
-            "sector_map": state.sector_map
+            "sector_map": state.sector_map,
+            "transaction_cost": market_store_config.transaction_cost
     }    
 
     rebalance_problem = RebalanceProblemBuilder(
@@ -140,7 +141,7 @@ class ExperimentRunner:
         state_config = self._build_market_state_config(strategy_cfg)
         state = self._build_market_state(market_store, state_config)
 
-        universe_meta = self._build_universe_meta(state)
+        universe_meta = self._build_universe_meta(state, market_store_config)
 
         rebalance_problem = self._build_rebalance_problem(strategy_cfg, universe_meta)
 
@@ -210,12 +211,14 @@ class ExperimentRunner:
         return MarketState(market_store, market_state_config)
     
     def _build_universe_meta(self, 
-                             market_state: MarketState) -> dict:
+                             market_state: MarketState,
+                             market_store_config: MarketStoreConfig) -> dict:
         return {
             "tickers": market_state.universe_tickers,
             "cash_allocation": market_state.cash_allocation,
             "asset_class_map": market_state.asset_class_map,
-            "sector_map": market_state.sector_map
+            "sector_map": market_state.sector_map,
+            "transaction_cost": market_store_config.transaction_cost
         }        
 
     def _build_rebalance_problem(self, 

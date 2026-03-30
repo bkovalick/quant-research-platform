@@ -49,7 +49,13 @@ class Optimizer(IOptimizer):
 		"""Setup decision variables for the optimization problem."""
 		n_assets = rebalance_problem.n_assets
 		portfolio_weights = cp.Variable(n_assets)
-		return {'portfolio_weights': portfolio_weights}
+		portfolio_buys = cp.Variable(n_assets - 1, nonneg=True)
+		portfolio_sells = cp.Variable(n_assets - 1, nonneg=True)
+		return {
+			'portfolio_weights': portfolio_weights,
+			'portfolio_buys': portfolio_buys,
+			'portfolio_sells': portfolio_sells
+		}
 
 	def _setup_constraints(self, 
 						   decision_variables: dict,
@@ -59,7 +65,7 @@ class Optimizer(IOptimizer):
 		"""Setup constraints for the optimization problem."""
 		constraints = []
 		constraints.extend(
-			self._setup_portfolio_constraints(decision_variables, rebalance_problem)
+			self._setup_portfolio_constraints(decision_variables, rebalance_problem, current_weights)
 		)
 		constraints.extend(
 			self._setup_volatility_constraints(decision_variables, rebalance_problem, signals)
@@ -70,34 +76,40 @@ class Optimizer(IOptimizer):
 		constraints.extend(
 			self._setup_asset_class_constraints(decision_variables, rebalance_problem, current_weights)
 		)
-		# constraints.extend(
-		# 	self._setup_sector_constraints(decision_variables, rebalance_problem, current_weights)
-		# )
+		constraints.extend(
+			self._setup_sector_constraints(decision_variables, rebalance_problem, current_weights)
+		)
 		return constraints
-
+			
 	def _setup_portfolio_constraints(self, 
 								     decision_variables: dict,
-								     rebalance_problem: RebalanceProblem) -> list: 
+								     rebalance_problem: RebalanceProblem,
+									 current_weights: np.ndarray = None) -> list: 
 		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
 		portfolio_weights = decision_variables.get('portfolio_weights')
+		risky_current = self._get_risky_current(current_weights)
+		portfolio_buys = decision_variables.get('portfolio_buys')
+		portfolio_sells = decision_variables.get('portfolio_sells')
 		min_position_size = getattr(rebalance_problem, 'min_position_size', 0.0)
 		max_position_size = getattr(rebalance_problem, 'max_position_size', 1.0)
 		return [
 				cp.sum(portfolio_weights) == 1,
+				portfolio_weights[:-1] - risky_current == portfolio_buys - portfolio_sells,
 				portfolio_weights >= min_position_size,
 				portfolio_weights <= max_position_size
 			]
 	
 	def _setup_volatility_constraints(self, 
-								   decision_variables: dict,
-								   rebalance_problem: RebalanceProblem,
-								   signals: Signals) -> list:
+								   	  decision_variables: dict,
+								   	  rebalance_problem: RebalanceProblem,
+								   	  signals: Signals) -> list:
 		optimizer_vol_constraint = getattr(rebalance_problem, 'optimizer_vol_constraint', None)
 		if optimizer_vol_constraint is None or signals is None:
 			return []
 		portfolio_weights = decision_variables.get('portfolio_weights')
-		cov_matrix = signals.covariance_matrix()
-		portfolio_risk = cp.quad_form(portfolio_weights, cov_matrix)
+		risky_weights = portfolio_weights[:-1]
+		cov_matrix = signals.covariance_matrix()[:-1, :-1]
+		portfolio_risk = cp.quad_form(risky_weights, cov_matrix)
 		return [
 			portfolio_risk <= optimizer_vol_constraint ** 2
 		]
@@ -111,10 +123,7 @@ class Optimizer(IOptimizer):
 			return []
 		
 		portfolio_weights = decision_variables.get('portfolio_weights')	
-		risky_current = current_weights[:-1].copy()
-		risky_sum = risky_current.sum()
-		if risky_sum > 0:
-			risky_current = risky_current / risky_sum
+		risky_current = self._get_risky_current(current_weights)
 
 		return [
 			cp.norm1(portfolio_weights[:-1] - risky_current) <= rebalance_problem.turnover_limit
@@ -197,6 +206,7 @@ class Optimizer(IOptimizer):
 									   signals: Signals) -> callable:
 		"""Set objective to maximize returns minus risk penalty."""
 		risk_aversion = getattr(rebalance_problem, 'risk_aversion', 1.0)
+		transaction_cost = getattr(rebalance_problem, 'transaction_cost', 0.003)
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		mean_vector = signals.mean_returns()
 		cov_matrix = signals.covariance_matrix()
@@ -207,14 +217,36 @@ class Optimizer(IOptimizer):
 
 		portfolio_risk = cp.quad_form(risky_weights, cov_matrix)
 		concentration_objective = self._get_concentration_objective(risky_weights, rebalance_problem)
+		transaction_cost_penalty = self._get_transaction_cost_penalty(transaction_cost, decision_variables)
 		objective = cp.Maximize(mean_vector @ risky_weights - risk_aversion * \
-						  portfolio_risk - concentration_objective)
+						  portfolio_risk - concentration_objective - transaction_cost_penalty)
 		return objective
 	
 	def _get_concentration_objective(self, 
-								  	 risky_weights,
-									 rebalance_problem: RebalanceProblem):
-		"""Set concentration objective that will penalize large weights."""
-		concentration_penalty = cp.sum_squares(risky_weights)
-		concentration_strength = getattr(rebalance_problem, "concentration_strength")
-		return concentration_penalty * concentration_strength
+					risky_weights,
+					rebalance_problem: RebalanceProblem):
+			"""Set concentration objective that will penalize large weights."""
+			concentration_penalty = cp.sum_squares(risky_weights)
+			concentration_strength = getattr(rebalance_problem, "concentration_strength", 0.0)
+			if concentration_strength == 0:
+				return 0
+			return concentration_penalty * concentration_strength
+	
+	def _get_transaction_cost_penalty(self,
+								   	  transaction_cost: float,
+									  decision_variables: dict): 
+		"""Set transaction cost penalty based on turnover from current weights to new weights."""
+		portfolio_buys = decision_variables.get('portfolio_buys')
+		portfolio_sells = decision_variables.get('portfolio_sells')		
+		return transaction_cost * (cp.sum(portfolio_buys) + cp.sum(portfolio_sells))
+	
+	def _get_risky_current(self, 
+						   current_weights: np.ndarray):
+		"""Get current risky weights normalized to sum to 1 (excluding cash)."""
+		risky_current = current_weights[:-1].copy()
+		risky_sum = risky_current.sum()
+		if risky_sum > 0:
+			risky_current = risky_current / risky_sum
+		else:
+			risky_current = np.ones_like(risky_current) / len(risky_current)
+		return risky_current
