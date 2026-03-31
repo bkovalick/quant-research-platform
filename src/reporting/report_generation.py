@@ -17,7 +17,6 @@ def deserialize_series(data) -> pd.Series:
         return pd.Series(data)
     return pd.Series(data)
 
-
 def deserialize_dataframe(data) -> pd.DataFrame:
     """Deserialize a DataFrame from JSON round-trip."""
     if isinstance(data, pd.DataFrame):
@@ -31,7 +30,6 @@ def deserialize_dataframe(data) -> pd.DataFrame:
             return pd.DataFrame(data)
     return pd.DataFrame(data)
 
-
 class ExcelGenerator:
     def __init__(self, experiment: Experiment, buffer: BytesIO):
         self.experiment = experiment
@@ -40,8 +38,8 @@ class ExcelGenerator:
 
     def generate_report(self):
         ic_results = self.aggregate_ic_series()
-        perf_results = self.aggregate_performance_metrics()
-        results = perf_results.update(ic_results)
+        results = self.aggregate_performance_metrics()
+        results.update(ic_results)
 
         wb = Workbook()
         default_sheet = wb.active
@@ -81,8 +79,8 @@ class ExcelGenerator:
         self.buffer.seek(0)
 
     def aggregate_ic_series(self):
-        ic_summary_rwos = []
-        ic_series_dfs = []
+        ic_summary_rows = []
+        ic_statistics_agg_df = []
 
         for strategy_run in self.experiment.strategy_runs:
             strategy_name = strategy_run.strategy_name 
@@ -92,20 +90,21 @@ class ExcelGenerator:
                 if isinstance(v, (pd.Series, pd.DataFrame)):
                     continue
                 row[k] = v
-            ic_summary_rwos.append(row)
+            ic_summary_rows.append(row)
 
-            ic_statistics_series = deserialize_series(strategy_run.monitoring_stats["ic_series"])
-            ic_statistics_series.insert(0, "Date", pd.to_datetime(ic_statistics_series.index))
-            ic_statistics_series.insert(1, "Strategy", strategy_name)
-            ic_statistics_series.insert(2, "IC_Series", ic_statistics_series.values)
-            ic_series_dfs.append(ic_statistics_series)
+            ic_statistics_df = deserialize_dataframe(strategy_run.monitoring_stats["ic_series"])
+            ic_statistics_df.insert(0, "Date", pd.to_datetime(ic_statistics_df.index))
+            ic_statistics_df = ic_statistics_df.reset_index(drop=True)
+            ic_statistics_df.insert(1, "Strategy", strategy_name)
+            ic_statistics_df.rename(columns= {0: "IC_Series"})
+            ic_statistics_agg_df.append(ic_statistics_df)
 
-        ic_summary_rwos = pd.concat(ic_series_dfs, axis=0, ignore_index=True) if ic_series_dfs else None
-        final_ic_series_dfs = pd.concat(ic_series_dfs, axis=0, ignore_index=True) if ic_series_dfs else None
+        ic_summary_df = pd.DataFrame(ic_summary_rows)
+        ic_statistics_agg_df = pd.concat(ic_statistics_agg_df, axis=0, ignore_index=True) if ic_statistics_agg_df else None
         return {
-            "ic_summary": ic_summary_rwos,
-            "ic_series": final_ic_series_dfs
-        }              
+            "ic_summary": ic_summary_df,
+            "ic_series": ic_statistics_agg_df
+        }
 
     def aggregate_performance_metrics(self):
         """Aggregate performance metrics from multiple strategies into summary and time series DataFrames."""
