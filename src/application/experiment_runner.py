@@ -11,6 +11,7 @@ from models.market_config import MarketStoreConfig, MarketStateConfig
 from models.signals_config import SignalsConfig
 from models.rebalance_problem import RebalanceProblem
 from models.experiment import Experiment
+from models.monitoring_stats import MonitoringStats
 from infrastructure.market_data_gateway import MarketDataStore
 
 import uuid
@@ -53,6 +54,7 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
         universe_meta,
         state_config.market_frequency
     ).build()
+    
     signals_config = build_signal_config(strategy_cfg)
 
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
@@ -77,7 +79,7 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
         market_store.prices[market_store_config.benchmark]
     )
     
-    monitoring_stats = {}
+    monitoring_stats = None
     if run.scores_history and run.fwd_returns_history:
         scores_history_df = pd.DataFrame(run.scores_history).T
         fwd_df = pd.DataFrame(run.fwd_returns_history).T
@@ -172,7 +174,7 @@ class ExperimentRunner:
             benchmark
         )
 
-        monitoring_stats = {}
+        monitoring_stats = None
         if run.scores_history and run.fwd_returns_history:
             scores_history_df = pd.DataFrame(run.scores_history).T
             fwd_df = pd.DataFrame(run.fwd_returns_history).T

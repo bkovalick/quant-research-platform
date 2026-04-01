@@ -83,7 +83,7 @@ class ExcelGenerator:
         ic_statistics_agg_df = []
 
         for strategy_run in self.experiment.strategy_runs:
-            if len(strategy_run.monitoring_stats) == 0:
+            if strategy_run.monitoring_stats is None:
                 continue
             
             strategy_name = strategy_run.strategy_name

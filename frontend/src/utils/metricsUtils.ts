@@ -29,7 +29,6 @@ export interface DeserializedSeries {
   returns: { date: string; value: number }[]
   turnover: { date: string; value: number }[]
   wealth: { date: string; value: number }[]
-  ic_series?: { date: string; value: number }[]
 }
 
 /** Deserialize a series from JSON round-trip into {date, value} pairs */
@@ -64,17 +63,17 @@ export function getCachedSeries(run: any): DeserializedSeries {
   return series
 }
 
-const icSeriesCache = new WeakMap<object, DeserializedSeries>()
+// const icSeriesCache = new WeakMap<object, DeserializedSeries>()
 
 // export function getCachedIcSeries(run: any): DeserializedSeries {
 //   if (icSeriesCache.has(run)) {
 //     return icSeriesCache.get(run)!
 //   }
-//   const series: DeserializedSeries = {
-//     ic_series: deserializeToArray(run.monitoring_stats.?.ic_returns)
+//   const ic_series: DeserializedSeries = {
+//     ic_series: deserializeToArray(run.monitoring_stats?.ic_statistics)
 //   }
-//   icSeriesCache.set(run, series)
-//   return series
+//   icSeriesCache.set(run, ic_series)
+//   return ic_series
 // }
 
 

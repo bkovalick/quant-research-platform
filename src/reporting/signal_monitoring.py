@@ -3,14 +3,15 @@ import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
 from scipy import stats
+from models.monitoring_stats import MonitoringStats
 
 class BaseSignalMonitor(abc.ABC):
-    def analyze(self) -> dict:
+    def analyze(self) -> MonitoringStats:
         ic_series = self._compute_ic_statistics()
-        return {
-            "ic_statistics": ic_series,
-            "ic_summary": self._compute_ic_summary(ic_series)
-        }
+        return MonitoringStats(
+            ic_statistics=ic_series.to_dict(),
+            ic_summary=self._compute_ic_summary(ic_series)
+        )
 
     @abc.abstractmethod
     def _compute_ic_statistics(self): ...
