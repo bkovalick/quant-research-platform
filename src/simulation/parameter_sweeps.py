@@ -35,6 +35,10 @@ def create_folder_path(folder_name: str):
     path = Path(folder_name)
     path.mkdir(parents=True, exist_ok=True)
 
+"""
+Perhaps we have a json parameter sweep file
+
+"""
 class ParameterSweeps:
     def __init__(self, base_config):
         self.master_config = {}
@@ -44,8 +48,8 @@ class ParameterSweeps:
         self.unique_market_tickers = [] # need to store all possible tickers in market store.
 
     def run(self):
-        config = self._build_parameter_sweeps()
-        runner = ExperimentRunner(config)
+        param_sweep_config = self._build_parameter_sweeps()
+        runner = ExperimentRunner(param_sweep_config)
         experiment_results = runner.run_parallel()
         buffer = BytesIO()
         reporting_module = ExcelGenerator(experiment_results, buffer)
@@ -63,9 +67,23 @@ class ParameterSweeps:
     def _add_fwp_config(self):
         with open(self.fwp_config_file, 'r') as f:
             config = json.load(f)
+
+        universe_tickers = config["market_store_config"]["tickers"]
+        self.unique_market_tickers = list(set(universe_tickers) | set(self.unique_market_tickers))
         self.master_config["fixed_weight_portfolio"] = config.copy()
 
     def _add_ewp_config(self):
         with open(self.equal_config, 'r') as f:
             config = json.load(f)
+
+        universe_tickers = config["market_store_config"]["tickers"]
+        self.unique_market_tickers = list(set(universe_tickers) | set(self.unique_market_tickers))
         self.master_config["equal_weight_portfolio"] = config.copy()
+
+if __name__ == '__main__':
+    with open(f"src/config/src/config/experiment_securities_ml_bl_momentum_full_universe.json", 'r') as f:
+        config = json.load(f)
+
+    config = config.copy()    
+    param_sweeps = ParameterSweeps(config)
+    param_sweeps.run()

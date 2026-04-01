@@ -84,7 +84,7 @@ class ExcelGenerator:
 
         for strategy_run in self.experiment.strategy_runs:
             if len(strategy_run.monitoring_stats) == 0:
-                return {}
+                continue
             
             strategy_name = strategy_run.strategy_name 
 
@@ -99,7 +99,7 @@ class ExcelGenerator:
             ic_statistics_df.insert(0, "Date", pd.to_datetime(ic_statistics_df.index))
             ic_statistics_df = ic_statistics_df.reset_index(drop=True)
             ic_statistics_df.insert(1, "Strategy", strategy_name)
-            ic_statistics_df.rename(columns= {0: "IC_Series"})
+            ic_statistics_df = ic_statistics_df.rename(columns= {0: "IC_Series"})
             ic_statistics_agg_df.append(ic_statistics_df)
 
         ic_summary_df = pd.DataFrame(ic_summary_rows)

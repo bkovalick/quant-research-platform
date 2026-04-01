@@ -103,7 +103,7 @@ class BlackLittermanSignal(RiskReturnSignals):
             return self.ml_state.scores.rank(), bl.get("ml_view_spread", 0.03)
 
         window = getattr(self.signals_config, "mean_reversion_window", 4)
-        short_returns = self.market_state.lookback_prices().pct_change(window).iloc[-1]
+        short_returns = self.market_state.lookback_prices().pct_change(window, fill_method=None).iloc[-1]
         return short_returns.rank(), bl.get("reversion_view", 0.03)
     
     def _determine_view_direction(self, n: int, winners, losers):

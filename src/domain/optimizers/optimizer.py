@@ -73,12 +73,12 @@ class Optimizer(IOptimizer):
 		constraints.extend(
 			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
 		)
-		constraints.extend(
-			self._setup_asset_class_constraints(decision_variables, rebalance_problem, current_weights)
-		)
-		constraints.extend(
-			self._setup_sector_constraints(decision_variables, rebalance_problem, current_weights)
-		)
+		# constraints.extend(
+		# 	self._setup_asset_class_constraints(decision_variables, rebalance_problem, current_weights)
+		# )
+		# constraints.extend(
+		# 	self._setup_sector_constraints(decision_variables, rebalance_problem, current_weights)
+		# )
 		return constraints
 			
 	def _setup_portfolio_constraints(self, 

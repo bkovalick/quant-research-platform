@@ -30,8 +30,9 @@ class SignalICDiagnostics(BaseSignalMonitor):
 
     def _compute_ic_statistics(self) -> pd.Series:
         """
-        Compute a summary of IC quality metrics including mean IC, IC IR, hit rate, and a one-sample t-test 
-        against zero. Returns a dict with mean_ic, ic_ir, hit_rate, t_statistic, p_value, and n_observations.
+        Computes the Spearman rank correlation (IC) between the signal and forward returns for each date, 
+        then applies a rolling mean to smooth the series.
+        Returns a time series of IC values indexed by date.
         """
         ic_values = []
         for date in self.signal.index:
