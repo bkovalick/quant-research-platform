@@ -83,6 +83,9 @@ class ExcelGenerator:
         ic_statistics_agg_df = []
 
         for strategy_run in self.experiment.strategy_runs:
+            if len(strategy_run.monitoring_stats) == 0:
+                return {}
+            
             strategy_name = strategy_run.strategy_name 
 
             row = {"strategy": strategy_name}

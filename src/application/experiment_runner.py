@@ -77,6 +77,7 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
         market_store.prices[market_store_config.benchmark]
     )
     
+    monitoring_stats = {}
     if run.scores_history and run.fwd_returns_history:
         scores_history_df = pd.DataFrame(run.scores_history).T
         fwd_df = pd.DataFrame(run.fwd_returns_history).T
@@ -104,6 +105,7 @@ class ExperimentRunner:
     def __init__(self, config):
         self.config = config
         self.max_workers = min(8, multiprocessing.cpu_count())
+        self.max_workers = 4
 
     def run(self) -> Experiment:
         market_store_config = self._build_market_store_config()
@@ -162,7 +164,7 @@ class ExperimentRunner:
 
         run = engine.run_backtest(rebalance_problem)
 
-        result = metrics_computer.compute(
+        backtest_result = metrics_computer.compute(
             rebalance_problem, 
             run.portfolio, 
             market_store_config, 
@@ -170,12 +172,23 @@ class ExperimentRunner:
             benchmark
         )
 
+        monitoring_stats = {}
+        if run.scores_history and run.fwd_returns_history:
+            scores_history_df = pd.DataFrame(run.scores_history).T
+            fwd_df = pd.DataFrame(run.fwd_returns_history).T
+            monitor = SignalICDiagnostics(
+                fwd_df,
+                scores_history_df
+            )
+            monitoring_stats = monitor.analyze()
+
         run_id = str(uuid.uuid4())
         return StrategyRun(
             run_id, 
             strategy_cfg["name"],
             rebalance_problem, 
-            result, 
+            backtest_result,
+            monitoring_stats, 
             {
                 "timestamp": datetime.now(), 
                 "username": "bkovalick", 

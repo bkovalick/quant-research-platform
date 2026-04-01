@@ -6,6 +6,7 @@ import {
   YAxis,
   ResponsiveContainer,
   Tooltip,
+  ReferenceLine
 } from "recharts"
 import type { CSSProperties } from "react"
 import { getCachedSeries } from "../utils/metricsUtils"
@@ -205,6 +206,77 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
                 connectNulls={false}
               />
             ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Header */}
+      <div style={headerBar}>
+        <span style={headerLabel}>Information Coefficient Analysis</span>
+        {isWindowed ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={windowBadge}>
+              {formatDate(getDateAtPct(sliderStart))} → {formatDate(getDateAtPct(sliderEnd))}
+            </span>
+            <span style={rebaseNote}>Rebased</span>
+            <button style={resetBtn} onClick={handleReset}>Reset</button>
+          </div>
+        ) : (
+          <span style={hintText}>Drag sliders below to zoom</span>
+        )}
+      </div>
+
+      {/* Place new chart here */}
+      <div style={{ height: 300, padding: "12px 16px 0" }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={visibleData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+            <XAxis
+              dataKey="date"
+              tickFormatter={(d: string) => new Date(d).getFullYear().toString()}
+              interval="preserveStartEnd"
+              tick={{ fill: "#8b949e", fontSize: 11 }}
+              minTickGap={50}
+            />
+            <YAxis
+              domain={["auto", "auto"]}
+              tickFormatter={(v) => v.toFixed(1) + "x"}
+              tick={{ fill: "#8b949e", fontSize: 11 }}
+              width={40}
+            />
+            <Tooltip
+              content={({ active, payload, label }: any) => {
+                if (!active || !payload?.length) return null
+                return (
+                  <div style={{
+                    background: "#161b22", border: "1px solid #2a2f3a",
+                    padding: "8px 12px", fontSize: 12, borderRadius: 6
+                  }}>
+                    <div style={{ color: "#8b949e", marginBottom: 6 }}>{formatDate(label)}</div>
+                    {payload.map((entry: any) => {
+                      const run = runs.find((r: any) => r.run_id === entry.dataKey)
+                      const name = run ? formatStrategyName(run.strategy_name) : entry.dataKey
+                      return (
+                        <div key={entry.dataKey} style={{ color: entry.stroke, marginBottom: 2 }}>
+                          {name}: {entry.value?.toFixed(3)}x
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              }}
+            />
+            <ReferenceLine y={0} stroke="#444" strokeDasharray="3 3" />
+            {runs.map((run: any, i: number) => (
+              <Line
+                key={run.run_id}
+                type="monotone"
+                dataKey={run.run_id}
+                stroke={COLORS[i % COLORS.length]}
+                strokeWidth={1.5}
+                dot={false}
+                connectNulls={false}
+              />
+            ))}            
           </LineChart>
         </ResponsiveContainer>
       </div>

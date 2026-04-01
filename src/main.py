@@ -20,7 +20,7 @@ def create_folder_path(folder_name: str):
     path.mkdir(parents=True, exist_ok=True)
 
 def local_run():
-    with open(f"src/config/experiment_securities_ml_bl_momentum.json", 'r') as f:
+    with open(f"src/config/experiment_full_suite.json", 'r') as f:
         config = json.load(f)
 
     config = config.copy()
