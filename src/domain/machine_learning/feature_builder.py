@@ -39,7 +39,7 @@ class FeatureBuilder:
         px  = self.prices
         rets = self.returns
         mret = self.benchmark_returns.reindex(rets.index).fillna(0)
-
+        
         # vectorized rolling features
         mom_1m   = px / px.shift(w["1m"]) - 1
         mom_12m  = px.shift(w["1m"]) / px.shift(w["1y"]) - 1
@@ -53,6 +53,7 @@ class FeatureBuilder:
         market_var_1y = mret.rolling(w["1y"]).var()
         beta_1m = rets.rolling(w["1m"]).cov(mret).div(market_var_1m.replace(0, np.nan), axis=0)
         beta_1y = rets.rolling(w["1y"]).cov(mret).div(market_var_1y.replace(0, np.nan), axis=0)
+        idiosyncratic_vol = (rets - beta_1y.multiply(mret, axis=0)).rolling(w["1y"]).std()
 
         if "^VIX" in self.exogenous_universe.columns:
             vix = self.exogenous_universe["^VIX"].reindex(px.index).ffill()
@@ -83,6 +84,7 @@ class FeatureBuilder:
                 "high_52w":              high_52w.loc[date],
                 "beta_1m":               beta_1m.loc[date],
                 "beta_1y":               beta_1y.loc[date],
+                "idiosyncratic_vol":     idiosyncratic_vol.loc[date]
             })
             feat = feat.rank(axis=0, pct=True).dropna()
             if not feat.empty:
@@ -120,6 +122,7 @@ class FeatureBuilder:
             return pd.DataFrame(index=self.prices.columns)
 
         features = pd.DataFrame(index=self.prices.columns)
+        beta_1y = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1y"])
         features["mom_1m"]   = px.iloc[-1] / px.iloc[-self.lookbacks["1m"]] - 1
         features["mom_12m"]  = px.iloc[-self.lookbacks["1m"]] / px.iloc[-self.lookbacks["1y"]] - 1
         features["vol_1m"]   = rets.iloc[-self.lookbacks["1m"]:].std()
@@ -130,7 +133,9 @@ class FeatureBuilder:
         features["max_return"] = rets.iloc[-self.lookbacks["1m"]:].max()
         features["high_52w"] = px.iloc[-1] / px.iloc[-self.lookbacks["1y"]:].max()
         features["beta_1m"] = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1m"])
-        features["beta_1y"] = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1y"])
+        features["beta_1y"] = beta_1y
+        features["idiosyncratic_vol"] = (rets - beta_1y.multiply(market_rets, axis=0))\
+            .rolling(self.lookbacks["1y"]).std()
         features = features.rank(axis=0, pct=True)
         return features.dropna()
     
