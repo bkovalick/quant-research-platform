@@ -86,16 +86,15 @@ class ExcelGenerator:
             if len(strategy_run.monitoring_stats) == 0:
                 continue
             
-            strategy_name = strategy_run.strategy_name 
-
+            strategy_name = strategy_run.strategy_name
             row = {"strategy": strategy_name}
-            for k, v in strategy_run.monitoring_stats["ic_summary"].items():
+            for k, v in strategy_run.monitoring_stats.ic_summary.items():
                 if isinstance(v, (pd.Series, pd.DataFrame)):
                     continue
                 row[k] = v
             ic_summary_rows.append(row)
 
-            ic_statistics_df = deserialize_dataframe(strategy_run.monitoring_stats["ic_series"])
+            ic_statistics_df = deserialize_dataframe(strategy_run.monitoring_stats.ic_statistics)
             ic_statistics_df.insert(0, "Date", pd.to_datetime(ic_statistics_df.index))
             ic_statistics_df = ic_statistics_df.reset_index(drop=True)
             ic_statistics_df.insert(1, "Strategy", strategy_name)

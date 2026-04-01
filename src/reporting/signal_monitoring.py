@@ -8,7 +8,7 @@ class BaseSignalMonitor(abc.ABC):
     def analyze(self) -> dict:
         ic_series = self._compute_ic_statistics()
         return {
-            "ic_series": ic_series,
+            "ic_statistics": ic_series,
             "ic_summary": self._compute_ic_summary(ic_series)
         }
 

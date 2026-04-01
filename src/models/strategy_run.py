@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from models.backtest_result import BacktestResult
 from models.monitoring_stats import MonitoringStats
 
@@ -9,7 +9,7 @@ class StrategyRun:
     strategy_name: str
     strategy_config: Dict[str, Any]
     result: BacktestResult
-    monitoring_stats: Optional[MonitoringStats] = None
+    monitoring_stats: MonitoringStats
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self):
