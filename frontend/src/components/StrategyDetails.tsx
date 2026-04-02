@@ -10,6 +10,7 @@ import {
 } from "recharts"
 import type { CSSProperties } from "react"
 import { getCachedSeries } from "../utils/metricsUtils"
+import { getCachedIcSeries } from "../utils/metricsUtils"
 import type { DateWindow } from "../utils/metricsUtils"
 
 const COLORS = [
@@ -44,6 +45,14 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
     return Array.from(dateSet).sort()
   }, [runs])
 
+  const allIcDates = useMemo(() => {
+    const dateSet = new Set<string>()
+    runs.forEach(run => {
+      getCachedIcSeries(run).ic_series.forEach(p => dateSet.add(p.date))
+    })
+    return Array.from(dateSet).sort()
+  }, [runs])  
+
   // Build chart data — each run rebases to its own first available date
   const data = useMemo(() => {
     const runMaps: Record<string, Record<string, number>> = {}
@@ -72,6 +81,34 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
     })
   }, [runs, allDates, dateWindow])
 
+    // Build ic chart data — each run rebases to its own first available date
+  const icData = useMemo(() => {
+    const runMaps: Record<string, Record<string, number>> = {}
+    const rebaseDates: Record<string, string> = {}
+
+    runs.forEach(run => {
+      const map: Record<string, number> = {}
+      getCachedIcSeries(run).ic_series.forEach(p => { map[p.date] = p.value })
+      runMaps[run.run_id] = map
+      const sortedDates = Object.keys(map).sort()
+      rebaseDates[run.run_id] = dateWindow?.start
+        ? (sortedDates.find(d => d >= dateWindow.start) ?? sortedDates[0])
+        : sortedDates[0]
+    })
+
+    return allIcDates.map(date => {
+      const row: any = { date }
+      runs.forEach(run => {
+        const map = runMaps[run.run_id]
+        if (!map) return
+        const rebaseValue = map[rebaseDates[run.run_id]] ?? null
+        const currentValue = map[date] ?? null
+        if (rebaseValue && currentValue) row[run.run_id] = currentValue / rebaseValue
+      })
+      return row
+    })
+  }, [runs, allIcDates, dateWindow])
+
   // Downsample for chart rendering — max 500 points
   const chartData = useMemo(() => {
     if (data.length <= 500) return data
@@ -79,10 +116,18 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
     return data.filter((_: any, i: number) => i % step === 0 || i === data.length - 1)
   }, [data])
 
+  const icChartData = useMemo(() => {
+    if (icData.length <= 500) return icData
+    const step = Math.ceil(icData.length / 500)
+    return icData.filter((_: any, i: number) => i % step === 0 || i === icData.length - 1)
+  }, [icData])
+
   const visibleData = useMemo(() => {
     if (!dateWindow) return chartData
     return chartData.filter((d: any) => d.date >= dateWindow.start && d.date <= dateWindow.end)
   }, [chartData, dateWindow])
+
+  const icVisibleData = icChartData
 
   const getDateAtPct = (pct: number) => {
     const idx = Math.round(pct / 100 * (allDates.length - 1))
@@ -229,7 +274,7 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
       {/* Place new chart here */}
       <div style={{ height: 300, padding: "12px 16px 0" }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={visibleData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+          <LineChart data={icVisibleData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
             <XAxis
               dataKey="date"
               tickFormatter={(d: string) => new Date(d).getFullYear().toString()}
@@ -239,7 +284,7 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
             />
             <YAxis
               domain={["auto", "auto"]}
-              tickFormatter={(v) => v.toFixed(1) + "x"}
+              tickFormatter={(v) => v.toFixed(2)}
               tick={{ fill: "#8b949e", fontSize: 11 }}
               width={40}
             />
@@ -257,7 +302,7 @@ export default function StrategyDetails({ runs, onWindowChange, dateWindow }: Pr
                       const name = run ? formatStrategyName(run.strategy_name) : entry.dataKey
                       return (
                         <div key={entry.dataKey} style={{ color: entry.stroke, marginBottom: 2 }}>
-                          {name}: {entry.value?.toFixed(3)}x
+                          {name}: {entry.value?.toFixed(3)}
                         </div>
                       )
                     })}

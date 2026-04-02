@@ -78,11 +78,17 @@ class BacktestingEngine(BacktestingEngineInterface):
         )
         
         prev_weights = np.array(initial_weights)
+        current_year = None
         while self.market_state.has_next():
             self.market_state.advance()
 
             cursor = self.market_state.cursor
             
+            date = self.market_state.current_date()
+            if date.year != current_year:
+                current_year = date.year
+                print(f"Processing {current_year}...")
+
             current_returns = self.market_state.returns.iloc[cursor]
 
             prev_weights = self.portfolio.drift(prev_weights, current_returns, cursor)

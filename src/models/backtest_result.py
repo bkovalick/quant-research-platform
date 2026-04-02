@@ -3,12 +3,18 @@ from typing import Dict, Any
 import pandas as pd
 import numpy as np
 
+def _sanitize_value(v):
+    if isinstance(v, float) and (np.isnan(v) or np.isinf(v)):
+        return None
+    if isinstance(v, np.floating) and (np.isnan(v) or np.isinf(v)):
+        return None
+    return v
+
+def _sanitize_dict(d):
+    return {k: _sanitize_value(v) for k, v in d.items()}
+
 def _sanitize_list(values):
-    return [
-        None if (isinstance(v, float) and (np.isnan(v) or np.isinf(v)))
-        else v
-        for v in values
-    ]    
+    return [_sanitize_value(v) for v in values]
 
 @dataclass(frozen=True)
 class BacktestResult:
@@ -17,7 +23,7 @@ class BacktestResult:
 
     def to_dict(self):
         return {
-            "summary": self.summary,
+            "summary": _sanitize_dict(self.summary),
             "series": { 
                 k: self._serialize(v) 
                 for k,v in self.series.items()

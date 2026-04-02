@@ -4,6 +4,7 @@ from models.experiment import Experiment
 from models.backtest_result import BacktestResult
 from models.strategy_run import StrategyRun
 from models.experiment_model import ExperimentModel
+from simulation.parameter_sweeps import ParameterSweeps
 
 import json
 from datetime import datetime
@@ -34,6 +35,12 @@ def local_run():
     with open(folder_path + "/backtest_report_" + datetime.now().strftime("%Y%m%d%H%M%S%f") + ".xlsx", "wb") as f:
         f.write(buffer.getvalue())
 
+def run_parameter_sweep():
+    with open(f"src/config/experiment_securities_ml_bl_momentum.json", 'r') as f:
+        config = json.load(f)
+
+    sweep = ParameterSweeps(config)
+    sweep.run()
 app = FastAPI()
 
 app.add_middleware(
@@ -92,6 +99,7 @@ if __name__ == '__main__':
     run_mode = os.environ.get("RUN_MODE", "api").lower()
     run_mode = "local"
     if run_mode == "local":
-        local_run()
+        # local_run()
+        run_parameter_sweep()
     else:
         uvicorn.run("main:app", reload=True)
