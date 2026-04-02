@@ -30,6 +30,8 @@ import json
 from io import BytesIO
 from pathlib import Path
 from datetime import datetime
+from itertools import product
+import copy
 
 def create_folder_path(folder_name: str):
     path = Path(folder_name)
@@ -40,14 +42,18 @@ Perhaps we have a json parameter sweep file
 
 """
 class ParameterSweeps:
+    
     def __init__(self, base_config):
-        self.master_config = {}
         self.base_config = base_config 
         self.fwp_config_file = "src/config/experiment_fwp.json"
         self.equal_config = "src/config/experiment_equal_weight.json"
-        self.unique_market_tickers = [] # need to store all possible tickers in market store.
+        self.unique_market_tickers = []
 
     def run(self):
+        """
+        Builds a master configuration dict that includes all parameter sweeps, 
+        then feeds it to the experiment runner.
+        """
         param_sweep_config = self._build_parameter_sweeps()
         runner = ExperimentRunner(param_sweep_config)
         experiment_results = runner.run_parallel()
@@ -60,25 +66,48 @@ class ParameterSweeps:
             f.write(buffer.getvalue())        
 
     def _build_parameter_sweeps(self) -> dict:
-        self._add_fwp_config()
-        self._add_ewp_config()
-        return self.master_config.copy()
+        """
+        Builds a master config with one market_store_config and a flat list
+        of strategy variants (baselines + frequency sweep).
+        """
+        # Baselines
+        strategies = []
+        strategies.extend(self._load_baseline_strategies())
 
-    def _add_fwp_config(self):
-        with open(self.fwp_config_file, 'r') as f:
-            config = json.load(f)
+        # Frequency sweep over base config strategies
+        for strategy in self.base_config.get("strategies", []):
+            for freq in self._rebalance_frequency_sweep():
+                variant = copy.deepcopy(strategy)
+                variant["name"] = f"{strategy['name']}_{freq}"
+                variant["rebalance_problem"]["rebalance_frequency"] = freq
+                strategies.append(variant)
 
-        universe_tickers = config["market_store_config"]["tickers"]
-        self.unique_market_tickers = list(set(universe_tickers) | set(self.unique_market_tickers))
-        self.master_config["fixed_weight_portfolio"] = config.copy()
+        # Merge all unique tickers into one market_store_config
+        base_tickers = self.base_config["market_store_config"]["tickers"]
+        all_tickers = list(set(base_tickers) | set(self.unique_market_tickers))
 
-    def _add_ewp_config(self):
-        with open(self.equal_config, 'r') as f:
-            config = json.load(f)
+        return {
+            "market_store_config": {
+                **self.base_config["market_store_config"],
+                "tickers": all_tickers
+            },
+            "strategies": strategies
+        }
 
-        universe_tickers = config["market_store_config"]["tickers"]
-        self.unique_market_tickers = list(set(universe_tickers) | set(self.unique_market_tickers))
-        self.master_config["equal_weight_portfolio"] = config.copy()
+    def _load_baseline_strategies(self) -> list:
+        """Load FWP and EWP baseline strategies, collecting their tickers."""
+        strategies = []
+        for config_file in [self.fwp_config_file, self.equal_config]:
+            with open(config_file, 'r') as f:
+                config = json.load(f)
+            tickers = config.get("market_store_config", {}).get("tickers", [])
+            self.unique_market_tickers = list(set(tickers) | set(self.unique_market_tickers))
+            strategies.extend(config.get("strategies", []))
+        return strategies
+
+    def _rebalance_frequency_sweep(self):
+        """Sweep over different rebalance frequencies for the same strategy configuration."""
+        return ["daily", "weekly", "quarterly", "yearly"]
 
 if __name__ == '__main__':
     with open(f"src/config/src/config/experiment_securities_ml_bl_momentum_full_universe.json", 'r') as f:
