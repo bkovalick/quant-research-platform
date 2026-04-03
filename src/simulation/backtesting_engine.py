@@ -45,7 +45,8 @@ class BacktestingEngine(BacktestingEngineInterface):
             self.feature_builder = FeatureBuilder(
                 self.market_state,
                 self.benchmark,
-                self.market_state.market_frequency
+                self.market_state.market_frequency,
+                self.ml_signals_config.features
             )
             self.feature_builder.precompute(self.ml_signals_config.horizon)
             self.cs_model = CrossSectionalModel(self.ml_signals_config)

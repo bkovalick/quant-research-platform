@@ -12,7 +12,8 @@ class FeatureBuilder:
     def __init__(self, 
                  market_state: MarketState,
                  benchmark: pd.Series,
-                 market_frequency: str = "d"):
+                 market_frequency: str = "d",
+                 features: list = []):
         self.prices = market_state.prices.copy()
         self.returns = market_state.returns.copy()
         self.exogenous_universe = market_state.exogenous_universe.copy()
@@ -20,6 +21,7 @@ class FeatureBuilder:
         self.benchmark_returns = benchmark.pct_change(fill_method=None).fillna(0)
         self.lookbacks = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
         self.reversal_window = self.lookbacks.get("1w", 1)
+        self.features = features
         self.features_cache = None
         self.forward_returns_cache = None
         self.precomputed_horizon = None
@@ -88,6 +90,7 @@ class FeatureBuilder:
             })
             feat = feat.rank(axis=0, pct=True).dropna()
             if not feat.empty:
+                feat = feat[self.features]
                 features_cache[date] = feat
 
         self.features_cache = features_cache

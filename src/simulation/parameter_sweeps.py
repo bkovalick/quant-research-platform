@@ -76,11 +76,12 @@ class ParameterSweeps:
 
         # Frequency sweep over base config strategies
         for strategy in self.base_config.get("strategies", []):
-            for freq in self._rebalance_frequency_sweep():
-                variant = copy.deepcopy(strategy)
-                variant["name"] = f"{strategy['name']}_{freq}"
-                variant["rebalance_problem"]["rebalance_frequency"] = freq
-                strategies.append(variant)
+            self._ml_features_sweep(strategies, copy.deepcopy(strategy))
+            # for freq in self._rebalance_frequency_sweep():
+            #     variant = copy.deepcopy(strategy)
+            #     variant["name"] = f"{strategy['name']}_{freq}"
+            #     variant["rebalance_problem"]["rebalance_frequency"] = freq
+            #     strategies.append(variant)
 
         # Merge all unique tickers into one market_store_config
         base_tickers = self.base_config["market_store_config"]["tickers"]
@@ -108,6 +109,33 @@ class ParameterSweeps:
     def _rebalance_frequency_sweep(self):
         """Sweep over different rebalance frequencies for the same strategy configuration."""
         return ["daily", "weekly", "quarterly", "yearly"]
+
+    def _black_litterman_sweeps(self, variant):
+        if "black_litterman" not in variant:
+            return
+        
+        risk_aversion_view_sweeps = [0.03]
+        tau_sweeps = [0.01, 0.05, 0.10]
+        ml_view_spread_sweeps = [0.01, 0.03, 0.05, 0.10]
+        variant["black_litterman"]["tau"] = 0.01
+
+    def _ml_features_sweep(self, strategy: dict) -> list:
+        """Generates leave-one-out feature variants for the ML predictor signal."""
+        features = (strategy
+                     .get("signals_config", {})
+                     .get("ml_signals_config", {})
+                     .get("features"))
+        if not features:
+            return []
+
+        variants = []
+        for feat in features:
+            variant = copy.deepcopy(strategy)
+            remaining = [f for f in features if f != feat]
+            variant["name"] = f"{strategy['name']}_remove_{feat}"
+            variant["signals_config"]["ml_signals_config"]["features"] = remaining
+            variants.append(variant)
+        return variants
 
 if __name__ == '__main__':
     with open(f"src/config/src/config/experiment_securities_ml_bl_momentum_full_universe.json", 'r') as f:
