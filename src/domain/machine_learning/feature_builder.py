@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 import pandas as pd
 import numpy as np
 import warnings
@@ -14,7 +16,8 @@ class FeatureBuilder:
                  market_state: MarketState,
                  benchmark: pd.Series,
                  market_frequency: str = "d",
-                 features: list = []):
+                 features: Optional[List[str]] = None):
+        features = features or []
         self.prices = market_state.prices.copy()
         self.returns = market_state.returns.copy()
         self.exogenous_universe = market_state.exogenous_universe.copy()
