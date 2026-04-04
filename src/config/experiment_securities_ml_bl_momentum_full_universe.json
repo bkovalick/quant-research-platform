@@ -1,8 +1,8 @@
 {
   "_description": "ML+BL momentum experiment on full ~420-stock sector-balanced universe. All available equity tickers from equity_universe.csv plus AGG and LQD. Proportional sector weights matching S&P 500 composition.",
   "market_store_config": {
-    "start_date": "2021-01-01",
-    "end_date": "2026-02-19",
+    "start_date": "2005-01-01",
+    "end_date": "2026-04-02",
     "data_source": {
       "yfinance": null
     },
@@ -956,7 +956,7 @@
           "turnover_limit": 0.3,
           "min_position_size": 0.0,
           "max_position_size": 0.05,
-          "max_positions": 80,
+          "max_positions": 410,
           "asset_class_constraints": {
             "Equity": [
               0.75,

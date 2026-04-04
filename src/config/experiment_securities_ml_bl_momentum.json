@@ -348,7 +348,8 @@
             "max_return",
             "high_52w",
             "beta_1m",
-            "beta_1y"
+            "beta_1y",
+            "idiosyncratic_vol"
           ],
           "signals_model": "ridge",
           "training_window": "2y",
