@@ -113,4 +113,4 @@ class RebalanceProblem:
     
     @property
     def transaction_cost(self) -> float:
-        return self._data.get("transaction_cost", 0.003)
+        return self._data.get("transaction_cost", 0.0)
