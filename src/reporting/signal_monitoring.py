@@ -22,12 +22,10 @@ class BaseSignalMonitor(abc.ABC):
 class SignalICDiagnostics(BaseSignalMonitor):
     def __init__(self, 
                  forward_returns: pd.DataFrame,
-                 signal: pd.DataFrame,
-                 window: int = 20):
+                 signal: pd.DataFrame):
         """Monitors signal decay by computing rolling Information Coefficient and half-life of those signals."""
         self.forward_returns = forward_returns
         self.signal = signal
-        self.window = window
 
     def _compute_ic_statistics(self) -> pd.Series:
         """
