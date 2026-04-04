@@ -26,6 +26,7 @@ class MLPredictorSignalsState:
         self.sample_stride = ml_config.sample_stride
         self.scores_history = {}
         self.fwd_returns_history = {}
+        self.coef_history = {}
 
     def update(self, cursor: int, as_of_date: datetime):
         """
@@ -60,6 +61,7 @@ class MLPredictorSignalsState:
         y_train = pd.concat(y_list)
 
         self.model.fit(X_train, y_train)
+        self._coefficient_history(X_train, as_of_date)
         X_now = self.feature_builder.build(as_of_date)
         if X_now.empty:
             return
@@ -84,6 +86,13 @@ class MLPredictorSignalsState:
         if self.last_trained is None:
             return True
         return (cursor - self.last_trained) >= self.cadence
+    
+    def _coefficient_history(self, X_train: pd.DataFrame, as_of_date: datetime):
+        if hasattr(self.model.model, 'coef_'):
+            self.coef_history[as_of_date] = pd.Series(
+                self.model.model.coef_,
+                index=X_train.columns
+            )
     
     @property
     def scores(self):

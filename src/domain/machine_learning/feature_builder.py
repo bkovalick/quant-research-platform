@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import warnings
 
 from utils.lookback_windows import LOOKBACK_WINDOWS
 from simulation.market_state import MarketState
@@ -102,7 +103,6 @@ class FeatureBuilder:
         using cached values if available.
         """
         if self.features_cache is None:
-            import warnings
             warnings.warn("FeatureBuilder.precompute() has not been called. Falling back to _build_single_date() which is significantly slower.")
         if self.features_cache is not None:
             return self.features_cache.get(date, pd.DataFrame(index=self.prices.columns))

@@ -76,7 +76,7 @@ class ParameterSweeps:
 
         # Frequency sweep over base config strategies
         for strategy in self.base_config.get("strategies", []):
-            self._ml_features_sweep(strategies, copy.deepcopy(strategy))
+            strategies.extend(self._ml_features_sweep(copy.deepcopy(strategy)))
             # for freq in self._rebalance_frequency_sweep():
             #     variant = copy.deepcopy(strategy)
             #     variant["name"] = f"{strategy['name']}_{freq}"

@@ -342,13 +342,11 @@
             "mom_12m",
             "vol_1m",
             "vol_3m",
-            "reversal",
             "mom_x_vol_regime",
             "reversal_x_vol_regime",
             "max_return",
             "high_52w",
-            "beta_1m",
-            "beta_1y"
+            "beta_1m"
           ],
           "signals_model": "ridge",
           "training_window": "2y",

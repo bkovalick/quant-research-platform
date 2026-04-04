@@ -99,7 +99,7 @@ if __name__ == '__main__':
     run_mode = os.environ.get("RUN_MODE", "api").lower()
     run_mode = "local"
     if run_mode == "local":
-        # local_run()
-        run_parameter_sweep()
+        local_run()
+        # run_parameter_sweep()
     else:
         uvicorn.run("main:app", reload=True)
