@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import cvxpy as cp
 
@@ -10,6 +11,7 @@ class Optimizer(IOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
 	def __init__(self):
 		super().__init__()
+		self.logger = logging.getLogger(__name__)
 			
 	def optimize(self, 
 			  rebalance_problem: RebalanceProblem, 
@@ -33,13 +35,11 @@ class Optimizer(IOptimizer):
 				prob.solve(solver=solver, verbose=False)
 				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
 					break
-			except (cp.SolverError, Exception):
+			except (cp.SolverError, Exception) as e:
+				# self.logger.debug(f"Solver {solver} failed: {e}")
 				continue
 		else:
-			raise RuntimeError("Optimization failed: all solvers failed")
-			
-		if prob.status not in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
-			print(f"Optimization failed: Problem status {prob.status} {rebalance_problem.max_return}")
+			# self._log_failure_diagnostics(prob, current_weights, signals)
 			return current_weights
 
 		optimal_weights = decision_variables['portfolio_weights'].value
@@ -66,9 +66,6 @@ class Optimizer(IOptimizer):
 		constraints = []
 		constraints.extend(
 			self._setup_portfolio_constraints(decision_variables, rebalance_problem, current_weights)
-		)
-		constraints.extend(
-			self._setup_volatility_constraints(decision_variables, rebalance_problem, signals)
 		)
 		constraints.extend(
 			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
@@ -225,12 +222,12 @@ class Optimizer(IOptimizer):
 	def _get_concentration_objective(self, 
 					risky_weights,
 					rebalance_problem: RebalanceProblem):
-			"""Set concentration objective that will penalize large weights."""
-			concentration_penalty = cp.sum_squares(risky_weights)
-			concentration_strength = getattr(rebalance_problem, "concentration_strength", 0.0)
-			if concentration_strength == 0:
-				return 0
-			return concentration_penalty * concentration_strength
+		"""Set concentration objective that will penalize large weights."""
+		concentration_penalty = cp.sum_squares(risky_weights)
+		concentration_strength = getattr(rebalance_problem, "concentration_strength", 0.0)
+		if concentration_strength == 0:
+			return 0
+		return concentration_penalty * concentration_strength
 	
 	def _get_transaction_cost_penalty(self,
 								   	  transaction_cost: float,
@@ -242,11 +239,18 @@ class Optimizer(IOptimizer):
 	
 	def _get_risky_current(self, 
 						   current_weights: np.ndarray):
-		"""Get current risky weights normalized to sum to 1 (excluding cash)."""
-		risky_current = current_weights[:-1].copy()
-		risky_sum = risky_current.sum()
-		if risky_sum > 0:
-			risky_current = risky_current / risky_sum
-		else:
-			risky_current = np.ones_like(risky_current) / len(risky_current)
-		return risky_current
+		"""Get current risky weights (excluding cash)."""
+		return current_weights[:-1].copy()
+
+	def _log_failure_diagnostics(self, prob, current_weights, signals):
+		"""Log diagnostic info when optimization fails."""
+		self.logger.warning(f"Status: {prob.status}")
+		self.logger.warning(f"Current weights: {current_weights}")
+		self.logger.warning(f"Current weights sum: {current_weights.sum():.6f}")
+		self.logger.warning(f"Num constraints: {len(prob.constraints)}")
+		if signals is not None:
+			mean_ret = signals.mean_returns()
+			cov = signals.covariance_matrix()
+			self.logger.warning(f"Mean returns range: [{mean_ret.min():.6f}, {mean_ret.max():.6f}]")
+			self.logger.warning(f"Cov matrix condition number: {np.linalg.cond(cov):.2e}")
+			self.logger.warning(f"Any NaN in mean: {np.any(np.isnan(mean_ret))}, cov: {np.any(np.isnan(cov))}")

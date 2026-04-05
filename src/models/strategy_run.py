@@ -13,11 +13,16 @@ class StrategyRun:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self):
+        if self.monitoring_stats is None:
+            monitoring_stats_dict = None
+        else:
+            monitoring_stats_dict = self.monitoring_stats.to_dict()
+
         return {
             "run_id": self.run_id,
             "strategy_name": self.strategy_name,
             "strategy_config": self.strategy_config,
             "result": self.result.to_dict(),
-            "monitoring_stats": self.monitoring_stats.to_dict(),
+            "monitoring_stats": monitoring_stats_dict,
             "metadata": self.metadata
         }

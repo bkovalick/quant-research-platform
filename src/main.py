@@ -15,6 +15,13 @@ from fastapi import Response
 from io import BytesIO
 from pathlib import Path
 import uvicorn
+import logging
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    filename="optimizer.log"
+)
 
 def create_folder_path(folder_name: str):
     path = Path(folder_name)
@@ -68,11 +75,15 @@ def download(body: ExperimentModel = Body(...)):
         market_config=body.market_config,
     )
     for run in body.strategy_runs:
+        if run.monitoring_stats is None:
+            run.monitoring_stats = None
+
         experiment.add_run(StrategyRun(
             run_id=run.run_id,
             strategy_name=run.strategy_name,
             strategy_config=run.strategy_config,
             metadata=run.metadata,
+            monitoring_stats=run.monitoring_stats,
             result=BacktestResult(
                 summary=run.result.summary,
                 series=run.result.series
