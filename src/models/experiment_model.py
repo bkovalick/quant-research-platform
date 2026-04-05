@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 class SeriesData(BaseModel):
     class Config:
@@ -22,7 +22,7 @@ class StrategyRunModel(BaseModel):
     strategy_name: str
     strategy_config: Dict[str, Any] = {}
     metadata: Dict[str, Any] = {}
-    monitoring_stats: MonitoringStatsModel = None
+    monitoring_stats: Optional[MonitoringStatsModel] = None
     result: BacktestResultModel
 
 class ExperimentModel(BaseModel):
