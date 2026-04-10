@@ -28,7 +28,9 @@ def create_folder_path(folder_name: str):
     path.mkdir(parents=True, exist_ok=True)
 
 def local_run():
-    with open(f"src/config/experiment_securities_ml_bl_momentum_full_universe.json", 'r') as f:
+    # with open(f"src/config/experiment_securities_ml_bl_momentum_full_universe.json", 'r') as f:
+    #     config = json.load(f)
+    with open(f"src/config/experiment_securities_ml_only_momentum.json", 'r') as f:
         config = json.load(f)
 
     config = config.copy()
@@ -75,9 +77,6 @@ def download(body: ExperimentModel = Body(...)):
         market_config=body.market_config,
     )
     for run in body.strategy_runs:
-        if run.monitoring_stats is None:
-            run.monitoring_stats = None
-
         experiment.add_run(StrategyRun(
             run_id=run.run_id,
             strategy_name=run.strategy_name,
@@ -110,7 +109,7 @@ if __name__ == '__main__':
     run_mode = os.environ.get("RUN_MODE", "api").lower()
     run_mode = "local"
     if run_mode == "local":
-        local_run()
-        # run_parameter_sweep()
+        # local_run()
+        run_parameter_sweep()
     else:
         uvicorn.run("main:app", reload=True)

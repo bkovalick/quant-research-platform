@@ -212,7 +212,7 @@ class Optimizer(IOptimizer):
 		mean_vector = mean_vector[:-1]
 		cov_matrix = cov_matrix[:-1, :-1]
 
-		portfolio_risk = cp.quad_form(risky_weights, cov_matrix)
+		portfolio_risk = cp.quad_form(risky_weights, cp.psd_wrap(cov_matrix))
 		concentration_objective = self._get_concentration_objective(risky_weights, rebalance_problem)
 		transaction_cost_penalty = self._get_transaction_cost_penalty(transaction_cost, decision_variables)
 		objective = cp.Maximize(mean_vector @ risky_weights - risk_aversion * \

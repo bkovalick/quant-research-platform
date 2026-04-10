@@ -77,13 +77,12 @@ class ParameterSweeps:
         # Frequency sweep over base config strategies
         for strategy in self.base_config.get("strategies", []):
             strategies.extend(self._ml_features_sweep(copy.deepcopy(strategy)))
-            # for freq in self._rebalance_frequency_sweep():
-            #     variant = copy.deepcopy(strategy)
-            #     variant["name"] = f"{strategy['name']}_{freq}"
-            #     variant["rebalance_problem"]["rebalance_frequency"] = freq
-            #     strategies.append(variant)
+            for freq in self._rebalance_frequency_sweep():
+                variant = copy.deepcopy(strategy)
+                variant["name"] = f"{strategy['name']}_{freq}"
+                variant["rebalance_problem"]["rebalance_frequency"] = freq
+                strategies.append(variant)
 
-        # Merge all unique tickers into one market_store_config
         base_tickers = self.base_config["market_store_config"]["tickers"]
         all_tickers = list(set(base_tickers) | set(self.unique_market_tickers))
 
@@ -118,6 +117,9 @@ class ParameterSweeps:
         tau_sweeps = [0.01, 0.05, 0.10]
         ml_view_spread_sweeps = [0.01, 0.03, 0.05, 0.10]
         variant["black_litterman"]["tau"] = 0.01
+
+        variants = []
+
 
     def _ml_features_sweep(self, strategy: dict) -> list:
         """Generates leave-one-out feature variants for the ML predictor signal."""
