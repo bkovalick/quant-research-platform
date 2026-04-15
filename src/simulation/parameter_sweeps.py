@@ -77,6 +77,7 @@ class ParameterSweeps:
         # Frequency sweep over base config strategies
         for strategy in self.base_config.get("strategies", []):
             strategies.extend(self._ml_features_sweep(copy.deepcopy(strategy)))
+            strategies.extend(self._black_litterman_sweeps(copy.deepcopy(strategy)))
             for freq in self._rebalance_frequency_sweep():
                 variant = copy.deepcopy(strategy)
                 variant["name"] = f"{strategy['name']}_{freq}"
@@ -109,17 +110,27 @@ class ParameterSweeps:
         """Sweep over different rebalance frequencies for the same strategy configuration."""
         return ["daily", "weekly", "quarterly", "yearly"]
 
-    def _black_litterman_sweeps(self, variant):
-        if "black_litterman" not in variant:
+    def _black_litterman_sweeps(self, strategy) -> list:
+        bl_config = (strategy
+                     .get("signals_config", {})
+                     .get("black_litterman", {})        
+        )
+        if not bl_config:
             return
         
         risk_aversion_view_sweeps = [0.03]
+        ml_view_spread_sweeps = [0.01, 0.03, 0.05, 0.10]    
         tau_sweeps = [0.01, 0.05, 0.10]
-        ml_view_spread_sweeps = [0.01, 0.03, 0.05, 0.10]
-        variant["black_litterman"]["tau"] = 0.01
-
+        view_direction_sweep = ["mean_reversion", "momentum"]
         variants = []
-
+        for sweep in product(view_direction_sweep, tau_sweeps):
+            view_dir = sweep[0]
+            tau = sweep[1]
+            variant = copy.deepcopy(strategy)
+            variant["signals_config"]["black_litterman"]["view_direction"] = view_dir
+            variant["signals_config"]["black_litterman"]["tau"] = tau
+            variants.append(variant)
+        return variants
 
     def _ml_features_sweep(self, strategy: dict) -> list:
         """Generates leave-one-out feature variants for the ML predictor signal."""
