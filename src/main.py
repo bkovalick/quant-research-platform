@@ -30,7 +30,7 @@ def create_folder_path(folder_name: str):
 def local_run():
     # with open(f"src/config/experiment_securities_ml_bl_momentum_full_universe.json", 'r') as f:
     #     config = json.load(f)
-    with open(f"src/config/experiment_securities_ml_only_momentum.json", 'r') as f:
+    with open(f"src/config/experiment_securities_ml_bl_mean_reversion.json", 'r') as f:
         config = json.load(f)
 
     config = config.copy()
@@ -109,7 +109,7 @@ if __name__ == '__main__':
     run_mode = os.environ.get("RUN_MODE", "api").lower()
     run_mode = "local"
     if run_mode == "local":
-        # local_run()
-        run_parameter_sweep()
+        local_run()
+        # run_parameter_sweep()
     else:
         uvicorn.run("main:app", reload=True)

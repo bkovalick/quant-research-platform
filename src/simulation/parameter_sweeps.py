@@ -129,6 +129,7 @@ class ParameterSweeps:
             variant = copy.deepcopy(strategy)
             variant["signals_config"]["black_litterman"]["view_direction"] = view_dir
             variant["signals_config"]["black_litterman"]["tau"] = tau
+            variant["name"] = f"{strategy['name']}_view_dir_{view_dir}_tau_{tau}"
             variants.append(variant)
         return variants
 
