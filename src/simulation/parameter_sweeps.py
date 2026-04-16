@@ -76,13 +76,16 @@ class ParameterSweeps:
 
         # Frequency sweep over base config strategies
         for strategy in self.base_config.get("strategies", []):
-            strategies.extend(self._ml_features_sweep(copy.deepcopy(strategy)))
-            strategies.extend(self._black_litterman_sweeps(copy.deepcopy(strategy)))
             for freq in self._rebalance_frequency_sweep():
-                variant = copy.deepcopy(strategy)
-                variant["name"] = f"{strategy['name']}_{freq}"
-                variant["rebalance_problem"]["rebalance_frequency"] = freq
-                strategies.append(variant)
+                freq_base = copy.deepcopy(strategy)
+                freq_base["name"] = f"{strategy['name']}_{freq}"
+                freq_base["rebalance_problem"]["rebalance_frequency"] = freq
+                strategies.append(copy.deepcopy(freq_base))
+
+                strategies.extend(self._ml_features_sweep(copy.deepcopy(freq_base)))
+                bl_variants = self._black_litterman_sweeps(copy.deepcopy(freq_base))
+                if bl_variants:
+                    strategies.extend(bl_variants)
 
         base_tickers = self.base_config["market_store_config"]["tickers"]
         all_tickers = list(set(base_tickers) | set(self.unique_market_tickers))
@@ -119,7 +122,7 @@ class ParameterSweeps:
             return
         
         risk_aversion_view_sweeps = [0.03]
-        ml_view_spread_sweeps = [0.01, 0.03, 0.05, 0.10]    
+        ml_view_spread_sweeps = [0.01, 0.03, 0.05, 0.10]
         tau_sweeps = [0.01, 0.05, 0.10]
         view_direction_sweep = ["mean_reversion", "momentum"]
         variants = []
