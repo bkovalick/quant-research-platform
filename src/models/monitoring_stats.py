@@ -17,17 +17,17 @@ def _sanitize_list(values):
     return [_sanitize_value(v) for v in values]
 
 @dataclass(frozen=True)
-class BacktestResult:
-    summary: Dict[str, float]
-    series: Dict[str, Any]
+class MonitoringStats:
+    ic_statistics: Dict[str, Any]
+    ic_summary: Dict[str, Any]
 
     def to_dict(self):
         return {
-            "summary": _sanitize_dict(self.summary),
-            "series": { 
+            "ic_statistics": { 
                 k: self._serialize(v) 
-                for k,v in self.series.items()
-            }
+                for k,v in self.ic_statistics.items()
+            },       
+            "ic_summary": _sanitize_dict(self.ic_summary)
         }
     
     def _serialize(self, obj):
@@ -45,4 +45,4 @@ class BacktestResult:
                 "columns": obj.columns.tolist(),
                 "values": sanitized
             }
-        return obj
+        return obj    

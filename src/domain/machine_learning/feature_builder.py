@@ -1,5 +1,8 @@
+from typing import List, Optional
+
 import pandas as pd
 import numpy as np
+import warnings
 
 from utils.lookback_windows import LOOKBACK_WINDOWS
 from simulation.market_state import MarketState
@@ -12,7 +15,9 @@ class FeatureBuilder:
     def __init__(self, 
                  market_state: MarketState,
                  benchmark: pd.Series,
-                 market_frequency: str = "d"):
+                 market_frequency: str = "d",
+                 features: Optional[List[str]] = None):
+        features = features or []
         self.prices = market_state.prices.copy()
         self.returns = market_state.returns.copy()
         self.exogenous_universe = market_state.exogenous_universe.copy()
@@ -20,6 +25,7 @@ class FeatureBuilder:
         self.benchmark_returns = benchmark.pct_change(fill_method=None).fillna(0)
         self.lookbacks = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
         self.reversal_window = self.lookbacks.get("1w", 1)
+        self.features = features
         self.features_cache = None
         self.forward_returns_cache = None
         self.precomputed_horizon = None
@@ -35,24 +41,25 @@ class FeatureBuilder:
         slices inside the loop.
         """
         self.precomputed_horizon = horizon
-        w   = self.lookbacks
-        px  = self.prices
+        w = self.lookbacks
+        px = self.prices
         rets = self.returns
         mret = self.benchmark_returns.reindex(rets.index).fillna(0)
-
+        
         # vectorized rolling features
-        mom_1m   = px / px.shift(w["1m"]) - 1
-        mom_12m  = px.shift(w["1m"]) / px.shift(w["1y"]) - 1
-        vol_1m   = rets.rolling(w["1m"]).std()
-        vol_3m   = rets.rolling(w["3m"]).std()
+        mom_1m = px / px.shift(w["1m"]) - 1
+        mom_12m = px.shift(w["1m"]) / px.shift(w["1y"]) - 1
+        vol_1m = rets.rolling(w["1m"]).std()
+        vol_3m = rets.rolling(w["3m"]).std()
         reversal = -(px / px.shift(self.reversal_window) - 1)
-        max_ret  = rets.rolling(w["1m"]).max()
+        max_ret = rets.rolling(w["1m"]).max()
         high_52w = px / px.rolling(w["1y"]).max()
         
         market_var_1m = mret.rolling(w["1m"]).var()
         market_var_1y = mret.rolling(w["1y"]).var()
         beta_1m = rets.rolling(w["1m"]).cov(mret).div(market_var_1m.replace(0, np.nan), axis=0)
         beta_1y = rets.rolling(w["1y"]).cov(mret).div(market_var_1y.replace(0, np.nan), axis=0)
+        idiosyncratic_vol = (rets - beta_1y.multiply(mret, axis=0)).rolling(w["1y"]).std()
 
         if "^VIX" in self.exogenous_universe.columns:
             vix = self.exogenous_universe["^VIX"].reindex(px.index).ffill()
@@ -72,20 +79,22 @@ class FeatureBuilder:
         for date in px.index[w["1y"]:]:
             hv = float(high_vol_series.get(date, 0.0))
             feat = pd.DataFrame({
-                "mom_1m":                mom_1m.loc[date],
-                "mom_12m":               mom_12m.loc[date],
-                "vol_1m":                vol_1m.loc[date],
-                "vol_3m":                vol_3m.loc[date],
-                "reversal":              reversal.loc[date],
-                "mom_x_vol_regime":      mom_12m.loc[date] * (1 - hv),
+                "mom_1m": mom_1m.loc[date],
+                "mom_12m": mom_12m.loc[date],
+                "vol_1m":  vol_1m.loc[date],
+                "vol_3m":  vol_3m.loc[date],
+                "reversal": reversal.loc[date],
+                "mom_x_vol_regime": mom_12m.loc[date] * (1 - hv),
                 "reversal_x_vol_regime": reversal.loc[date] * hv,
-                "max_return":            max_ret.loc[date],
-                "high_52w":              high_52w.loc[date],
-                "beta_1m":               beta_1m.loc[date],
-                "beta_1y":               beta_1y.loc[date],
+                "max_return": max_ret.loc[date],
+                "high_52w": high_52w.loc[date],
+                "beta_1m": beta_1m.loc[date],
+                "beta_1y": beta_1y.loc[date],
+                "idiosyncratic_vol": idiosyncratic_vol.loc[date]
             })
             feat = feat.rank(axis=0, pct=True).dropna()
             if not feat.empty:
+                feat = feat[self.features]
                 features_cache[date] = feat
 
         self.features_cache = features_cache
@@ -97,7 +106,6 @@ class FeatureBuilder:
         using cached values if available.
         """
         if self.features_cache is None:
-            import warnings
             warnings.warn("FeatureBuilder.precompute() has not been called. Falling back to _build_single_date() which is significantly slower.")
         if self.features_cache is not None:
             return self.features_cache.get(date, pd.DataFrame(index=self.prices.columns))
@@ -120,17 +128,20 @@ class FeatureBuilder:
             return pd.DataFrame(index=self.prices.columns)
 
         features = pd.DataFrame(index=self.prices.columns)
-        features["mom_1m"]   = px.iloc[-1] / px.iloc[-self.lookbacks["1m"]] - 1
-        features["mom_12m"]  = px.iloc[-self.lookbacks["1m"]] / px.iloc[-self.lookbacks["1y"]] - 1
-        features["vol_1m"]   = rets.iloc[-self.lookbacks["1m"]:].std()
-        features["vol_3m"]   = rets.iloc[-self.lookbacks["3m"]:].std()
+        beta_1y = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1y"])
+        features["mom_1m"] = px.iloc[-1] / px.iloc[-self.lookbacks["1m"]] - 1
+        features["mom_12m"] = px.iloc[-self.lookbacks["1m"]] / px.iloc[-self.lookbacks["1y"]] - 1
+        features["vol_1m"] = rets.iloc[-self.lookbacks["1m"]:].std()
+        features["vol_3m"] = rets.iloc[-self.lookbacks["3m"]:].std()
         features["reversal"] = -(px.iloc[-1] / px.iloc[-(self.reversal_window + 1)] - 1)
         features["mom_x_vol_regime"] = features["mom_12m"] * (1 - high_vol)
         features["reversal_x_vol_regime"] = features["reversal"] * high_vol
         features["max_return"] = rets.iloc[-self.lookbacks["1m"]:].max()
         features["high_52w"] = px.iloc[-1] / px.iloc[-self.lookbacks["1y"]:].max()
         features["beta_1m"] = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1m"])
-        features["beta_1y"] = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1y"])
+        features["beta_1y"] = beta_1y
+        features["idiosyncratic_vol"] = (rets - beta_1y.multiply(market_rets, axis=0))\
+            .rolling(self.lookbacks["1y"]).std()
         features = features.rank(axis=0, pct=True)
         return features.dropna()
     

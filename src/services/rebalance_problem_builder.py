@@ -4,7 +4,10 @@ from utils.lookback_windows import LOOKBACK_WINDOWS
 class RebalanceProblemBuilder:
     """Orchestrates the pipeline to build a RebalanceProblem from input configuration."""
 
-    def __init__(self, config: dict, universe_meta: dict, market_frequency: str = "d"):
+    def __init__(self, 
+                 config: dict, 
+                 universe_meta: dict, 
+                 market_frequency: str = "d"):
         """Initialize with configuration dictionary."""
         self.config = config
         self.universe_meta = universe_meta
@@ -70,7 +73,8 @@ class RebalanceProblemBuilder:
             "vol_target": strategy_rules.get("vol_target", None),
             "vol_lookback_days": self._resolve_window(strategy_rules.get("vol_lookback_days", None)),
             "vol_max_leverage": strategy_rules.get("vol_max_leverage", None),
-            "signal_source": self.config.get("signal_source", "risk_return")
+            "signal_source": self.config.get("signal_source", "risk_return"),
+            "transaction_cost": self.universe_meta.get("transaction_cost", 0.0)
         }
 
         return RebalanceProblem(prepared_data)

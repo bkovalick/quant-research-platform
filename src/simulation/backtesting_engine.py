@@ -1,6 +1,7 @@
 import abc
 import time
 import numpy as np
+import pandas as pd
 
 from domain.portfolio.iportfolio import PortfolioInterface
 from domain.strategies.istrategy import StrategyInterface
@@ -18,8 +19,6 @@ from models.signals_config import SignalsConfig
 from models.backtest_run import BacktestRun
 from simulation.market_state import MarketState
 from utils.rebalance_steps import FREQ_TO_STEPS
-
-import pandas as pd
 
 class BacktestingEngineInterface(abc.ABC):
     """Interface for backtesting engines."""
@@ -45,7 +44,8 @@ class BacktestingEngine(BacktestingEngineInterface):
             self.feature_builder = FeatureBuilder(
                 self.market_state,
                 self.benchmark,
-                self.market_state.market_frequency
+                self.market_state.market_frequency,
+                self.ml_signals_config.features
             )
             self.feature_builder.precompute(self.ml_signals_config.horizon)
             self.cs_model = CrossSectionalModel(self.ml_signals_config)
@@ -78,11 +78,17 @@ class BacktestingEngine(BacktestingEngineInterface):
         )
         
         prev_weights = np.array(initial_weights)
+        current_year = None
         while self.market_state.has_next():
             self.market_state.advance()
 
             cursor = self.market_state.cursor
             
+            date = self.market_state.current_date()
+            if date.year != current_year:
+                current_year = date.year
+                print(f"Processing {current_year}...")
+
             current_returns = self.market_state.returns.iloc[cursor]
 
             prev_weights = self.portfolio.drift(prev_weights, current_returns, cursor)

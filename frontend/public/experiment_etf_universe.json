@@ -101,6 +101,7 @@
           "delta": 2.5,
           "tau": 0.05,
           "reversion_view": 0.03,
+          "ml_view_spread": 0.03,
           "view_direction": "momentum"
         }
       },
@@ -118,7 +119,7 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 0.1,
+          "risk_aversion": 2.5,
           "optimizer_vol_constraint": 0.2,
           "turnover_limit": 0.3,
           "min_position_size": 0.0,

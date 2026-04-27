@@ -17,7 +17,6 @@ def deserialize_series(data) -> pd.Series:
         return pd.Series(data)
     return pd.Series(data)
 
-
 def deserialize_dataframe(data) -> pd.DataFrame:
     """Deserialize a DataFrame from JSON round-trip."""
     if isinstance(data, pd.DataFrame):
@@ -31,7 +30,6 @@ def deserialize_dataframe(data) -> pd.DataFrame:
             return pd.DataFrame(data)
     return pd.DataFrame(data)
 
-
 class ExcelGenerator:
     def __init__(self, experiment: Experiment, buffer: BytesIO):
         self.experiment = experiment
@@ -39,7 +37,10 @@ class ExcelGenerator:
         self.buffer = buffer
 
     def generate_report(self):
+        ic_results = self.aggregate_ic_series()
         results = self.aggregate_performance_metrics()
+        results.update(ic_results)
+
         wb = Workbook()
         default_sheet = wb.active
         wb.remove(default_sheet)
@@ -62,8 +63,50 @@ class ExcelGenerator:
                 for c_idx, value in enumerate(row, 1):
                     ts_ws.cell(row=r_idx, column=c_idx, value=value)
 
+        if "ic_summary" in results and results["ic_summary"] is not None:
+            ts_ws = wb.create_sheet(title="IC Summary")
+            for r_idx, row in enumerate(dataframe_to_rows(results["ic_summary"], header=True, index=False), 1):
+                for c_idx, value in enumerate(row, 1):
+                    ts_ws.cell(row=r_idx, column=c_idx, value=value)               
+
+        if "ic_series" in results and results["ic_series"] is not None:
+            ts_ws = wb.create_sheet(title="IC Series")
+            for r_idx, row in enumerate(dataframe_to_rows(results["ic_series"], header=True, index=False), 1):
+                for c_idx, value in enumerate(row, 1):
+                    ts_ws.cell(row=r_idx, column=c_idx, value=value)                    
+
         wb.save(self.buffer)
         self.buffer.seek(0)
+
+    def aggregate_ic_series(self):
+        ic_summary_rows = []
+        ic_statistics_agg_df = []
+
+        for strategy_run in self.experiment.strategy_runs:
+            if strategy_run.monitoring_stats is None:
+                continue
+            
+            strategy_name = strategy_run.strategy_name
+            row = {"strategy": strategy_name}
+            for k, v in strategy_run.monitoring_stats.ic_summary.items():
+                if isinstance(v, (pd.Series, pd.DataFrame)):
+                    continue
+                row[k] = v
+            ic_summary_rows.append(row)
+
+            ic_statistics_df = deserialize_dataframe(strategy_run.monitoring_stats.ic_statistics)
+            ic_statistics_df.insert(0, "Date", pd.to_datetime(ic_statistics_df.index))
+            ic_statistics_df = ic_statistics_df.reset_index(drop=True)
+            ic_statistics_df.insert(1, "Strategy", strategy_name)
+            ic_statistics_df = ic_statistics_df.rename(columns= {0: "IC_Series"})
+            ic_statistics_agg_df.append(ic_statistics_df)
+
+        ic_summary_df = pd.DataFrame(ic_summary_rows)
+        ic_statistics_agg_df = pd.concat(ic_statistics_agg_df, axis=0, ignore_index=True) if ic_statistics_agg_df else None
+        return {
+            "ic_summary": ic_summary_df,
+            "ic_series": ic_statistics_agg_df
+        }
 
     def aggregate_performance_metrics(self):
         """Aggregate performance metrics from multiple strategies into summary and time series DataFrames."""
