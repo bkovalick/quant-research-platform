@@ -20,6 +20,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         self.black_litterman = getattr(self.signals_config, "black_litterman", None)
         self.tau = self.black_litterman.get("tau", 0.05)
         self.current_weights = current_weights
+        self.tau = self.black_litterman.get("tau", 0.05)
 
     def mean_returns(self) -> np.ndarray:
         """
@@ -64,7 +65,6 @@ class BlackLittermanSignal(RiskReturnSignals):
         winners = ranked > n - quintile   # top 20%
 
         P = self._determine_view_direction(n, winners, losers)
-
         Q = np.array([expected_spread])
         
         omega = np.diag(np.diag(self.tau * P @ sigma @ P.T))
