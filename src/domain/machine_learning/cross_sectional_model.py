@@ -27,7 +27,7 @@ class CrossSectionalModel(ISignalModel):
 
         if self.model_type == "ridge":
             self.model = Ridge(alpha=self.alpha)
-        else:
+        elif self.model_type == "gradientboostingregressor":
             self.model = GradientBoostingRegressor(
                 n_estimators=self.n_estimators, max_depth=self.max_depth, learning_rate=self.learning_rate
             )

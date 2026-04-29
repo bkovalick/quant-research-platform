@@ -304,7 +304,7 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 0.1,
+          "risk_aversion": 2.5,
           "optimizer_vol_constraint": 0.2,
           "turnover_limit": 0.3,
           "min_position_size": 0.0,

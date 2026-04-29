@@ -1,6 +1,6 @@
 from domain.portfolio.portfolio import Portfolio
 from reporting.performance_analyzer import PerformanceAnalyzer
-from reporting.signal_monitoring import SignalDecayMonitor
+from reporting.signal_monitoring import SignalICDiagnostics
 from simulation.backtesting_engine import BacktestingEngine
 from simulation.market_state import MarketState
 from services.strategy_factory import StrategyFactory
@@ -11,6 +11,7 @@ from models.market_config import MarketStoreConfig, MarketStateConfig
 from models.signals_config import SignalsConfig
 from models.rebalance_problem import RebalanceProblem
 from models.experiment import Experiment
+from models.monitoring_stats import MonitoringStats
 from infrastructure.market_data_gateway import MarketDataStore
 
 import uuid
@@ -44,7 +45,8 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
             "tickers": state.universe_tickers,
             "cash_allocation": state.cash_allocation,
             "asset_class_map": state.asset_class_map,
-            "sector_map": state.sector_map
+            "sector_map": state.sector_map,
+            "transaction_cost": market_store_config.transaction_cost
     }    
 
     rebalance_problem = RebalanceProblemBuilder(
@@ -52,6 +54,7 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
         universe_meta,
         state_config.market_frequency
     ).build()
+    
     signals_config = build_signal_config(strategy_cfg)
 
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type) 
@@ -68,7 +71,7 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
 
     run = engine.run_backtest(rebalance_problem)
 
-    result = metrics_computer.compute(
+    backtest_result = metrics_computer.compute(
         rebalance_problem, 
         run.portfolio, 
         market_store_config, 
@@ -76,10 +79,11 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
         market_store.prices[market_store_config.benchmark]
     )
     
+    monitoring_stats = None
     if run.scores_history and run.fwd_returns_history:
         scores_history_df = pd.DataFrame(run.scores_history).T
         fwd_df = pd.DataFrame(run.fwd_returns_history).T
-        monitor = SignalDecayMonitor(
+        monitor = SignalICDiagnostics(
             fwd_df,
             scores_history_df
         )
@@ -90,7 +94,8 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
         run_id, 
         strategy_cfg["name"],
         rebalance_problem, 
-        result, 
+        backtest_result, 
+        monitoring_stats,
         {
             "timestamp": datetime.now(), 
             "username": "bkovalick", 
@@ -102,6 +107,7 @@ class ExperimentRunner:
     def __init__(self, config):
         self.config = config
         self.max_workers = min(8, multiprocessing.cpu_count())
+        self.max_workers = 4
 
     def run(self) -> Experiment:
         market_store_config = self._build_market_store_config()
@@ -140,7 +146,7 @@ class ExperimentRunner:
         state_config = self._build_market_state_config(strategy_cfg)
         state = self._build_market_state(market_store, state_config)
 
-        universe_meta = self._build_universe_meta(state)
+        universe_meta = self._build_universe_meta(state, market_store_config)
 
         rebalance_problem = self._build_rebalance_problem(strategy_cfg, universe_meta)
 
@@ -160,7 +166,7 @@ class ExperimentRunner:
 
         run = engine.run_backtest(rebalance_problem)
 
-        result = metrics_computer.compute(
+        backtest_result = metrics_computer.compute(
             rebalance_problem, 
             run.portfolio, 
             market_store_config, 
@@ -168,12 +174,23 @@ class ExperimentRunner:
             benchmark
         )
 
+        monitoring_stats = None
+        if run.scores_history and run.fwd_returns_history:
+            scores_history_df = pd.DataFrame(run.scores_history).T
+            fwd_df = pd.DataFrame(run.fwd_returns_history).T
+            monitor = SignalICDiagnostics(
+                fwd_df,
+                scores_history_df
+            )
+            monitoring_stats = monitor.analyze()
+
         run_id = str(uuid.uuid4())
         return StrategyRun(
             run_id, 
             strategy_cfg["name"],
             rebalance_problem, 
-            result, 
+            backtest_result,
+            monitoring_stats, 
             {
                 "timestamp": datetime.now(), 
                 "username": "bkovalick", 
@@ -210,12 +227,14 @@ class ExperimentRunner:
         return MarketState(market_store, market_state_config)
     
     def _build_universe_meta(self, 
-                             market_state: MarketState) -> dict:
+                             market_state: MarketState,
+                             market_store_config: MarketStoreConfig) -> dict:
         return {
             "tickers": market_state.universe_tickers,
             "cash_allocation": market_state.cash_allocation,
             "asset_class_map": market_state.asset_class_map,
-            "sector_map": market_state.sector_map
+            "sector_map": market_state.sector_map,
+            "transaction_cost": market_store_config.transaction_cost
         }        
 
     def _build_rebalance_problem(self, 

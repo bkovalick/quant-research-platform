@@ -24,8 +24,8 @@ class MarketState:
         self.exogenous_universe = self._resample(self.market_frequency, 
                                                  self._parse_universe(self.exogenous_tickers)) \
                             if set(self.exogenous_tickers).issubset(self.store.prices.columns) else pd.DataFrame()
-        self.returns = self.prices.pct_change().fillna(0)
-    
+        self.returns = self.prices.pct_change(fill_method=None).fillna(0)
+
     @property
     def asset_class_map(self):
         return MarketMetadata.build_asset_class_map(self.universe_tickers)

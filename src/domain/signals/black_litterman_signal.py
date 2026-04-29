@@ -18,6 +18,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         self.ml_state = ml_state
         self.ml_signals_config = self.signals_config.ml_signals_config
         self.black_litterman = getattr(self.signals_config, "black_litterman", None)
+        self.tau = self.black_litterman.get("tau", 0.05)
         self.current_weights = current_weights
         self.tau = self.black_litterman.get("tau", 0.05)
 
@@ -65,8 +66,8 @@ class BlackLittermanSignal(RiskReturnSignals):
 
         P = self._determine_view_direction(n, winners, losers)
         Q = np.array([expected_spread])
-        omega = np.diag(np.diag(self.tau * P @ sigma @ P.T))
         
+        omega = np.diag(np.diag(self.tau * P @ sigma @ P.T))
         return P, Q, omega
 
     def _compute_posterior(self, pi, sigma, P, Q, omega) -> np.ndarray:
@@ -76,10 +77,13 @@ class BlackLittermanSignal(RiskReturnSignals):
           mu_BL = M @ (inv(tau*Sigma) @ pi + P' @ inv(Omega) @ Q)
         where M = inv(inv(tau*Sigma) + P' @ inv(Omega) @ P).
         """
+        inv_tau = np.linalg.inv(self.tau * sigma)
+        inv_omega = np.linalg.inv(omega)
+
         M = np.linalg.inv(
-            np.linalg.inv(self.tau * sigma) + P.T @ np.linalg.inv(omega) @ P
+            inv_tau + P.T @ inv_omega @ P
         )
-        return M @ (np.linalg.inv(self.tau * sigma) @ pi + P.T @ np.linalg.inv(omega) @ Q)
+        return M @ (inv_tau @ pi + P.T @ inv_omega @ Q)
     
     def _get_ranked_scores(self):
         """
@@ -100,7 +104,7 @@ class BlackLittermanSignal(RiskReturnSignals):
             return self.ml_state.scores.rank(), bl.get("ml_view_spread", 0.03)
 
         window = getattr(self.signals_config, "mean_reversion_window", 4)
-        short_returns = self.market_state.lookback_prices().pct_change(window).iloc[-1]
+        short_returns = self.market_state.lookback_prices().pct_change(window, fill_method=None).iloc[-1]
         return short_returns.rank(), bl.get("reversion_view", 0.03)
     
     def _determine_view_direction(self, n: int, winners, losers):

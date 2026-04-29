@@ -3,39 +3,35 @@ import pandas as pd
 import numpy as np
 from scipy.stats import spearmanr
 from scipy import stats
+from models.monitoring_stats import MonitoringStats
 
 class BaseSignalMonitor(abc.ABC):
-    def analyze(self) -> dict:
+    def analyze(self) -> MonitoringStats:
         ic_series = self._compute_ic_statistics()
-        return {
-            "ic_statistics": ic_series,
-            "half_life": self._compute_half_life(ic_series),
-            "t_test": self._one_sample_t_test(ic_series)
-        }
+        return MonitoringStats(
+            ic_statistics=ic_series.to_dict(),
+            ic_summary=self._compute_ic_summary(ic_series)
+        )
 
     @abc.abstractmethod
     def _compute_ic_statistics(self): ...
 
     @abc.abstractmethod
-    def _compute_half_life(self, ic_series: pd.Series): ...
+    def _compute_ic_summary(self, ic_series: pd.Series): ...    
 
-    @abc.abstractmethod
-    def _one_sample_t_test(self, ic_series: pd.Series): ...    
-
-class SignalDecayMonitor(BaseSignalMonitor):
+class SignalICDiagnostics(BaseSignalMonitor):
     def __init__(self, 
                  forward_returns: pd.DataFrame,
-                 signal: pd.DataFrame,
-                 window: int = 20):
+                 signal: pd.DataFrame):
         """Monitors signal decay by computing rolling Information Coefficient and half-life of those signals."""
         self.forward_returns = forward_returns
         self.signal = signal
-        self.window = window
 
     def _compute_ic_statistics(self) -> pd.Series:
         """
-        Calculates the Information Coefficient (Spearman Rank Correlation) 
-        over a rolling window to detect decay.
+        Computes the Spearman rank correlation (IC) between the signal and forward returns for each date, 
+        then applies a rolling mean to smooth the series.
+        Returns a time series of IC values indexed by date.
         """
         ic_values = []
         for date in self.signal.index:
@@ -57,6 +53,26 @@ class SignalDecayMonitor(BaseSignalMonitor):
         dates, ics = zip(*ic_values)
         return pd.Series(ics, index=dates)
 
+    def _compute_ic_summary(self, ic_series: pd.Series) -> dict:
+        """
+        Perform a one-sample t-test to determine if the mean IC is significantly different from zero.
+        Returns the t-statistic and p-value.
+        """
+        if len(ic_series.dropna()) < 2:
+            return {"t_statistic": np.nan, "p_value": np.nan}
+        t_stat, p_value = stats.ttest_1samp(ic_series.dropna(), 0)
+        ic_std = ic_series.std()
+        ic_ir = ic_series.mean() / ic_std if ic_std > 0 else np.nan
+        return {
+            "mean_ic": ic_series.mean(),
+            "ic_ir": ic_ir,
+            "hit_rate": float((ic_series > 0).mean()),
+            "t_statistic": t_stat, 
+            "p_value": p_value,
+            "half_life": self._compute_half_life(ic_series),
+            "n_observations": len(ic_series.dropna())
+        }
+    
     def _compute_half_life(self, ic_series: pd.Series) -> float:
         """
         Estimate the signal decay half-life from signals using AR(1) autocorrelation.
@@ -73,13 +89,3 @@ class SignalDecayMonitor(BaseSignalMonitor):
 
         half_life = np.log(0.5) / np.log(phi)
         return half_life
-    
-    def _one_sample_t_test(self, ic_series: pd.Series) -> dict:
-        """
-        Perform a one-sample t-test to determine if the mean IC is significantly different from zero.
-        Returns the t-statistic and p-value.
-        """
-        if len(ic_series.dropna()) < 2:
-            return {"t_statistic": np.nan, "p_value": np.nan}
-        t_stat, p_value = stats.ttest_1samp(ic_series.dropna(), 0)
-        return {"t_statistic": t_stat, "p_value": p_value}
