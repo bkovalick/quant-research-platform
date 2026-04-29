@@ -18,6 +18,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         self.ml_state = ml_state
         self.ml_signals_config = self.signals_config.ml_signals_config
         self.black_litterman = getattr(self.signals_config, "black_litterman", None)
+        self.tau = self.black_litterman.get("tau", 0.05)
         self.current_weights = current_weights
 
     def mean_returns(self) -> np.ndarray:
@@ -66,9 +67,7 @@ class BlackLittermanSignal(RiskReturnSignals):
 
         Q = np.array([expected_spread])
         
-        tau = self.black_litterman.get("tau", 0.05)
-        omega = np.diag(np.diag(tau * P @ sigma @ P.T))
-        
+        omega = np.diag(np.diag(self.tau * P @ sigma @ P.T))
         return P, Q, omega
 
     def _compute_posterior(self, pi, sigma, P, Q, omega) -> np.ndarray:
@@ -78,11 +77,13 @@ class BlackLittermanSignal(RiskReturnSignals):
           mu_BL = M @ (inv(tau*Sigma) @ pi + P' @ inv(Omega) @ Q)
         where M = inv(inv(tau*Sigma) + P' @ inv(Omega) @ P).
         """
-        tau = self.black_litterman.get("tau", 0.05)
+        inv_tau = np.linalg.inv(self.tau * sigma)
+        inv_omega = np.linalg.inv(omega)
+
         M = np.linalg.inv(
-            np.linalg.inv(tau * sigma) + P.T @ np.linalg.inv(omega) @ P
+            inv_tau + P.T @ inv_omega @ P
         )
-        return M @ (np.linalg.inv(tau * sigma) @ pi + P.T @ np.linalg.inv(omega) @ Q)
+        return M @ (inv_tau @ pi + P.T @ inv_omega @ Q)
     
     def _get_ranked_scores(self):
         """
