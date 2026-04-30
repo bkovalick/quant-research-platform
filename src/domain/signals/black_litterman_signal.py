@@ -5,7 +5,6 @@ from simulation.market_state import MarketState
 
 from typing import Optional
 import numpy as np
-import pandas as pd
 
 class BlackLittermanSignal(RiskReturnSignals):
     def __init__(self, 
@@ -19,14 +18,14 @@ class BlackLittermanSignal(RiskReturnSignals):
         self.ml_signals_config = self.signals_config.ml_signals_config
         self.black_litterman = getattr(self.signals_config, "black_litterman", None)
         self.tau = self.black_litterman.get("tau", 0.05)
+        self.delta = self.black_litterman.get("delta", 2.5)
+        self.view_direction = self.black_litterman.get("view_direction", "momentum")
         self.current_weights = current_weights
-        self.tau = self.black_litterman.get("tau", 0.05)
 
     def mean_returns(self) -> np.ndarray:
         """
         Returns the Black-Litterman posterior mean return vector. If no
-        black_litterman config is present, falls back to the parent class
-        historical mean returns.
+        black_litterman config is present, falls back to the parent class (historical mean returns).
         """
         if self.black_litterman is None:
             return super().mean_returns()
@@ -44,8 +43,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         optimization: pi = delta * Sigma * w, where delta is the risk aversion
         coefficient and w is the current portfolio weight vector.
         """
-        delta = self.black_litterman.get("delta", 2.5)
-        return delta * sigma @ self.current_weights
+        return self.delta * sigma @ self.current_weights
 
     def _build_views(self, sigma):
         """
@@ -119,13 +117,12 @@ class BlackLittermanSignal(RiskReturnSignals):
         P = np.zeros((1, n))
 
         if winners.sum() == 0 or losers.sum() == 0:
-            return P  # too few assets to form a valid view; express no view
+            return P
 
-        view_direction = self.black_litterman.get("view_direction", "momentum")
-        if view_direction == "momentum":
+        if self.view_direction == "momentum":
             P[0, winners] =  1 / winners.sum()  # long winners equally
             P[0, losers]  = -1 / losers.sum()   # short losers equally
-        else:  # "mean_reversion" or unrecognised
+        else:
             P[0, losers]  =  1 / losers.sum()   # long losers equally
             P[0, winners] = -1 / winners.sum()  # short winners equally
 

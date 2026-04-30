@@ -1,6 +1,8 @@
 from models.rebalance_problem import RebalanceProblem
 from utils.lookback_windows import LOOKBACK_WINDOWS
 
+import pandas as pd
+
 class RebalanceProblemBuilder:
     """Orchestrates the pipeline to build a RebalanceProblem from input configuration."""
 
@@ -28,11 +30,17 @@ class RebalanceProblemBuilder:
             return freq_map[value]
         return int(value)
     
-    def build(self) -> RebalanceProblem:
-        """Build and return a RebalanceProblem instance."""
-        cash_allocation = self.universe_meta.get("cash_allocation", 0.0)
-        tickers = self.universe_meta.get("tickers", ["AAPL"])
-        n_assets = len(tickers)
+    def _build_init_weights_from_mkt_caps(self, market_caps: pd.DataFrame) -> dict:
+        return (market_caps / market_caps.sum()).to_dict()
+
+    def _setup_initial_weights(self, 
+                               cash_allocation: float, 
+                               tickers: list, 
+                               n_assets: int) -> dict:
+        market_caps = self.universe_meta.get("market_caps", None)
+        if market_caps is not None:
+            return self._build_init_weights_from_mkt_caps(market_caps)
+        
         explicit_weights = self.config.get("initial_weights", None)
         if explicit_weights:
             weights = explicit_weights
@@ -45,6 +53,14 @@ class RebalanceProblemBuilder:
             initial_weights = dict(zip(tickers, weights))
         elif isinstance(weights, dict):
             initial_weights = weights
+        return initial_weights      
+
+    def build(self) -> RebalanceProblem:
+        """Build and return a RebalanceProblem instance."""
+        cash_allocation = self.universe_meta.get("cash_allocation", 0.0)
+        tickers = self.universe_meta.get("tickers", ["AAPL"])
+        n_assets = len(tickers)
+        initial_weights = self._setup_initial_weights(cash_allocation, tickers, n_assets)
 
         constraints = self.config.get("constraints", {})
         strategy_rules = self.config.get("strategy_rules", {}) 

@@ -193,7 +193,6 @@ report.generate_report()
 ## Dependencies
 
 - Python 3.10+
-- MOSEK Fusion (requires license — set `MOSEK_LICENSE_FILE` env var)
 - scikit-learn, scipy, numpy, pandas, yfinance, fastapi, uvicorn
 - See `requirements.txt` for pinned versions
 
@@ -213,7 +212,7 @@ pip install -r requirements.txt
 
 ```bash
 cd src
-uvicorn main:app --reload
+uvicorn application.controller:app --reload
 ```
 
 ## Frontend
