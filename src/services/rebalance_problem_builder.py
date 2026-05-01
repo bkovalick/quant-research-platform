@@ -30,13 +30,13 @@ class RebalanceProblemBuilder:
             return freq_map[value]
         return int(value)
     
-    def _build_init_weights_from_mkt_caps(self, market_caps: pd.DataFrame) -> dict:
+    def _build_init_weights_from_mkt_caps(self, market_caps: pd.Series) -> dict:
         return (market_caps / market_caps.sum()).to_dict()
 
     def _setup_initial_weights(self, 
                                cash_allocation: float, 
                                tickers: list, 
-                               n_assets: int) -> dict:
+                               n_assets: int) -> dict: 
         market_caps = self.universe_meta.get("market_caps", None)
         if market_caps is not None:
             return self._build_init_weights_from_mkt_caps(market_caps)

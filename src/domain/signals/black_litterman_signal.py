@@ -16,6 +16,12 @@ class BlackLittermanSignal(RiskReturnSignals):
 
         self.ml_state = ml_state
         self.ml_signals_config = self.signals_config.ml_signals_config
+        self.use_ml = (
+            self.ml_signals_config is not None
+            and self.ml_signals_config.enabled
+            and self.ml_state is not None
+            and self.ml_state.scores is not None
+        )         
         self.black_litterman = getattr(self.signals_config, "black_litterman", None)
         self.tau = self.black_litterman.get("tau", 0.05)
         self.delta = self.black_litterman.get("delta", 2.5)
@@ -29,8 +35,10 @@ class BlackLittermanSignal(RiskReturnSignals):
         """
         if self.black_litterman is None:
             return super().mean_returns()
-
-        sigma = self.covariance_matrix()
+        
+        sigma = (self.ml_state.covariance_matrix 
+                if self.use_ml and self.ml_state.covariance_matrix is not None 
+                else self.covariance_matrix())        
         pi = self._compute_equilibrium_returns(sigma)
         P, Q, omega = self._build_views(sigma)
         if not np.any(P):
@@ -91,19 +99,12 @@ class BlackLittermanSignal(RiskReturnSignals):
         Otherwise falls back to ranking by short-term price returns over
         mean_reversion_window periods, using reversion_view as the spread.
         """
-        bl = self.black_litterman
-        use_ml = (
-            self.ml_signals_config is not None
-            and self.ml_signals_config.enabled
-            and self.ml_state is not None
-            and self.ml_state.scores is not None
-        )
-        if use_ml:
-            return self.ml_state.scores.rank(), bl.get("ml_view_spread", 0.03)
+        if self.use_ml:
+            return self.ml_state.scores.rank(), self.black_litterman.get("ml_view_spread", 0.03)
 
         window = getattr(self.signals_config, "mean_reversion_window", 4)
         short_returns = self.market_state.lookback_prices().pct_change(window, fill_method=None).iloc[-1]
-        return short_returns.rank(), bl.get("reversion_view", 0.03)
+        return short_returns.rank(), self.black_litterman.get("reversion_view", 0.03)
     
     def _determine_view_direction(self, n: int, winners, losers):
         """

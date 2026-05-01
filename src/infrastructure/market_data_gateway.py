@@ -72,5 +72,5 @@ class MarketDataStore:
         return self._prices
     
     @property
-    def market_caps(self) -> pd.DataFrame:
-        return pd.DataFrame.from_dict(self._market_caps, orient="index")
+    def market_caps(self) -> pd.Series:
+        return pd.Series(self._market_caps).fillna(0)
