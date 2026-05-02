@@ -112,6 +112,7 @@ class MLPredictorSignalsState:
         if len(fwd_returns) < 2:
             return None
 
+
         lw = LedoitWolf()
         lw.fit(fwd_returns.values)
         cov = lw.covariance_ * (252 / self.ml_config.horizon)

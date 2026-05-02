@@ -16,17 +16,18 @@ class BlackLittermanSignal(RiskReturnSignals):
 
         self.ml_state = ml_state
         self.ml_signals_config = self.signals_config.ml_signals_config
+        self.current_weights = current_weights
         self.use_ml = (
             self.ml_signals_config is not None
             and self.ml_signals_config.enabled
             and self.ml_state is not None
             and self.ml_state.scores is not None
         )         
-        self.black_litterman = getattr(self.signals_config, "black_litterman", None)
-        self.tau = self.black_litterman.get("tau", 0.05)
-        self.delta = self.black_litterman.get("delta", 2.5)
-        self.view_direction = self.black_litterman.get("view_direction", "momentum")
-        self.current_weights = current_weights
+        bl = getattr(self.signals_config, "black_litterman", None) or {}
+        self.black_litterman = bl if bl else None
+        self.tau = bl.get("tau", 0.05)
+        self.delta = bl.get("delta", 2.5)
+        self.view_direction = bl.get("view_direction", "momentum")
 
     def mean_returns(self) -> np.ndarray:
         """
@@ -43,7 +44,10 @@ class BlackLittermanSignal(RiskReturnSignals):
         P, Q, omega = self._build_views(sigma)
         if not np.any(P):
             return pi  # no valid view (too few assets); fall back to equilibrium returns
-        return self._compute_posterior(pi, sigma, P, Q, omega)
+        posterior = self._compute_posterior(pi, sigma, P, Q, omega)
+        if not np.all(np.isfinite(posterior)):
+            return pi
+        return posterior
     
     def _compute_equilibrium_returns(self, sigma):
         """
@@ -73,7 +77,8 @@ class BlackLittermanSignal(RiskReturnSignals):
         P = self._determine_view_direction(n, winners, losers)
         Q = np.array([expected_spread])
         
-        omega = np.diag(np.diag(self.tau * P @ sigma @ P.T))
+        omega_diag = np.diag(self.tau * P @ sigma @ P.T)
+        omega = np.diag(np.maximum(omega_diag, 1e-8))
         return P, Q, omega
 
     def _compute_posterior(self, pi, sigma, P, Q, omega) -> np.ndarray:

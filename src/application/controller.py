@@ -70,11 +70,12 @@ def download(body: ExperimentModel = Body(...)):
 # Both of these are future installments that rely on data storage and retrieval, which is not yet implemented. They will be used to load existing experiments and list all available experiments respectively.
 @app.post("/load-experiment")
 def load_experiment(config: dict):
-    pass
+    return {"message": "This endpoint will load an experiment based on the provided configuration, but it is not yet implemented."}
 
 @app.post("/list-experiments")
-def list_experiments(config: dict):
-    pass
+def list_experiments(config: dict) -> list:
+    load_experiments = []
+    return load_experiments
 
 if __name__ == '__main__':
     pass

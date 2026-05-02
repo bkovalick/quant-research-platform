@@ -1,0 +1,135 @@
+{
+  "_description": "ETF-only universe. BL momentum \u2014 no ML. ETFs lack cross-sectional dispersion for ML. Control experiment.",
+  "market_store_config": {
+    "start_date": "2005-01-01",
+    "end_date": "2026-02-19",
+    "data_source": {
+      "yfinance": null
+    },
+    "benchmark": "SPY",
+    "risk_free_rate": 0.03,
+    "transaction_cost": 0.003,
+    "tickers": [
+      "^VIX",
+      "SPY",
+      "IVW",
+      "IWD",
+      "IWM",
+      "IJH",
+      "EFA",
+      "EEM",
+      "XLK",
+      "XLV",
+      "XLF",
+      "XLY",
+      "XLI",
+      "XLP",
+      "XLC",
+      "XLE",
+      "XLU",
+      "XLB",
+      "XLRE",
+      "AGG",
+      "TLT",
+      "IEF",
+      "SHY",
+      "TIP",
+      "LQD",
+      "HYG",
+      "EMB",
+      "MBB",
+      "MUB",
+      "GLD",
+      "PDBC",
+      "VNQ"
+    ]
+  },
+  "strategies": [
+    {
+      "name": "etf_mean_variance_only",
+      "_description": "Raw mean-variance baseline on ETF universe.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.005,
+        "exogenous_tickers": [],
+        "universe_tickers": [
+          "SPY",
+          "IVW",
+          "IWD",
+          "IWM",
+          "IJH",
+          "EFA",
+          "EEM",
+          "XLK",
+          "XLV",
+          "XLF",
+          "XLY",
+          "XLI",
+          "XLP",
+          "XLC",
+          "XLE",
+          "XLU",
+          "XLB",
+          "XLRE",
+          "AGG",
+          "TLT",
+          "IEF",
+          "SHY",
+          "TIP",
+          "LQD",
+          "HYG",
+          "EMB",
+          "MBB",
+          "MUB",
+          "GLD",
+          "PDBC",
+          "VNQ"
+        ]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {
+          "lower": 0.05,
+          "upper": 0.95
+        },
+        "mean_reversion_window": 4,
+        "momentum_skip_periods": 4
+      },
+      "rebalance_problem": {
+        "strategy_type": "mean_variance_strategy",
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": "weekly",
+        "apply_max_return_objective": true,
+        "constraints": {
+          "concentration_strength": 1,
+          "max_return": 0.25,
+          "risk_aversion": 0.1,
+          "optimizer_vol_constraint": 0.2,
+          "turnover_limit": 0.3,
+          "min_position_size": 0.0,
+          "max_position_size": 0.35,
+          "max_positions": 50,
+          "asset_class_constraints": {
+            "Equity": [
+              0.5,
+              0.8
+            ],
+            "Fixed Income": [
+              0.1,
+              0.4
+            ],
+            "Commodities": [
+              0.0,
+              0.08
+            ],
+            "Real Estate": [
+              0.0,
+              0.06
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
