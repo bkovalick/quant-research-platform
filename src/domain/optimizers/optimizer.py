@@ -1,11 +1,48 @@
 import logging
 import numpy as np
 import cvxpy as cp
+import pandas as pd
 
 from domain.optimizers.ioptimizer import IOptimizer
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
 from domain.signals.signals import Signals
+
+class PortfolioRebalancer:
+	def __init__(self,
+			  	 target_weights: np.ndarray,
+				 available_cash: float, 
+			  	 prices: pd.DataFrame):
+		self.target_weights = target_weights
+		self.prices = prices
+
+	def generate_trades(self):
+		decision_variables = self._setup_decision_variables()
+		constraints = self._setup_constraints(decision_variables)
+		objective = self._setup_objective(decision_variables)
+		prob = cp.Problem(objective, constraints)
+
+		for solver in [cp.CLARABEL, cp.ECOS, cp.SCS, cp.OSQP]:
+			try:
+				prob.solve(solver=solver, verbose=False)
+				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
+					break
+			except (cp.SolverError, Exception) as e:
+				continue
+		else:
+			return self.target_weights
+				
+		optimal_weights = decision_variables.get("optimal_weights").value
+		return optimal_weights
+	
+	def _setup_decision_variables(self):
+		pass
+
+	def _setup_constraints(self):
+		pass
+
+	def _setup_objective(self):
+		pass
 
 class Optimizer(IOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
@@ -27,7 +64,7 @@ class Optimizer(IOptimizer):
 
 		decision_variables = self._setup_decision_variables(rebalance_problem)
 		constraints = self._setup_constraints(decision_variables, rebalance_problem, signals, current_weights)
-		objective = self._set_objective(decision_variables, rebalance_problem, signals)
+		objective = self._setup_objective(decision_variables, rebalance_problem, signals)
 		prob = cp.Problem(objective, constraints)
 
 		for solver in [cp.CLARABEL, cp.ECOS, cp.SCS, cp.OSQP]:
@@ -36,10 +73,8 @@ class Optimizer(IOptimizer):
 				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
 					break
 			except (cp.SolverError, Exception) as e:
-				# self.logger.debug(f"Solver {solver} failed: {e}")
 				continue
 		else:
-			# self._log_failure_diagnostics(prob, current_weights, signals)
 			return current_weights
 
 		optimal_weights = decision_variables['portfolio_weights'].value
@@ -51,10 +86,12 @@ class Optimizer(IOptimizer):
 		portfolio_weights = cp.Variable(n_assets)
 		portfolio_buys = cp.Variable(n_assets - 1, nonneg=True)
 		portfolio_sells = cp.Variable(n_assets - 1, nonneg=True)
+		total_trades = cp.Variable(n_assets - 1)
 		return {
 			'portfolio_weights': portfolio_weights,
 			'portfolio_buys': portfolio_buys,
-			'portfolio_sells': portfolio_sells
+			'portfolio_sells': portfolio_sells,
+			'total_trades': total_trades
 		}
 
 	def _setup_constraints(self, 
@@ -87,13 +124,16 @@ class Optimizer(IOptimizer):
 		risky_current = self._get_risky_current(current_weights)
 		portfolio_buys = decision_variables.get('portfolio_buys')
 		portfolio_sells = decision_variables.get('portfolio_sells')
+		total_trades = decision_variables.get('total_trades')
 		min_position_size = getattr(rebalance_problem, 'min_position_size', 0.0)
 		max_position_size = getattr(rebalance_problem, 'max_position_size', 1.0)
+		starting_portfolio_value = rebalance_problem.starting_portfolio_value
 		return [
 				cp.sum(portfolio_weights) == 1,
 				portfolio_weights[:-1] - risky_current == portfolio_buys - portfolio_sells,
 				portfolio_weights >= min_position_size,
-				portfolio_weights <= max_position_size
+				portfolio_weights <= max_position_size,
+				total_trades == (portfolio_buys - portfolio_sells) * starting_portfolio_value
 			]
 	
 	def _setup_volatility_constraints(self, 
@@ -183,8 +223,7 @@ class Optimizer(IOptimizer):
 				constraints.append(sector_weight <= max_weight)
 		return constraints
 		
-
-	def _set_objective(self, 
+	def _setup_objective(self, 
 					   decision_variables: dict, 
 					   rebalance_problem: RebalanceProblem, 
 					   signals: Signals = None) -> callable:

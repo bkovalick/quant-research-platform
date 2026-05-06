@@ -37,8 +37,9 @@ class RebalanceProblemBuilder:
                                cash_allocation: float, 
                                tickers: list, 
                                n_assets: int) -> dict: 
+        apply_market_caps = self.config.get("apply_market_caps", False)
         market_caps = self.universe_meta.get("market_caps", None)
-        if market_caps is not None:
+        if apply_market_caps and market_caps is not None:
             return self._build_init_weights_from_mkt_caps(market_caps)
         
         explicit_weights = self.config.get("initial_weights", None)
@@ -90,7 +91,9 @@ class RebalanceProblemBuilder:
             "vol_lookback_days": self._resolve_window(strategy_rules.get("vol_lookback_days", None)),
             "vol_max_leverage": strategy_rules.get("vol_max_leverage", None),
             "signal_source": self.config.get("signal_source", "risk_return"),
-            "transaction_cost": self.universe_meta.get("transaction_cost", 0.0)
+            "transaction_cost": self.universe_meta.get("transaction_cost", 0.0),
+            "starting_portfolio_value": self.config.get("starting_portfolio_value", 10000),
+            "cash_infusion": self.config.get("cash_infusion", 1000)
         }
 
         return RebalanceProblem(prepared_data)

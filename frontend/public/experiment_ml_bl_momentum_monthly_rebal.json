@@ -296,6 +296,7 @@
         "signal_source": "black_litterman",
         "rebalance_frequency": "monthly",
         "apply_max_return_objective": true,
+        "apply_market_caps": false,
         "strategy_rules": {
           "vol_target": 0.15,
           "vol_lookback_days": "1m",

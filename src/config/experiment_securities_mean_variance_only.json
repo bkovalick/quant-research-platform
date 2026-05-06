@@ -329,9 +329,12 @@
         "momentum_skip_periods": 4
       },
       "rebalance_problem": {
+        "starting_portfolio_value": 100000,
+        "cash_infusion": 0,        
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
+        "apply_market_caps": false,
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
