@@ -19,4 +19,5 @@ tqdm==4.66.2
 holidays==0.47
 six==1.16.0
 wrapt==1.16.0
-# arch
+arch
+highspy

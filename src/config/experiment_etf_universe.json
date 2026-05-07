@@ -110,6 +110,7 @@
         "signal_source": "black_litterman",
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
+        "apply_market_caps": false,
         "apply_max_return_objective": true,
         "strategy_rules": {
           "vol_target": 0.12,
@@ -201,6 +202,7 @@
         "strategy_type": "mean_variance_strategy",
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
+        "apply_market_caps": false,
         "apply_max_return_objective": true,
         "constraints": {
           "concentration_strength": 1,

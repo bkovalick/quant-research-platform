@@ -23,6 +23,9 @@ class Signals(ABC):
         lower_bound = r.quantile(self.windsor_percentiles["lower"])
         upper_bound = r.quantile(self.windsor_percentiles["upper"])
         return r.clip(lower=lower_bound, upper=upper_bound, axis = 1)
+    
+    def lookback_prices(self) -> pd.DataFrame:
+        return self.market_state.lookback_prices()
 
     @abstractmethod
     def mean_returns(self) -> np.ndarray: ...

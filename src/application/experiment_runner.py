@@ -22,10 +22,10 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 def build_signal_config(strategy_cfg: dict) -> SignalsConfig:
     signals_config = strategy_cfg.get("signals_config", None)
-    if signals_config is not None:
-        market_frequency = strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
-        return SignalsConfig.from_dict(signals_config, market_frequency)
-    return None
+    if signals_config is None:
+        raise ValueError("Error: Signal configuration must be present to run a backtest")
+    market_frequency = strategy_cfg.get("market_state_config", {}).get("market_frequency", "d")
+    return SignalsConfig.from_dict(signals_config, market_frequency)
 
 def build_market_state_config(strategy_cfg: dict) -> MarketStateConfig:
     market_state_config = strategy_cfg.get("market_state_config", None)
@@ -46,7 +46,8 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
             "cash_allocation": state.cash_allocation,
             "asset_class_map": state.asset_class_map,
             "sector_map": state.sector_map,
-            "transaction_cost": market_store_config.transaction_cost
+            "transaction_cost": market_store_config.transaction_cost,
+            "market_caps": market_store.market_caps
     }    
 
     rebalance_problem = RebalanceProblemBuilder(

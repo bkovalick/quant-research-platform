@@ -45,6 +45,7 @@
       "signals_config": {},
       "rebalance_problem": {
         "strategy_type": "ewp_strategy",
+        "apply_market_caps": false,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly"
       }

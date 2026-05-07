@@ -5,7 +5,6 @@ from simulation.market_state import MarketState
 
 from typing import Optional
 import numpy as np
-import pandas as pd
 
 class BlackLittermanSignal(RiskReturnSignals):
     def __init__(self, 
@@ -17,26 +16,38 @@ class BlackLittermanSignal(RiskReturnSignals):
 
         self.ml_state = ml_state
         self.ml_signals_config = self.signals_config.ml_signals_config
-        self.black_litterman = getattr(self.signals_config, "black_litterman", None)
-        self.tau = self.black_litterman.get("tau", 0.05)
         self.current_weights = current_weights
-        self.tau = self.black_litterman.get("tau", 0.05)
+        self.use_ml = (
+            self.ml_signals_config is not None
+            and self.ml_signals_config.enabled
+            and self.ml_state is not None
+            and self.ml_state.scores is not None
+        )         
+        bl = getattr(self.signals_config, "black_litterman", None) or {}
+        self.black_litterman = bl if bl else None
+        self.tau = bl.get("tau", 0.05)
+        self.delta = bl.get("delta", 2.5)
+        self.view_direction = bl.get("view_direction", "momentum")
 
     def mean_returns(self) -> np.ndarray:
         """
         Returns the Black-Litterman posterior mean return vector. If no
-        black_litterman config is present, falls back to the parent class
-        historical mean returns.
+        black_litterman config is present, falls back to the parent class (historical mean returns).
         """
         if self.black_litterman is None:
             return super().mean_returns()
-
-        sigma = self.covariance_matrix()
+        
+        sigma = (self.ml_state.covariance_matrix 
+                if self.use_ml and self.ml_state.covariance_matrix is not None 
+                else self.covariance_matrix())        
         pi = self._compute_equilibrium_returns(sigma)
         P, Q, omega = self._build_views(sigma)
         if not np.any(P):
             return pi  # no valid view (too few assets); fall back to equilibrium returns
-        return self._compute_posterior(pi, sigma, P, Q, omega)
+        posterior = self._compute_posterior(pi, sigma, P, Q, omega)
+        if not np.all(np.isfinite(posterior)):
+            return pi
+        return posterior
     
     def _compute_equilibrium_returns(self, sigma):
         """
@@ -44,8 +55,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         optimization: pi = delta * Sigma * w, where delta is the risk aversion
         coefficient and w is the current portfolio weight vector.
         """
-        delta = self.black_litterman.get("delta", 2.5)
-        return delta * sigma @ self.current_weights
+        return self.delta * sigma @ self.current_weights
 
     def _build_views(self, sigma):
         """
@@ -67,7 +77,8 @@ class BlackLittermanSignal(RiskReturnSignals):
         P = self._determine_view_direction(n, winners, losers)
         Q = np.array([expected_spread])
         
-        omega = np.diag(np.diag(self.tau * P @ sigma @ P.T))
+        omega_diag = np.diag(self.tau * P @ sigma @ P.T)
+        omega = np.diag(np.maximum(omega_diag, 1e-8))
         return P, Q, omega
 
     def _compute_posterior(self, pi, sigma, P, Q, omega) -> np.ndarray:
@@ -93,19 +104,12 @@ class BlackLittermanSignal(RiskReturnSignals):
         Otherwise falls back to ranking by short-term price returns over
         mean_reversion_window periods, using reversion_view as the spread.
         """
-        bl = self.black_litterman
-        use_ml = (
-            self.ml_signals_config is not None
-            and self.ml_signals_config.enabled
-            and self.ml_state is not None
-            and self.ml_state.scores is not None
-        )
-        if use_ml:
-            return self.ml_state.scores.rank(), bl.get("ml_view_spread", 0.03)
+        if self.use_ml:
+            return self.ml_state.scores.rank(), self.black_litterman.get("ml_view_spread", 0.03)
 
         window = getattr(self.signals_config, "mean_reversion_window", 4)
         short_returns = self.market_state.lookback_prices().pct_change(window, fill_method=None).iloc[-1]
-        return short_returns.rank(), bl.get("reversion_view", 0.03)
+        return short_returns.rank(), self.black_litterman.get("reversion_view", 0.03)
     
     def _determine_view_direction(self, n: int, winners, losers):
         """
@@ -119,13 +123,12 @@ class BlackLittermanSignal(RiskReturnSignals):
         P = np.zeros((1, n))
 
         if winners.sum() == 0 or losers.sum() == 0:
-            return P  # too few assets to form a valid view; express no view
+            return P
 
-        view_direction = self.black_litterman.get("view_direction", "momentum")
-        if view_direction == "momentum":
+        if self.view_direction == "momentum":
             P[0, winners] =  1 / winners.sum()  # long winners equally
             P[0, losers]  = -1 / losers.sum()   # short losers equally
-        else:  # "mean_reversion" or unrecognised
+        else:
             P[0, losers]  =  1 / losers.sum()   # long losers equally
             P[0, winners] = -1 / winners.sum()  # short winners equally
 

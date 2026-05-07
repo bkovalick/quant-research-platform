@@ -296,6 +296,7 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
+        "apply_market_caps": false,
         "strategy_rules": {
           "vol_target": 0.15,
           "vol_lookback_days": "1m",
@@ -521,6 +522,7 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
+        "apply_market_caps": false,
         "strategy_rules": {
           "vol_target": 0.15,
           "vol_lookback_days": "1m",
@@ -728,6 +730,7 @@
         "strategy_type": "mean_reversion_strategy",
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
+        "apply_market_caps": false,
         "apply_max_return_objective": true,
         "strategy_rules": {
           "vol_target": 0.15,
@@ -930,6 +933,7 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
+        "apply_market_caps": false,
         "strategy_rules": {
           "vol_target": 0.15,
           "vol_lookback_days": "1m",
@@ -1155,6 +1159,7 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
+        "apply_market_caps": false,
         "strategy_rules": {
           "vol_target": 0.15,
           "vol_lookback_days": "1m",
@@ -1380,6 +1385,7 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "monthly",
         "apply_max_return_objective": true,
+        "apply_market_caps": false,
         "strategy_rules": {
           "vol_target": 0.15,
           "vol_lookback_days": "1m",
