@@ -1,11 +1,12 @@
 from domain.strategies.istrategy import StrategyInterface
 from models.rebalance_problem import RebalanceProblem
+from domain.optimizers.optimizer import PortfolioRebalancer
 
 import numpy as np
+import pandas as pd
 
 class SystematicStrategy(StrategyInterface):
-    """ Systematic optimized strategy
-
+    """ 
     Systematic strategy that is entirely driven by configuration files. 
     The strategy logic is determined by the signal source specified in the rebalance problem, 
     and the optimizer is applied to those signals to generate new weights.
@@ -29,4 +30,31 @@ class SystematicStrategy(StrategyInterface):
             self.rebalance_problem, active_signals, current_weights
         )
         
+        trades = self._convert_to_trades(
+            optimized,
+            market_prices=self._get_prices(active_signals)
+        )
         return optimized
+    
+    def _convert_to_trades(self, 
+                           optimized_weights: np.ndarray,
+                           market_prices: pd.DataFrame) -> np.ndarray:
+        available_cash = self.rebalance_problem.starting_portfolio_value + \
+            self.rebalance_problem.cash_infusion
+        
+        rebalancer = PortfolioRebalancer(
+            optimized_weights,
+            available_cash,
+            market_prices
+        )
+        return rebalancer.generate_trades()
+    
+    def _get_prices(self, 
+                    active_signals) -> pd.DataFrame:
+        lookback_prices = getattr(active_signals, "lookback_prices")
+        if not callable(lookback_prices):
+            raise ValueError("Active signals must have a callable lookback_prices method")
+        prices = lookback_prices()
+        return prices
+
+

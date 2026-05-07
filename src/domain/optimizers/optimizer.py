@@ -14,6 +14,7 @@ class PortfolioRebalancer:
 				 available_cash: float, 
 			  	 prices: pd.DataFrame):
 		self.target_weights = target_weights
+		self.available_cash = available_cash
 		self.prices = prices
 
 	def generate_trades(self):
@@ -22,7 +23,7 @@ class PortfolioRebalancer:
 		objective = self._setup_objective(decision_variables)
 		prob = cp.Problem(objective, constraints)
 
-		for solver in [cp.CLARABEL, cp.ECOS, cp.SCS, cp.OSQP]:
+		for solver in [cp.HIGHS]:
 			try:
 				prob.solve(solver=solver, verbose=False)
 				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
@@ -36,13 +37,39 @@ class PortfolioRebalancer:
 		return optimal_weights
 	
 	def _setup_decision_variables(self):
-		pass
+		n_assets = self.target_weights
+		optimal_weights = cp.Variable(n_assets, integer = True)
+		remaining_cash = cp.Variable()
+		return {
+			"optimal_weights": optimal_weights,
+			"remaining_cash": remaining_cash
+		}
+	
+	def _setup_constraints(self, decision_variables: dict):
+		constraints = []
+		constraints.extend(
+			self._setup_unallocated_constraint(decision_variables)
+		)
+		return constraints
 
-	def _setup_constraints(self):
-		pass
-
-	def _setup_objective(self):
-		pass
+	def _setup_unallocated_constraint(self, decision_variables: dict):
+		optimal_weights = decision_variables.get("optimal_weights")
+		remaining_cash = decision_variables.get("remaining_cash")
+		actual_dollars = cp.multiply(self.prices, optimal_weights)
+		return [
+			remaining_cash + cp.sum(actual_dollars) == self.available_cash,
+			remaining_cash >= 0,
+			optimal_weights >= 0
+		]
+		
+	def _setup_objective(self, decision_variables: dict):
+		optimal_weights = decision_variables.get("optimal_weights")
+		remaining_cash = decision_variables.get("remaining_cash")
+		target_dollars = self.target_weights * self.available_cash
+		actual_dollars = cp.multiply(self.prices, optimal_weights)
+		tracking_error = cp.norm1(target_dollars - actual_dollars)
+		objective = cp.Minimize(remaining_cash + tracking_error)
+		return objective
 
 class Optimizer(IOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
