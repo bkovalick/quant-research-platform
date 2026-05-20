@@ -122,18 +122,18 @@ class MLPredictorSignal(RiskReturnSignals):
                  market_state: MarketState, 
                  signals_cfg: SignalsConfig,
                  ml_config: MachineLearningConfig,
-                 state: MLPredictorSignalsState):
+                 predictor_state: MLPredictorSignalsState):
         super().__init__(market_state, signals_cfg)
 
         self.ml_config = ml_config
-        self.state = state
+        self.predictor_state = predictor_state
 
     def mean_returns(self):
         if not self.ml_config.enabled:
             return super().mean_returns()
-        if self.state.scores is None:
+        if self.predictor_state.scores is None:
             return super().mean_returns()
-        scores = self.state.scores.to_numpy(dtype=float)
+        scores = self.predictor_state.scores.to_numpy(dtype=float)
         if np.isnan(scores).any():
             fallback = super().mean_returns()
             nan_mask = np.isnan(scores)
@@ -141,7 +141,7 @@ class MLPredictorSignal(RiskReturnSignals):
         return scores
     
     def covariance_matrix(self) -> np.ndarray:
-        cov = self.state.covariance_matrix
+        cov = self.predictor_state.covariance_matrix
         if cov is None:
             return super().covariance_matrix()
         return cov
