@@ -10,6 +10,7 @@ class TaxLotLedger:
         self._short_term_tax_rate = 0.37
         self._long_term_tax_rate = 0.20
         self._base_nav = 1_000_000_000
+        self._lot_share_epsilon = 1e-8
         self._last_rebalance_date = None
         self._last_rebalance_weights = None
         self._next_lot_id = 0
@@ -123,9 +124,7 @@ class TaxLotLedger:
             shares_sold = self._tax_lots.at[lot_id, "Shares"] * sell_fraction
             self._tax_lots.at[lot_id, "Shares"] -= shares_sold
 
-        self._tax_lots = self._tax_lots.loc[
-            self._tax_lots["Shares"] > 1e-8
-        ].copy()
+        self._prune_closed_lots()
 
     def _process_buy_lots(self,
                           portfolio: Portfolio,
@@ -150,7 +149,12 @@ class TaxLotLedger:
 
             if delta_weight > 0:
                 shares = (delta_weight * total_portfolio_value) / current_price
+                if shares <= self._lot_share_epsilon:
+                    continue
                 new_lots[(acquisition_date, ticker)] = self._process_buy_lot(shares, current_price)
+
+        if not new_lots:
+            return
 
         new_tax_lots_df = pd.DataFrame.from_dict(new_lots, orient="index")
         new_tax_lots_df.index.names = ["AcquisitionDate", "Ticker"]
@@ -162,6 +166,13 @@ class TaxLotLedger:
         )
         self._next_lot_id += len(new_tax_lots_df)
         self._tax_lots = pd.concat([self._tax_lots, new_tax_lots_df])
+        self._prune_closed_lots()
+
+    def _prune_closed_lots(self) -> None:
+        """Remove lots with effectively zero shares due to full liquidation or float noise."""
+        self._tax_lots = self._tax_lots.loc[
+            self._tax_lots["Shares"] > self._lot_share_epsilon
+        ].copy()
                 
     def _process_buy_lot(self, shares: float, current_price: float) -> pd.DataFrame:
         """Processes a single buy transaction and returns the new tax lot information."""
