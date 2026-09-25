@@ -7,8 +7,7 @@ interface Props {
   onClose: () => void
   experiment: any
   setExperiment: (e: any) => void
-  pinnedRuns?: any[]
-  onClearPinned?: () => void
+  pinnedNames?: Set<string>
 }
 
 /**
@@ -16,7 +15,7 @@ interface Props {
  * (configuration + upload + run) unchanged; slides over the results page
  * instead of permanently occupying it. Esc or backdrop click closes.
  */
-export default function LabDrawer({ open, onClose, experiment, setExperiment, pinnedRuns = [], onClearPinned }: Props) {
+export default function LabDrawer({ open, onClose, experiment, setExperiment, pinnedNames }: Props) {
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose() }
@@ -45,12 +44,7 @@ export default function LabDrawer({ open, onClose, experiment, setExperiment, pi
           <button style={closeBtn} onClick={onClose} aria-label="Close lab">✕</button>
         </div>
         <div style={drawerBody}>
-          <Sidebar
-            experiment={experiment}
-            setExperiment={setExperiment}
-            pinnedRuns={pinnedRuns}
-            onClearPinned={onClearPinned}
-          />
+          <Sidebar experiment={experiment} setExperiment={setExperiment} pinnedNames={pinnedNames} />
         </div>
       </aside>
     </>

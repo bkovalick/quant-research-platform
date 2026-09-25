@@ -33,7 +33,8 @@ app.add_middleware(
 def run_experiment(config: dict = Body(...)):
     logger.info(f"Received experiment configuration: {config}")
     runner = ExperimentRunner(config)
-    experiment_results = runner.run_parallel()
+    # experiment_results = runner.run_parallel()
+    experiment_results = runner.run()
     return experiment_results.to_dict()
 
 @app.post("/download")
