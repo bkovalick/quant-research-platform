@@ -110,7 +110,9 @@ class RebalanceProblemBuilder:
             "transaction_cost": self.market_state.transaction_cost,
             "starting_portfolio_value": self.rebalance_config.starting_portfolio_value,
             "cash_infusion": self.rebalance_config.cash_infusion,
-            "monitoring_type": self.rebalance_config.monitoring_type
+            "monitoring_type": self.rebalance_config.monitoring_type,
+            "max_long": self.rebalance_config.constraints.max_long,
+            "max_short": self.rebalance_config.constraints.max_short,
         }
 
         logger.debug("Prepared rebalance problem with %s keys", len(prepared_data))

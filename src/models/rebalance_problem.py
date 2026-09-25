@@ -157,3 +157,19 @@ class RebalanceProblem:
     @property
     def monitoring_type(self) -> str:
         return self._data.get("monitoring_type", "long_only")
+
+    @property
+    def max_long(self) -> float:
+        return self._data.get("max_long", 1.0)
+
+    @property
+    def max_short(self) -> float:
+        return self._data.get("max_short", 1.0)
+
+    @property
+    def net_exposure(self) -> float:
+        return self.max_long - self.max_short
+
+    @property
+    def gross_exposure(self) -> float:
+        return self.max_long + self.max_short

@@ -71,6 +71,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
 
     // Validate fixed weight strategies that will actually run
     for (const s of strategiesToRun) {
+
       if (s.rebalance_problem?.strategy_type === "fwp_strategy") {
         const tickers = s.market_state_config?.investment_universe ?? []
         const w = s.rebalance_problem?.initial_weights
@@ -154,11 +155,6 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const addUniverseTicker = (rawTicker: string) => {
     const ticker = rawTicker.trim().toUpperCase()
     if (!ticker) return
-
-    // if (!availableUniverseTickers.includes(ticker)) {
-    //   setNewUniverseTickerError(`Unknown ticker: ${ticker}`)
-    //   return
-    // }
 
     const current = currentStrategy.market_state_config?.investment_universe ?? []
     if (current.includes(ticker)) {
@@ -795,6 +791,8 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                   {currentStrategy.rebalance_problem?.constraints && (
                     <Section title="Constraints">
                       {([
+                        ["Max Long Exposure", "max_long", "Maximum long weight. Default to 1 for a long only portfolio (short must be 0)."],
+                        ["Max Short Exposure", "max_short", "Maximum short weight. Default to 0 for a long only portfolio (long must be 1)."],
                         ["Max Pos", "max_position_size", "Maximum weight any single position can hold (e.g. 0.10 = 10% of portfolio)"],
                         ["Min Pos", "min_position_size", "Minimum weight for any held position; prevents trivially small allocations"],
                         ["Max #", "max_positions", "Maximum number of simultaneous positions in the portfolio"],

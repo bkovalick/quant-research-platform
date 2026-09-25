@@ -195,11 +195,17 @@ class Optimizer(BaseOptimizer):
 		portfolio_weights = cp.Variable(n_assets)
 		portfolio_buys = cp.Variable(n_risky_assets, nonneg=True)
 		portfolio_sells = cp.Variable(n_risky_assets, nonneg=True)
+		portfolio_abs_weights = cp.Variable(n_assets, nonneg=True)
+		portfolio_long_weights = cp.Variable(n_assets, nonneg=True)
+		portfolio_short_weights = cp.Variable(n_assets, nonneg=True)
 		portfolio_sell_fractions = cp.Variable(n_tax_lots, nonneg=True) if n_tax_lots > 0 else None
 		decision_variables = {
 			'portfolio_weights': portfolio_weights,
 			'portfolio_buys': portfolio_buys,
-			'portfolio_sells': portfolio_sells
+			'portfolio_sells': portfolio_sells,
+			'portfolio_abs_weights': portfolio_abs_weights,
+			'portfolio_long_weights': portfolio_long_weights,
+			'portfolio_short_weights': portfolio_short_weights
 		}
 		if portfolio_sell_fractions is not None:
 			decision_variables['portfolio_sell_fractions'] = portfolio_sell_fractions
@@ -214,6 +220,12 @@ class Optimizer(BaseOptimizer):
 		constraints = []
 		constraints.extend(
 			self._setup_portfolio_constraints(decision_variables, rebalance_problem, current_weights)
+		)
+		constraints.extend(
+			self._setup_gross_exposure_constraints(decision_variables, rebalance_problem)
+		)
+		constraints.extend(
+			self._setup_long_short_decomposition_constraints(decision_variables, rebalance_problem)
 		)
 		constraints.extend(
 			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
@@ -236,6 +248,7 @@ class Optimizer(BaseOptimizer):
 		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
 		min_position_size = getattr(rebalance_problem, 'min_position_size', 0.0)
 		max_position_size = getattr(rebalance_problem, 'max_position_size', 1.0)
+		net_exposure = getattr(rebalance_problem, 'net_exposure', 1.0)
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		portfolio_buys = decision_variables.get('portfolio_buys')
 		portfolio_sells = decision_variables.get('portfolio_sells')
@@ -243,16 +256,44 @@ class Optimizer(BaseOptimizer):
 		risky_weights = portfolio_weights[self._risky_indices]
 
 		return [
-				cp.sum(portfolio_weights) == 1,
+				cp.sum(portfolio_weights) == net_exposure,
 				risky_weights - risky_current == portfolio_buys - portfolio_sells,
 				portfolio_weights >= min_position_size,
 				portfolio_weights <= max_position_size
 			]
+
+	def _setup_gross_exposure_constraints(self,
+										  decision_variables: dict,
+										  rebalance_problem: RebalanceProblem) -> list:
+		"""Setup gross exposure constraints based on the gross exposure limit."""
+		gross_exposure = getattr(rebalance_problem, 'gross_exposure', 1.0)
+		portfolio_long_weights = decision_variables.get('portfolio_long_weights')
+		portfolio_short_weights = decision_variables.get('portfolio_short_weights')
+		return [
+			cp.sum(portfolio_long_weights + portfolio_short_weights) <= gross_exposure
+		]
+
+	def _setup_long_short_decomposition_constraints(self, decision_variables, rebalance_problem):
+		"""Setup long/short decomposition constraints."""
+		max_long  = getattr(rebalance_problem, 'max_long', 1.0)
+		max_short = getattr(rebalance_problem, 'max_short', 0.0)
+		w     = decision_variables.get('portfolio_weights')
+		long  = decision_variables.get('portfolio_long_weights')
+		short = decision_variables.get('portfolio_short_weights')
+		absw  = decision_variables.get('portfolio_abs_weights')
+
+		return [
+			w == long - short,          # element-wise split
+			absw == long + short,       # ties |w| to the split
+			cp.sum(long)  <= max_long,
+			cp.sum(short) <= max_short,
+		]
 	
 	def _setup_volatility_constraints(self, 
 								   	  decision_variables: dict,
 								   	  rebalance_problem: RebalanceProblem,
 								   	  signals: Signals) -> list:
+		"""Setup volatility constraints based on optimizer volatility constraint."""
 		optimizer_vol_constraint = getattr(rebalance_problem, 'optimizer_vol_constraint', None)
 		if optimizer_vol_constraint is None or signals is None:
 			return []
