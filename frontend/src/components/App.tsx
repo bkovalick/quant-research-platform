@@ -57,6 +57,28 @@ export default function App() {
     prevRunCount.current = currentRuns.length
   }, [currentRuns.length])   // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Remove a run from the results view. Drops it from the current experiment
+  // and from pinned runs so it disappears everywhere, including the report.
+  const removeRun = (run: any) => {
+    setExperiment((prev: any) =>
+      prev
+        ? { ...prev, strategy_runs: (prev.strategy_runs ?? []).filter((r: any) => r.run_id !== run.run_id) }
+        : prev
+    )
+    setPinnedRuns(prev => prev.filter((r: any) => r.run_id !== run.run_id))
+    setSelectedRun((prev: any) => (prev?.run_id === run.run_id ? null : prev))
+  }
+
+  // Rename a run in place — display only, no re-run.
+  const renameRun = (run: any, name: string) => {
+    const rename = (r: any) => (r.run_id === run.run_id ? { ...r, strategy_name: name } : r)
+    setExperiment((prev: any) =>
+      prev ? { ...prev, strategy_runs: (prev.strategy_runs ?? []).map(rename) } : prev
+    )
+    setPinnedRuns(prev => prev.map(rename))
+    setSelectedRun((prev: any) => (prev?.run_id === run.run_id ? { ...prev, strategy_name: name } : prev))
+  }
+
   const togglePin = (run: any) => {
     setPinnedRuns(prev =>
       prev.some((r: any) => r.run_id === run.run_id)
@@ -115,6 +137,8 @@ export default function App() {
                 <StrategyGrid
                   runs={runs}
                   onSelect={setSelectedRun}
+                  onRemove={removeRun}
+                  onRename={renameRun}
                   selectedRunId={selectedRun?.run_id ?? null}
                   pinnedIds={pinnedIds}
                   onPin={togglePin}

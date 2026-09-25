@@ -503,6 +503,22 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                     </Row>
                   </Section>
 
+                  {(currentStrategy?.rebalance_problem?.strategy_type === "fwp_strategy" ||
+                    currentStrategy?.rebalance_problem?.strategy_type === "ewp_strategy") && (
+                    <Section title="Leverage">
+                      <Row label="Leverage" tooltip="Target gross exposure as a multiple of NAV. 1.0 = unlevered; 1.5 borrows 50% of NAV.">
+                        <input type="number" step={0.1} min={0} style={inputStyle}
+                          value={currentStrategy?.rebalance_problem?.leverage ?? 1.0}
+                          onChange={(e) => updateField(["rebalance_problem", "leverage"], Number(e.target.value))} />
+                      </Row>
+                      <Row label="Fin Spread" tooltip="Annual spread over the risk-free rate paid on borrowed capital. Total financing rate = risk free rate + spread.">
+                        <input type="number" step={0.001} min={0} style={inputStyle}
+                          value={currentStrategy?.rebalance_problem?.financing_spread ?? 0.005}
+                          onChange={(e) => updateField(["rebalance_problem", "financing_spread"], Number(e.target.value))} />
+                      </Row>
+                    </Section>
+                  )}                  
+
                   <Section title="Rebalance">
                     <Row label="Frequency" tooltip="How often the portfolio is rebalanced and positions updated">
                       <select style={inputStyle}

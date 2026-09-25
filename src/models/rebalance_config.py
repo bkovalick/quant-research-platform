@@ -61,6 +61,8 @@ class RebalanceProblemConfig:
     initial_weights: Optional[Any]
     starting_portfolio_value: float
     cash_infusion: float
+    leverage: float
+    financing_spread: float
     constraints: ConstraintsConfig
     strategy_rules: StrategyRulesConfig
 
@@ -78,6 +80,8 @@ class RebalanceProblemConfig:
             initial_weights=d.get("initial_weights", None),
             starting_portfolio_value=d.get("starting_portfolio_value", 10000),
             cash_infusion=d.get("cash_infusion", 1000),
+            leverage=d.get("leverage", 1.0),
+            financing_spread=d.get("financing_spread", 0.005),
             constraints=ConstraintsConfig.from_dict(d.get("constraints", {})),
             strategy_rules=StrategyRulesConfig.from_dict(d.get("strategy_rules", {})),
         )

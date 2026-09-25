@@ -173,3 +173,11 @@ class RebalanceProblem:
     @property
     def gross_exposure(self) -> float:
         return self.max_long + self.max_short
+
+    @property
+    def leverage(self) -> float:
+        return self._data.get("leverage", 1.0)
+
+    @property
+    def financing_spread(self) -> float:
+        return self._data.get("financing_spread", 0.005)    
