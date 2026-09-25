@@ -20,9 +20,9 @@ from models.rebalance_config import RebalanceProblemConfig
 from models.signals_config import SignalsConfig
 from models.experiment import Experiment
 from models.backtest_result import BacktestResult
+from models.monitoring_stats import MonitoringStats
 from infrastructure.market_data_gateway import MarketDataStore
 from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway, StrategyResultsDataGateway
-from models.monitoring_stats import MonitoringStats
 
 logger = logging.getLogger(__name__)
 
@@ -116,14 +116,19 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
     monitoring_stats = merge_monitoring_stats(*stats)
     
     return StrategyRun(
-        str(uuid.uuid4()), strategy_cfg["name"], rebalance_problem, portfolio_results, monitoring_stats,
-        {"timestamp": datetime.now(), "username": "bkovalick", "engine_version": "1.0.0"}
+        run_id=str(uuid.uuid4()),
+        strategy_name=strategy_cfg["name"],
+        result=portfolio_results,
+        monitoring_stats=monitoring_stats,
+        strategy_config=strategy_cfg,
+        metadata={"timestamp": datetime.now(), "username": "bkovalick", "engine_version": "1.0.0"},
     )
 
 class ExperimentRunner:
     def __init__(self, config: dict):
         self.config = config
-        self.max_workers = min(8, multiprocessing.cpu_count())
+        # self.max_workers = min(8, multiprocessing.cpu_count())
+        self.max_workers = 4
         logger.info("ExperimentRunner initialized with %s strategies", len(self.config.get("strategies", [])))
         print(f"ExperimentRunner initialized with {len(self.config.get('strategies', []))} strategies")
 
@@ -189,8 +194,12 @@ class ExperimentRunner:
 
         result = self._benchmark_result(m_cfg, state_cfg, bench_returns, bench_prices, dates)
         return StrategyRun(
-            str(uuid.uuid4()), m_cfg.benchmark, None, result, None,
-            {"timestamp": datetime.now(), "username": "bkovalick", "engine_version": "1.0.0"},
+            run_id=str(uuid.uuid4()),
+            strategy_name=m_cfg.benchmark,
+            result=result,
+            monitoring_stats=None,
+            strategy_config=None,
+            metadata={"timestamp": datetime.now(), "username": "bkovalick", "engine_version": "1.0.0"},
         )
     
     def _benchmark_result(self, 

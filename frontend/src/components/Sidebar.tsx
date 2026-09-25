@@ -74,6 +74,16 @@ export default function Sidebar({ setExperiment, experiment, pinnedRuns = [], on
       }
     }
 
+    const runnableStrategies = editedStrategies.filter((s: any) => !s._fromPin)
+    const strategiesToRun = runnableStrategies.length
+      ? runnableStrategies
+      : strategySet.strategies.filter((s: any) => !s._fromPin)
+
+    if (!strategiesToRun.length) {
+      setRunError("No runnable strategies are selected. The pinned runs are preserved for reference only.")
+      return
+    }
+
     const config = {
       ...strategySet,
       market_store_config: {
@@ -83,7 +93,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedRuns = [], on
         transaction_cost: transactionCost,
         benchmark: benchmark
       },
-      strategies: editedStrategies.length ? editedStrategies : strategySet.strategies
+      strategies: strategiesToRun
     }
 
     setLoading(true)

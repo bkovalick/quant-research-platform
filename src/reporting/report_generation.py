@@ -169,8 +169,6 @@ class ExcelGenerator:
                     )
                     weights_df = weights_df.iloc[:min_len].copy()
                     date_idx = pd.to_datetime(wealth_series.index[:min_len])
-                    # Align benchmark to the strategy's exact date index so every
-                    # strategy row carries the same benchmark value for the same date.
                     bm_wealth_aligned = benchmark_weights_series.reindex(wealth_series.index[:min_len])
                     bm_returns_aligned = benchmark_returns_series.reindex(wealth_series.index[:min_len])
                     weights_df.insert(0, "Date", date_idx)

@@ -14,14 +14,15 @@ class BacktestResultModel(BaseModel):
     series: Dict[str, Any]
 
 class MonitoringStatsModel(BaseModel):
-    ic_statistics: Dict[str, Any]
-    ic_summary: Dict[str, Any]    
+    ic_statistics: Dict[str, Any] | None = None
+    ic_summary: Dict[str, Any] | None = None
+    regression_summary: Dict[str, Any] | None = None
 
 class StrategyRunModel(BaseModel):
     run_id: str
     strategy_name: str
-    strategy_config: Dict[str, Any] = {}
-    metadata: Dict[str, Any] = {}
+    strategy_config: Dict[str, Any] | None = None
+    metadata: Dict[str, Any] | None = None
     monitoring_stats: Optional[MonitoringStatsModel] = None
     result: BacktestResultModel
 

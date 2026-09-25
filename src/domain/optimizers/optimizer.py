@@ -351,7 +351,10 @@ class Optimizer(BaseOptimizer):
 			return []
 		
 		tax_lots = tax_lot_ledger.tax_lots
-		total_portfolio_value = tax_lots["CurrentValue"].sum() if not tax_lots.empty else 1.0
+		total_portfolio_value = tax_lots["CurrentValue"].sum() if not tax_lots.empty else 0.0
+		if total_portfolio_value <= 0.0:
+			return []
+
 		sell_trades = decision_variables.get('portfolio_sells')
 		sell_fractions = decision_variables.get('portfolio_sell_fractions')
 		
@@ -370,14 +373,6 @@ class Optimizer(BaseOptimizer):
 					   	 signals: Signals = None,
 						 tax_lot_ledger: TaxLotLedger = None) -> callable:
 		"""Set objective function for the optimization problem"""
-		return self._set_maximize_return_objective(decision_variables, rebalance_problem, signals, tax_lot_ledger)
-		
-	def _set_maximize_return_objective(self, 
-									   decision_variables: dict,
-									   rebalance_problem: RebalanceProblem, 
-									   signals: Signals,
-									   tax_lot_ledger: TaxLotLedger = None) -> callable:
-		"""Set objective to maximize returns minus risk penalty."""
 		risk_aversion = getattr(rebalance_problem, 'risk_aversion', 1.0)
 		transaction_cost = getattr(rebalance_problem, 'transaction_cost', 0.003)
 		portfolio_weights = decision_variables.get('portfolio_weights')
