@@ -101,10 +101,12 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
     benchmark = market_store.prices[market_store_config.benchmark]
     signals_factory = build_signals_factory(strategy_cfg, market_state, benchmark)
+    portfolio = Portfolio(
+        financing_rate=market_store_config.risk_free_rate + rebalance_problem.financing_spread,
+        periods_per_year=market_state_config.annual_trading_days
+    )
     
-    run = BacktestingEngine(
-        Portfolio(), strategy, market_state, signals_factory, tax_lot_ledger
-    ).run_backtest(rebalance_problem)
+    run = BacktestingEngine(portfolio, strategy, market_state, signals_factory, tax_lot_ledger).run_backtest(rebalance_problem)
     
     portfolio_results = PerformanceAnalyzer().compute(run.portfolio, market_store_config, market_state_config, benchmark)
 

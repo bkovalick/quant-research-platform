@@ -19,13 +19,28 @@ const TOOLTIPS: Record<string, string> = {
 interface Props {
   runs: any[]
   onSelect: (run: any) => void
+  onRemove?: (run: any) => void
+  onRename?: (run: any, name: string) => void
   selectedRunId?: string | null
   pinnedIds: Set<string>
   onPin: (run: any) => void
   dateWindow: DateWindow | null
 }
 
-export default function StrategyGrid({ runs, onSelect, selectedRunId, pinnedIds, onPin, dateWindow }: Props) {
+export default function StrategyGrid({ runs, onSelect, onRemove, onRename, selectedRunId, pinnedIds, onPin, dateWindow }: Props) {
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draftName, setDraftName] = useState("")
+
+  const beginRename = (run: any) => {
+    setEditingId(run.run_id)
+    setDraftName(run.strategy_name)
+  }
+
+  const commitRename = (run: any) => {
+    const next = draftName.trim()
+    if (next && next !== run.strategy_name) onRename?.(run, next)
+    setEditingId(null)
+  }
   const [sortKey, setSortKey] = useState<SortKey>("sharpe_ratio")
   const [ascending, setAscending] = useState(false)
 
@@ -97,7 +112,27 @@ export default function StrategyGrid({ runs, onSelect, selectedRunId, pinnedIds,
                 >
                   <td style={leftCell}>
                     <span style={{ ...colorDot, backgroundColor: COLORS[colorIdx % COLORS.length] }} />
-                    {formatStrategyName(run.strategy_name)}
+                    {editingId === run.run_id ? (
+                      <input
+                        autoFocus
+                        style={renameInput}
+                        value={draftName}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => setDraftName(e.target.value)}
+                        onBlur={() => commitRename(run)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitRename(run)
+                          if (e.key === "Escape") setEditingId(null)
+                        }}
+                      />
+                    ) : (
+                      <span
+                        onDoubleClick={(e) => { e.stopPropagation(); beginRename(run) }}
+                        title="Double-click to rename"
+                      >
+                        {formatStrategyName(run.strategy_name)}
+                      </span>
+                    )}
                     {isPinned && <span style={pinnedBadge}>pinned</span>}
                   </td>
                   <td style={rightCellGreen(s?.return)}>{formatPct(s?.return)}</td>
@@ -112,6 +147,13 @@ export default function StrategyGrid({ runs, onSelect, selectedRunId, pinnedIds,
                     >
                       {isPinned ? "unpin" : "pin"}
                     </button>
+                    {onRemove && (
+                      <button
+                        style={removeBtn}
+                        title="Remove from results"
+                        onClick={(e) => { e.stopPropagation(); onRemove(run) }}
+                      >✕</button>
+                    )}
                   </td>
                 </tr>
               )
@@ -213,6 +255,14 @@ const pinBtn: CSSProperties = {
 }
 const unpinBtn: CSSProperties = {
   ...pinBtn, border: "1px solid #388bfd", color: "#388bfd"
+}
+const renameInput: CSSProperties = {
+  background: "#0d1117", border: "1px solid #388bfd", borderRadius: 3,
+  color: "#e6edf3", fontSize: 12, padding: "1px 5px", width: 190,
+}
+const removeBtn: CSSProperties = {
+  background: "none", border: "1px solid #30363d", borderRadius: 3,
+  color: "#8b949e", fontSize: 10, cursor: "pointer", padding: "1px 5px", marginLeft: 4,
 }
 const pinnedBadge: CSSProperties = {
   fontSize: 9, color: "#388bfd", border: "1px solid #388bfd",

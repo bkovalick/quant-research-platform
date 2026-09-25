@@ -41,6 +41,8 @@
       "rebalance_problem": {
         "strategy_type": "fwp_strategy",
         "optimizer_type": "portfolio_optimizer",
+        "leverage": 1.0,
+        "financing_spread": 0.005,
         "rebalance_frequency": "weekly",
         "initial_weights": {
           "SPY": 0.142857,
