@@ -1,247 +1,110 @@
-# Quant-Research-Platform
+# Quant Research Platform
 
-## Overview
+A config-driven backtesting platform for systematic strategies. You define an experiment in JSON, it runs signal generation, portfolio optimization, and backtesting, then produces performance metrics, factor attribution, and Excel reports.
 
-Experiment-driven research platform for systematic strategy development and evaluation across asset classes — multi-strategy backtesting, ML-based signal research, portfolio optimization, and signal monitoring. The architecture is designed for extensibility, reproducibility, and clear separation of concerns.
+## Setup
 
-## Project Structure
-
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
 ```
+
+Python 3.10+. Uses numpy, pandas, scipy, scikit-learn, cvxpy, yfinance, pandas_datareader, fastapi, duckdb, openpyxl.
+
+## Running
+
+```bash
+python src/run_local.py
+```
+
+Or with the UI:
+
+```bash
+cd src && uvicorn application.controller:app --reload   # :8000
+cd frontend && npm install && npm run dev               # :5173
+```
+
+## How it works
+
+An experiment config lists one or more strategies. For each one the runner builds market state from price data, constructs signals, assembles a rebalance problem, and steps a backtest loop forward through time. The engine advances a cursor day by day, drifts portfolio weights with realized returns, and calls the strategy on rebalance dates to get new target weights. Results go to DuckDB and optionally to an Excel report.
+
+```text
 src/
-├── main.py
-├── application/
-│   ├── controller.py
-│   └── experiment_runner.py
-├── config/
-│   └── experiment_*.json
+├── run_local.py
+├── application/          FastAPI routes, ExperimentRunner
+├── config/               experiment_*.json
 ├── domain/
-│   ├── machine_learning/
-│   │   ├── cross_sectional_model.py
-│   │   ├── feature_builder.py
-│   │   └── return_predictor.py
-│   ├── optimizers/
-│   │   ├── ioptimizer.py
-│   │   └── optimizer.py
-│   ├── portfolio/
-│   │   ├── iportfolio.py
-│   │   └── portfolio.py
-│   ├── signals/
-│   │   ├── black_litterman_signal.py
-│   │   ├── machine_learning_signals.py
-│   │   ├── mean_reversion_signals.py
-│   │   ├── momentum_signals.py
-│   │   ├── moving_average_signals.py
-│   │   ├── pairs_trading_signal.py
-│   │   ├── risk_return_signals.py
-│   │   ├── signals.py
-│   │   └── volatility_forecasting_signals.py
-│   └── strategies/
-│       ├── equal_weight_strategy.py
-│       ├── fixed_weight_strategy.py
-│       ├── istrategy.py
-│       ├── pairs_trading_strategy.py
-│       └── systematic_strategy.py
-├── infrastructure/
-│   ├── market_data_gateway.py
-│   └── strategy_results_data_gateway.py
-├── models/
-│   ├── backtest_result.py
-│   ├── backtest_run.py
-│   ├── experiment.py
-│   ├── experiment_model.py
-│   ├── machine_learning_config.py
-│   ├── market_config.py
-│   ├── monitoring_stats.py
-│   ├── rebalance_config.py
-│   ├── rebalance_problem.py
-│   ├── rebalance_solution.py
-│   ├── signals_config.py
-│   └── strategy_run.py
-├── reference/
-│   └── market_metadata.py
-├── reporting/
-│   ├── performance_analyzer.py
-│   ├── report_generation.py
-│   └── diagnostics.py
-├── services/
-│   ├── optimizer_factory.py
-│   ├── rebalance_problem_builder.py
-│   └── strategy_factory.py
-├── simulation/
-│   ├── backtesting_engine.py
-│   ├── market_state.py
-│   └── parameter_sweeps.py
-└── utils/
-    ├── lookback_windows.py
-    └── rebalance_steps.py
+│   ├── machine_learning/ FeatureBuilder, CrossSectionalModel (Ridge), ReturnPredictor
+│   ├── optimizers/       CVXPY-based portfolio optimizer
+│   ├── portfolio/        weights, returns, turnover over time
+│   ├── signals/          momentum, mean reversion, Black-Litterman, ML, vol forecast, pairs
+│   └── strategies/       turn signals into target weights
+├── infrastructure/       yfinance gateway, DuckDB persistence
+├── models/               data containers (RebalanceProblem, BacktestResult, StrategyRun)
+├── reference/            asset class and sector maps
+├── reporting/            PerformanceAnalyzer, diagnostics, Excel export
+├── services/             factories, RebalanceProblemBuilder, SignalFactory
+├── simulation/           BacktestingEngine, MarketState, parameter sweeps
+└── utils/                lookback windows, rebalance step logic
 ```
 
-## Key Modules & Their Purpose
+## Config
 
-- **main.py**: FastAPI entry point; exposes `/run-experiment` and `/download` endpoints.
-- **application/**:
-  - `controller.py`: FastAPI route definitions.
-  - `ExperimentRunner`: Orchestrates the full pipeline from config to results.
-- **config/**: JSON experiment configs. Each file defines `market_store_config` and a list of strategies, each with a `market_state_config` (including `universe_tickers` and `exogenous_tickers`), `signals_config`, and `rebalance_problem`.
-- **infrastructure/**:
-  - `MarketDataGateway`: Market data ingestion via yfinance.
-  - `StrategyResultsDataGateway`: Persists backtest results and monitoring stats to DuckDB.
-- **reference/**: Static metadata — asset class and sector maps (`market_metadata.py`).
-- **domain/**:
-  - **machine_learning/**: `FeatureBuilder` constructs cross-sectional features (momentum, volatility, reversal, beta, VIX regime interactions). `CrossSectionalModel` trains and scores assets using Ridge regression. `ReturnPredictor` wraps model training and inference.
-  - **optimizers/**: `IOptimizer` interface and optimizer implementations.
-  - **portfolio/**: `Portfolio` tracks weights, returns, and turnover through time.
-  - **signals/**: Signal generation — momentum, mean reversion, Black-Litterman (with optional ML views), ML scores, volatility forecasting.
-  - **strategies/**: Strategy implementations that combine signals and optimizers to produce target weights on each rebalance date.
-- **models/**: Pure data containers — no business logic. Key types: `RebalanceProblem`, `BacktestResult`, `MonitoringStats`, `StrategyRun`, `ExperimentModel`.
-- **reporting/**:
-  - `PerformanceAnalyzer`: Computes annualised return, volatility, Sharpe, Sortino, Calmar, tracking error, information ratio, VaR/CVaR, drawdown metrics, alpha, alpha decay, and turnover.
-  - `LongOnlyICDiagnostics` / `PairsSpreadDiagnostics`: Both inherit `BaseMonitor`. `LongOnlyICDiagnostics` computes rolling Spearman IC, IC IR, hit rate, AR(1) half-life, and t-test significance. `PairsSpreadDiagnostics` computes IC from z-score vs realised return for pairs strategies.
-  - `report_generation.py`: Excel report generation via `ExcelGenerator` — exports summary metrics, time-series charts, and weights.
-- **services/**: Factories for optimizers and strategies; `RebalanceProblemBuilder` assembles all numeric inputs for the optimizer.
-- **simulation/**: `BacktestingEngine` drives the time-step loop. `MarketState` manages the investable universe (`prices`, `returns`) and exogenous series (`exogenous_universe`, e.g. VIX) separately. `parameter_sweeps.py` supports grid search over strategy configs.
-- **utils/**: Lookback window definitions (frequency-adjusted period counts), rebalance step logic.
+Strategies separate what they trade from what they look at:
 
-## Market State Config
-
-Each strategy's `market_state_config` supports two asset lists:
-
-- `universe_tickers` — investable assets; used to initialise the portfolio and optimizer.
-- `exogenous_tickers` — observational series (e.g. `"^VIX"`) available to signals and feature builders but never allocated to.
+- `investment_universe` — what the optimizer can hold
+- `signal_universe` — what features are computed on (defaults to the investment universe)
+- `exogenous_tickers` — inputs like ^VIX that feed signals but are never allocated to
 
 ```json
 "market_state_config": {
   "lookback_window_key": "1y",
   "market_frequency": "d",
   "cash_allocation": 0.05,
-  "universe_tickers": ["AAPL", "MSFT", "..."],
+  "investment_universe": ["AAPL", "MSFT"],
   "exogenous_tickers": ["^VIX"]
 }
 ```
 
-## Example Workflow
-
-### 1. Running an Experiment
+## Usage
 
 ```python
 import json
 from application.experiment_runner import ExperimentRunner
 
-with open("config/experiment_full_suite.json") as f:
+with open("src/config/experiment_full_suite.json") as f:
     config = json.load(f)
 
-runner = ExperimentRunner(config)
-experiment = runner.run_parallel()
+experiment = ExperimentRunner(config).run_parallel()
 ```
 
-### 2. Building a Rebalance Problem
+Per strategy that resolves to:
 
 ```python
-from services.rebalance_problem_builder import RebalanceProblemBuilder
+problem   = RebalanceProblemBuilder(rebalance_config, market_state).build()
+optimizer = OptimizerFactory.create_optimizer(problem.optimizer_type)
+strategy  = StrategyFactory.create_strategy(problem, optimizer)
 
-builder = RebalanceProblemBuilder(config=strategy_config, universe_meta=universe_meta)
-rebalance_problem = builder.build()
+run = BacktestingEngine(portfolio, strategy, market_state, signal_factory, benchmark).run_backtest(problem)
 ```
 
-### 3. Configuring a Strategy
+## Metrics and diagnostics
 
-```python
-from services.optimizer_factory import OptimizerFactory
-from services.strategy_factory import StrategyFactory
+`PerformanceAnalyzer` produces annualized return, volatility, Sharpe, Sortino, Calmar, tracking error, information ratio, VaR/CVaR, drawdown stats, and turnover.
 
-optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type)
-strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
-new_weights = strategy.rebalance(signals, current_weights)
-```
+Diagnostics run alongside, depending on strategy type:
 
-### 4. Backtesting
-
-```python
-from simulation.backtesting_engine import BacktestingEngine
-
-engine = BacktestingEngine(
-    portfolio=portfolio,
-    strategy=strategy,
-    market_state=market_state,
-    signals_cfg=signals_cfg
-)
-portfolio = engine.run_backtest(rebalance_problem)
-```
-
-### 5. Signal Monitoring
-
-```python
-from reporting.diagnostics import LongOnlyICDiagnostics
-
-# run is a BacktestRun with scores_history, fwd_history, and portfolio populated
-monitor = LongOnlyICDiagnostics(run=backtest_run)
-results = monitor.analyze()
-# results: MonitoringStats with ic_statistics (Spearman IC series) and ic_summary
-# ic_summary keys: mean_ic, ic_ir, hit_rate, t_statistic, p_value, half_life, n_observations
-```
-
-### 6. Reporting
-
-```python
-from reporting.report_generation import ExcelGenerator
-
-report = ExcelGenerator(experiment, output_path="backtest_results")
-report.generate_report()
-```
-
-## Adding a New Strategy or Optimizer
-
-- Implement your strategy in `domain/strategies/` inheriting `IStrategy`, or optimizer in `domain/optimizers/` inheriting `IOptimizer`.
-- Register it in the appropriate factory in `services/`.
-- Optimizers must inherit `IOptimizer` and be registered in the optimizer factory.
-
-## Project Conventions
-
-- **Pure data models**: No business logic in models; all calculations in builders, services, or domain classes.
-- **Absolute imports**: Always import from the `src` root (e.g. `from domain.signals.signals import Signals`).
-- **Exogenous vs universe**: Keep `exogenous_tickers` out of portfolio initialisation — `MarketState.exogenous_universe` is separate from `MarketState.prices`.
-- **No relative imports.**
-
-## Dependencies
-
-- Python 3.10+
-- scikit-learn, scipy, numpy, pandas, yfinance, fastapi, uvicorn, cvxpy
-- openpyxl (Excel report generation)
-- duckdb (backtest result persistence)
-- pandas_datareader (Fama-French factor data)
-- See `requirements.txt` for pinned versions
-
-## Setup
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate       # Windows
-pip install -r requirements.txt
-```
-
----
-
-# Running the UI (Frontend & Backend)
-
-## Backend
-
-```bash
-cd src
-uvicorn application.controller:app --reload
-```
+- `LongOnlyICDiagnostics` — Spearman IC series, IC IR, hit rate, AR(1) half-life, t-test
+- `PairsSpreadDiagnostics` — IC from entry z-score against realized spread return
+- `FactorRegressionDiagnostics` — Fama-French 5-factor regression with Newey-West standard errors, reporting alpha and factor loadings
 
 ## Frontend
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+A collapsible nav rail with three destinations. The Lab is a drawer holding experiment configuration and the per-strategy editor. Results and Attribution are full-width pages.
 
-The frontend runs on `http://localhost:5173` and expects the backend at `http://localhost:8000`.
+Results shows a strategy table, a cumulative wealth chart with benchmark overlay and a date-range slider, risk/tail/drawdown tabs, and a statistical evidence section covering performance, factor attribution, and robustness. Attribution breaks return into factor contributions and plots rolling loadings.
 
-### Frontend Components
-- **`Sidebar`**: Experiment configuration, Strategy Lab (per-strategy editor with tooltips), pinned run management, and report download.
-- **`StrategyGrid`**: Table of all strategy runs with summary metrics (return, vol, Sharpe, max DD, turnover) and a benchmark row.
-- **`StrategyDetails`**: Cumulative wealth chart with dual-range slider, rolling metrics, and IC analysis panel.
-- **`AnalysisPanel`**: IC statistics, signal monitoring charts, and diagnostics display.
+## Conventions
+
+Models are data containers — calculations belong in builders, services, or domain classes. Imports are absolute from the `src` root, never relative. To add a strategy or optimizer, implement it under the matching `domain/` package and register it in the corresponding factory under `services/`.

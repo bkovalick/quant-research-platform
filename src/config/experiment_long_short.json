@@ -1,0 +1,218 @@
+{
+  "_description": "Long/short systematic strategies. max_long and max_short bound the sides; gross = max_long + max_short, net = max_long - max_short. Two variants: a 130/30 tilt (net ~1.0) and a market-neutral book (net ~0.0).",
+  "database_name": "research.duckdb",
+  "market_store_config": {
+    "start_date": "2000-01-01",
+    "end_date": "2026-09-23",
+    "data_source": {
+      "yfinance": null
+    },
+    "benchmark": "SPY",
+    "risk_free_rate": 0.03,
+    "transaction_cost": 0.003,
+    "tickers": [
+      "^VIX", "SPY",
+      "AAPL", "MSFT", "NVDA", "AVGO", "CSCO", "AMAT", "ADI", "ADSK", "ADP", "APH", "CDNS", "CTSH", "ANET", "ACN", "AKAM",
+      "UNH", "JNJ", "ABT", "TMO", "DHR", "ISRG", "SYK", "BSX", "MDT", "BMY", "AMGN", "BIIB", "IDXX", "HOLX", "UHS",
+      "JPM", "BAC", "WFC", "GS", "MS", "BLK", "AXP", "V", "MA", "CB", "AON", "TFC", "ZION", "AFL", "AMP",
+      "AMZN", "TSLA", "HD", "MCD", "NKE", "BKNG", "CMG", "DHI", "DRI", "SBUX", "KMX", "BBY",
+      "HON", "UNP", "BA", "CAT", "GE", "LMT", "RTX", "DE", "EMR", "ETN", "MMM", "NOC", "AME", "CTAS", "FDX",
+      "PG", "KO", "PEP", "COST", "WMT", "CL", "ADM", "STZ", "CPB", "CAG",
+      "GOOGL", "META", "NFLX", "CMCSA", "T", "VZ", "BIDU", "EA", "CHTR", "NWSA",
+      "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "DVN", "APA", "BKR",
+      "NEE", "DUK", "SO", "AEP", "EXC", "SRE", "AWK", "AEE", "CMS", "ATO",
+      "LIN", "APD", "SHW", "NEM", "ALB", "NUE", "BALL", "AVY", "AMCR", "CE",
+      "PLD", "AMT", "EQIX", "SPG", "ARE", "AVB", "BXP", "CBRE"
+    ]
+  },
+  "strategies": [
+    {
+      "name": "ls_130_30_ml_bl",
+      "_note": "max_long 1.30 / max_short 0.30 => gross 1.60, net 1.00. Sector bounds are NET exposures.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.0,
+        "exogenous_tickers": ["^VIX"],
+        "investment_universe": [
+          "AAPL", "MSFT", "NVDA", "AVGO", "CSCO", "AMAT", "ADI", "ADSK", "ADP", "APH", "CDNS", "CTSH", "ANET", "ACN", "AKAM",
+          "UNH", "JNJ", "ABT", "TMO", "DHR", "ISRG", "SYK", "BSX", "MDT", "BMY", "AMGN", "BIIB", "IDXX", "HOLX", "UHS",
+          "JPM", "BAC", "WFC", "GS", "MS", "BLK", "AXP", "V", "MA", "CB", "AON", "TFC", "ZION", "AFL", "AMP",
+          "AMZN", "TSLA", "HD", "MCD", "NKE", "BKNG", "CMG", "DHI", "DRI", "SBUX", "KMX", "BBY",
+          "HON", "UNP", "BA", "CAT", "GE", "LMT", "RTX", "DE", "EMR", "ETN", "MMM", "NOC", "AME", "CTAS", "FDX",
+          "PG", "KO", "PEP", "COST", "WMT", "CL", "ADM", "STZ", "CPB", "CAG",
+          "GOOGL", "META", "NFLX", "CMCSA", "T", "VZ", "BIDU", "EA", "CHTR", "NWSA",
+          "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "DVN", "APA", "BKR",
+          "NEE", "DUK", "SO", "AEP", "EXC", "SRE", "AWK", "AEE", "CMS", "ATO",
+          "LIN", "APD", "SHW", "NEM", "ALB", "NUE", "BALL", "AVY", "AMCR", "CE",
+          "PLD", "AMT", "EQIX", "SPG", "ARE", "AVB", "BXP", "CBRE"
+        ]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": { "lower": 0.05, "upper": 0.95 },
+        "mean_reversion_window": 4,
+        "black_litterman": {
+          "delta": 2.5,
+          "tau": 0.05,
+          "reversion_view": 0.03,
+          "ml_view_spread": 0.03,
+          "view_direction": "mean_reversion"
+        },
+        "ml_signals_config": {
+          "enabled": true,
+          "features_model": "cross_sectional_model",
+          "features": [
+            "vol_3m",
+            "reversal",
+            "mom_x_vol_regime",
+            "reversal_x_vol_regime",
+            "max_return",
+            "high_52w",
+            "idiosyncratic_vol"
+          ],
+          "signals_model": "ridge",
+          "training_window": "2y",
+          "horizon": "1m",
+          "alpha": 1.0,
+          "rebal_cadence": "1m",
+          "sample_stride": "1w"
+        }
+      },
+      "rebalance_problem": {
+        "starting_portfolio_value": 100000,
+        "cash_infusion": 0,
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": "weekly",
+        "apply_max_return_objective": true,
+        "apply_tax_objective": false,
+        "strategy_rules": {
+          "vol_target": 0.15,
+          "vol_lookback_days": "1m",
+          "vol_max_leverage": 1.5
+        },
+        "constraints": {
+          "max_long": 1.30,
+          "max_short": 0.30,
+          "concentration_strength": 1,
+          "max_return": 0.25,
+          "risk_aversion": 2.5,
+          "optimizer_vol_constraint": 0.2,
+          "turnover_limit": 0.5,
+          "max_position_size": 0.06,
+          "min_position_size": -0.04,
+          "max_positions": 120,
+          "asset_class_constraints": {
+            "Equity": [0.95, 1.05]
+          },
+          "sector_constraints": {
+            "Information Technology": [0.05, 0.35],
+            "Health Care": [0.00, 0.22],
+            "Financials": [0.00, 0.22],
+            "Consumer Discretionary": [-0.02, 0.18],
+            "Industrials": [0.00, 0.20],
+            "Consumer Staples": [-0.02, 0.15],
+            "Communication Services": [-0.02, 0.16],
+            "Energy": [-0.05, 0.12],
+            "Utilities": [-0.05, 0.12],
+            "Materials": [-0.05, 0.12],
+            "Real Estate": [-0.05, 0.10]
+          }
+        },
+        "strategy_type": "systematic_strategy",
+        "signal_source": "black_litterman",
+        "monitoring_type": "long_only"
+      }
+    },
+    {
+      "name": "ls_market_neutral_ml",
+      "_note": "max_long 1.00 / max_short 1.00 => gross 2.00, net 0.00. No BL overlay: the BL equilibrium prior is built from long-only market-cap reference weights and fights a net-zero book. Sector bounds are NET and centered on zero.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.0,
+        "exogenous_tickers": ["^VIX"],
+        "investment_universe": [
+          "AAPL", "MSFT", "NVDA", "AVGO", "CSCO", "AMAT", "ADI", "ADSK", "ADP", "APH", "CDNS", "CTSH", "ANET", "ACN", "AKAM",
+          "UNH", "JNJ", "ABT", "TMO", "DHR", "ISRG", "SYK", "BSX", "MDT", "BMY", "AMGN", "BIIB", "IDXX", "HOLX", "UHS",
+          "JPM", "BAC", "WFC", "GS", "MS", "BLK", "AXP", "V", "MA", "CB", "AON", "TFC", "ZION", "AFL", "AMP",
+          "AMZN", "TSLA", "HD", "MCD", "NKE", "BKNG", "CMG", "DHI", "DRI", "SBUX", "KMX", "BBY",
+          "HON", "UNP", "BA", "CAT", "GE", "LMT", "RTX", "DE", "EMR", "ETN", "MMM", "NOC", "AME", "CTAS", "FDX",
+          "PG", "KO", "PEP", "COST", "WMT", "CL", "ADM", "STZ", "CPB", "CAG",
+          "GOOGL", "META", "NFLX", "CMCSA", "T", "VZ", "BIDU", "EA", "CHTR", "NWSA",
+          "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "DVN", "APA", "BKR",
+          "NEE", "DUK", "SO", "AEP", "EXC", "SRE", "AWK", "AEE", "CMS", "ATO",
+          "LIN", "APD", "SHW", "NEM", "ALB", "NUE", "BALL", "AVY", "AMCR", "CE",
+          "PLD", "AMT", "EQIX", "SPG", "ARE", "AVB", "BXP", "CBRE"
+        ]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": { "lower": 0.05, "upper": 0.95 },
+        "ml_signals_config": {
+          "enabled": true,
+          "features_model": "cross_sectional_model",
+          "features": [
+            "vol_3m",
+            "reversal",
+            "mom_x_vol_regime",
+            "reversal_x_vol_regime",
+            "max_return",
+            "high_52w",
+            "idiosyncratic_vol"
+          ],
+          "signals_model": "ridge",
+          "training_window": "2y",
+          "horizon": "1m",
+          "alpha": 1.0,
+          "rebal_cadence": "1m",
+          "sample_stride": "1w"
+        }
+      },
+      "rebalance_problem": {
+        "starting_portfolio_value": 100000,
+        "cash_infusion": 0,
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": "weekly",
+        "apply_max_return_objective": true,
+        "apply_tax_objective": false,
+        "strategy_rules": {
+          "vol_target": 0.08,
+          "vol_lookback_days": "1m",
+          "vol_max_leverage": 2.0
+        },
+        "constraints": {
+          "max_long": 1.00,
+          "max_short": 1.00,
+          "concentration_strength": 1,
+          "max_return": 0.25,
+          "risk_aversion": 2.5,
+          "optimizer_vol_constraint": 0.12,
+          "turnover_limit": 0.6,
+          "max_position_size": 0.04,
+          "min_position_size": -0.04,
+          "max_positions": 160,
+          "asset_class_constraints": {
+            "Equity": [-0.05, 0.05]
+          },
+          "sector_constraints": {
+            "Information Technology": [-0.08, 0.08],
+            "Health Care": [-0.08, 0.08],
+            "Financials": [-0.08, 0.08],
+            "Consumer Discretionary": [-0.08, 0.08],
+            "Industrials": [-0.08, 0.08],
+            "Consumer Staples": [-0.08, 0.08],
+            "Communication Services": [-0.08, 0.08],
+            "Energy": [-0.08, 0.08],
+            "Utilities": [-0.08, 0.08],
+            "Materials": [-0.08, 0.08],
+            "Real Estate": [-0.08, 0.08]
+          }
+        },
+        "strategy_type": "systematic_strategy",
+        "signal_source": "ml_cross_sectional",
+        "monitoring_type": "long_only"
+      }
+    }
+  ]
+}

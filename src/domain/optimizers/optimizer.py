@@ -4,9 +4,12 @@ import cvxpy as cp
 import pandas as pd
 
 from domain.optimizers.base_optimizer import BaseOptimizer
+from domain.signals.signals import Signals
+from domain.portfolio.tax_lot_ledger import TaxLotLedger
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
-from domain.signals.signals import Signals
+from models.rebalance_solution import RebalanceSolution
+from models.rebalance_context import RebalanceContext
 
 class PortfolioRebalancer:
 	def __init__(self,
@@ -76,12 +79,19 @@ class Optimizer(BaseOptimizer):
 	def __init__(self):
 		super().__init__()
 		self.logger = logging.getLogger(__name__)
+		self._risky_indices = []
+		self._risky_tickers = []
 			
 	def optimize(self, 
-			  	 rebalance_problem: RebalanceProblem, 
-			  	 signals: Signals = None,
-			  	 current_weights: np.ndarray = None) -> RebalanceSolution:
+			     rebalance_context: RebalanceContext, 
+				 active_signal: Signals = None) -> RebalanceSolution:
 		"""Optimize portfolio weights for the given rebalance problem."""
+		current_weights = rebalance_context.current_weights
+		rebalance_problem = rebalance_context.rebalance_problem
+		active_signal = active_signal
+		tax_lot_ledger = rebalance_context.tax_lot_ledger
+		self._set_risky_universe(rebalance_problem)
+		
 		if current_weights is None:
 			tickers = rebalance_problem.investment_universe
 			current_weights = np.array([
@@ -89,9 +99,9 @@ class Optimizer(BaseOptimizer):
 				for ticker in tickers
 			])
 
-		decision_variables = self._setup_decision_variables(rebalance_problem)
-		constraints = self._setup_constraints(decision_variables, rebalance_problem, current_weights)
-		objective = self._setup_objective(decision_variables, rebalance_problem, signals)
+		decision_variables = self._setup_decision_variables(rebalance_problem, tax_lot_ledger)
+		constraints = self._setup_constraints(decision_variables, rebalance_problem, current_weights, tax_lot_ledger)
+		objective = self._setup_objective(decision_variables, rebalance_problem, active_signal, tax_lot_ledger)
 		prob = cp.Problem(objective, constraints)
 
 		for solver in [cp.CLARABEL, cp.SCS, cp.OSQP]:
@@ -102,42 +112,120 @@ class Optimizer(BaseOptimizer):
 			except (cp.SolverError, Exception) as e:
 				continue
 		else:
-			return current_weights
+			return RebalanceSolution(
+				target_weights=pd.Series(current_weights, index=rebalance_problem.investment_universe),
+				sell_allocations={},
+				realized_tax_cost=0.0,
+				tracking_error=0.0
+			)
 
-		optimal_weights = decision_variables['portfolio_weights'].value
-		return optimal_weights	
+		return self._prepare_optimizer_output(decision_variables, rebalance_problem, tax_lot_ledger)
 
-	def _get_risky_indices(self, 
-						   rebalance_problem: RebalanceProblem) -> list[int]:
-		"""Returns indices of non-cash assets."""
+	def _prepare_optimizer_output(self, 
+							   	  decision_variables: dict, 
+								  rebalance_problem: RebalanceProblem, 
+								  tax_lot_ledger: TaxLotLedger) -> RebalanceSolution:
+		"""Prepare the output of the optimizer for reporting and ledger updates."""
+		tickers = rebalance_problem.investment_universe
+		target_weights = decision_variables['portfolio_weights'].value
+		
+		tax_enabled = (
+			tax_lot_ledger is not None
+			and getattr(rebalance_problem, "apply_tax_objective", False)
+		)
+
+		if not tax_enabled:
+			return RebalanceSolution(
+				target_weights=pd.Series(target_weights, index=tickers),
+				sell_allocations={},
+				realized_tax_cost=0.0,
+				tracking_error=None,
+			)
+
+		tax_lots = tax_lot_ledger.tax_lots if tax_lot_ledger is not None else pd.DataFrame()
+		if tax_lots.empty:
+			return RebalanceSolution(
+				target_weights=pd.Series(target_weights, index=tickers),
+				sell_allocations={},
+				realized_tax_cost=pd.Series(0, index=tickers),
+				tracking_error=None,
+			)
+
+		sell_fractions = decision_variables["portfolio_sell_fractions"].value
+		sell_allocations = {
+			lot_id: float(sell_fraction)
+			for lot_id, sell_fraction in zip(tax_lots.index, sell_fractions)
+		}
+
+		realized_tax_cost = float(
+			np.dot(
+				tax_lots["TaxCost"].to_numpy(),
+				np.asarray(sell_fractions),
+			)
+		)
+		
+		return RebalanceSolution(
+			target_weights=pd.Series(target_weights, index=tickers),
+			sell_allocations=sell_allocations,
+			realized_tax_cost=realized_tax_cost,
+			tracking_error=None
+		)
+
+	def _set_risky_universe(self, rebalance_problem: RebalanceProblem) -> None:
+		"""Cache the non-cash universe for the current optimization request."""
 		investment_universe = getattr(rebalance_problem, "investment_universe")
 		if rebalance_problem.has_cash:
 			cash_idx = rebalance_problem.cash_index
-			return [i for i, _ in enumerate(investment_universe) if i != cash_idx]
-		return [ i for i, _ in enumerate(investment_universe) ]
+			self._risky_indices = [
+				i for i, _ in enumerate(investment_universe) if i != cash_idx
+			]
+		else:
+			self._risky_indices = list(range(len(investment_universe)))
+		self._risky_tickers = [
+			investment_universe[index] for index in self._risky_indices
+		]
 	
 	def _setup_decision_variables(self, 
-							      rebalance_problem: RebalanceProblem) -> dict:
+							      rebalance_problem: RebalanceProblem,
+								  tax_lot_ledger: TaxLotLedger) -> dict:
 		"""Setup decision variables for the optimization problem."""
 		n_assets = rebalance_problem.n_assets
-		n_risky_assets = len(self._get_risky_indices(rebalance_problem))
+		n_risky_assets = len(self._risky_indices)
+		n_tax_lots = len(tax_lot_ledger.tax_lots) if tax_lot_ledger is not None else 0
 		portfolio_weights = cp.Variable(n_assets)
 		portfolio_buys = cp.Variable(n_risky_assets, nonneg=True)
 		portfolio_sells = cp.Variable(n_risky_assets, nonneg=True)
-		return {
+		portfolio_abs_weights = cp.Variable(n_assets, nonneg=True)
+		portfolio_long_weights = cp.Variable(n_assets, nonneg=True)
+		portfolio_short_weights = cp.Variable(n_assets, nonneg=True)
+		portfolio_sell_fractions = cp.Variable(n_tax_lots, nonneg=True) if n_tax_lots > 0 else None
+		decision_variables = {
 			'portfolio_weights': portfolio_weights,
 			'portfolio_buys': portfolio_buys,
-			'portfolio_sells': portfolio_sells
+			'portfolio_sells': portfolio_sells,
+			'portfolio_abs_weights': portfolio_abs_weights,
+			'portfolio_long_weights': portfolio_long_weights,
+			'portfolio_short_weights': portfolio_short_weights
 		}
+		if portfolio_sell_fractions is not None:
+			decision_variables['portfolio_sell_fractions'] = portfolio_sell_fractions
+		return decision_variables
 
 	def _setup_constraints(self, 
 						   decision_variables: dict,
 						   rebalance_problem: RebalanceProblem,
-						   current_weights: np.ndarray = None) -> list:
+						   current_weights: np.ndarray = None,
+						   tax_lot_ledger: TaxLotLedger = None) -> list:
 		"""Setup constraints for the optimization problem."""
 		constraints = []
 		constraints.extend(
 			self._setup_portfolio_constraints(decision_variables, rebalance_problem, current_weights)
+		)
+		constraints.extend(
+			self._setup_gross_exposure_constraints(decision_variables, rebalance_problem)
+		)
+		constraints.extend(
+			self._setup_long_short_decomposition_constraints(decision_variables, rebalance_problem)
 		)
 		constraints.extend(
 			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
@@ -148,6 +236,9 @@ class Optimizer(BaseOptimizer):
 		constraints.extend(
 			self._setup_sector_constraints(decision_variables, rebalance_problem)
 		)
+		constraints.extend(
+			self._setup_tax_constraints(decision_variables, rebalance_problem, tax_lot_ledger)
+		)
 		return constraints
 	
 	def _setup_portfolio_constraints(self, 
@@ -157,32 +248,59 @@ class Optimizer(BaseOptimizer):
 		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
 		min_position_size = getattr(rebalance_problem, 'min_position_size', 0.0)
 		max_position_size = getattr(rebalance_problem, 'max_position_size', 1.0)
+		net_exposure = getattr(rebalance_problem, 'net_exposure', 1.0)
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		portfolio_buys = decision_variables.get('portfolio_buys')
 		portfolio_sells = decision_variables.get('portfolio_sells')
-		risky_idx = self._get_risky_indices(rebalance_problem)
-		risky_current = current_weights[risky_idx]
-		risky_weights = portfolio_weights[risky_idx]
+		risky_current = current_weights.iloc[self._risky_indices]
+		risky_weights = portfolio_weights[self._risky_indices]
 
 		return [
-				cp.sum(portfolio_weights) == 1,
+				cp.sum(portfolio_weights) == net_exposure,
 				risky_weights - risky_current == portfolio_buys - portfolio_sells,
 				portfolio_weights >= min_position_size,
 				portfolio_weights <= max_position_size
 			]
+
+	def _setup_gross_exposure_constraints(self,
+										  decision_variables: dict,
+										  rebalance_problem: RebalanceProblem) -> list:
+		"""Setup gross exposure constraints based on the gross exposure limit."""
+		gross_exposure = getattr(rebalance_problem, 'gross_exposure', 1.0)
+		portfolio_long_weights = decision_variables.get('portfolio_long_weights')
+		portfolio_short_weights = decision_variables.get('portfolio_short_weights')
+		return [
+			cp.sum(portfolio_long_weights + portfolio_short_weights) <= gross_exposure
+		]
+
+	def _setup_long_short_decomposition_constraints(self, decision_variables, rebalance_problem):
+		"""Setup long/short decomposition constraints."""
+		max_long  = getattr(rebalance_problem, 'max_long', 1.0)
+		max_short = getattr(rebalance_problem, 'max_short', 0.0)
+		w     = decision_variables.get('portfolio_weights')
+		long  = decision_variables.get('portfolio_long_weights')
+		short = decision_variables.get('portfolio_short_weights')
+		absw  = decision_variables.get('portfolio_abs_weights')
+
+		return [
+			w == long - short,          # element-wise split
+			absw == long + short,       # ties |w| to the split
+			cp.sum(long)  <= max_long,
+			cp.sum(short) <= max_short,
+		]
 	
 	def _setup_volatility_constraints(self, 
 								   	  decision_variables: dict,
 								   	  rebalance_problem: RebalanceProblem,
 								   	  signals: Signals) -> list:
+		"""Setup volatility constraints based on optimizer volatility constraint."""
 		optimizer_vol_constraint = getattr(rebalance_problem, 'optimizer_vol_constraint', None)
 		if optimizer_vol_constraint is None or signals is None:
 			return []
 		
 		portfolio_weights = decision_variables.get('portfolio_weights')
-		risky_idx = self._get_risky_indices(rebalance_problem)
-		risky_weights = portfolio_weights[risky_idx]
-		cov_matrix = signals.covariance_matrix()[np.ix_(risky_idx, risky_idx)]
+		risky_weights = portfolio_weights[self._risky_indices]
+		cov_matrix = signals.covariance_matrix()[np.ix_(self._risky_indices, self._risky_indices)]
 		portfolio_risk = cp.quad_form(risky_weights, cov_matrix)
 		return [
 			portfolio_risk <= optimizer_vol_constraint ** 2
@@ -197,9 +315,8 @@ class Optimizer(BaseOptimizer):
 			return []
 		
 		portfolio_weights = decision_variables.get('portfolio_weights')	
-		risky_idx = self._get_risky_indices(rebalance_problem)
-		risky_current = current_weights[risky_idx]
-		risky_weights = portfolio_weights[risky_idx]
+		risky_current = current_weights.iloc[self._risky_indices]
+		risky_weights = portfolio_weights[self._risky_indices]
 
 		return [
 			cp.norm1(risky_weights - risky_current) <= rebalance_problem.turnover_limit
@@ -265,35 +382,58 @@ class Optimizer(BaseOptimizer):
 			if max_weight < 1:
 				constraints.append(sector_weight <= max_weight)
 		return constraints
+
+	def _setup_tax_constraints(self,
+							   decision_variables: dict,
+							   rebalance_problem: RebalanceProblem,
+							   tax_lot_ledger: TaxLotLedger) -> list:
+		"""Setup tax constraints based on tax lot ledger and sell fractions."""
+		if tax_lot_ledger is None or getattr(rebalance_problem, "apply_tax_objective", False) is False:
+			return []
 		
+		tax_lots = tax_lot_ledger.tax_lots
+		total_portfolio_value = tax_lots["CurrentValue"].sum() if not tax_lots.empty else 0.0
+		if total_portfolio_value <= 0.0:
+			return []
+
+		sell_trades = decision_variables.get('portfolio_sells')
+		sell_fractions = decision_variables.get('portfolio_sell_fractions')
+		
+		lot_to_ticker = self._map_lot_to_ticker(tax_lots)
+		dollar_sold_per_lot = cp.multiply(tax_lots["CurrentValue"].values, sell_fractions)
+		weight_reduction_per_ticker = lot_to_ticker.T @ (dollar_sold_per_lot / total_portfolio_value)
+
+		return [
+			sell_fractions <= 1,
+			sell_trades == weight_reduction_per_ticker
+		]
+
 	def _setup_objective(self, 
 					   	 decision_variables: dict, 
 					   	 rebalance_problem: RebalanceProblem, 
-					   	 signals: Signals = None) -> callable:
+					   	 signals: Signals = None,
+						 tax_lot_ledger: TaxLotLedger = None) -> callable:
 		"""Set objective function for the optimization problem"""
-		return self._set_maximize_return_objective(decision_variables, rebalance_problem, signals)
-		
-	def _set_maximize_return_objective(self, 
-									   decision_variables: dict,
-									   rebalance_problem: RebalanceProblem, 
-									   signals: Signals) -> callable:
-		"""Set objective to maximize returns minus risk penalty."""
 		risk_aversion = getattr(rebalance_problem, 'risk_aversion', 1.0)
 		transaction_cost = getattr(rebalance_problem, 'transaction_cost', 0.003)
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		mean_vector = signals.mean_returns()
 		cov_matrix = signals.covariance_matrix()
 
-		risky_idx = self._get_risky_indices(rebalance_problem)
-		risky_weights = portfolio_weights[risky_idx]
-		cov_matrix = signals.covariance_matrix()[np.ix_(risky_idx, risky_idx)]
-		mean_vector = mean_vector[risky_idx]
+		# Get indices of risky assets and their corresponding weights
+		risky_weights = portfolio_weights[self._risky_indices]
+		cov_matrix = signals.covariance_matrix()[np.ix_(self._risky_indices, self._risky_indices)]
+		mean_vector = mean_vector[self._risky_indices]
 
+		# Calculate portfolio risk, concentration objective, and transaction cost penalty
 		portfolio_risk = cp.quad_form(risky_weights, cp.psd_wrap(cov_matrix))
 		concentration_objective = self._get_concentration_objective(risky_weights, rebalance_problem)
 		transaction_cost_penalty = self._get_transaction_cost_penalty(transaction_cost, decision_variables)
+		tax_cost_objective = self._get_tax_cost_objective(decision_variables, rebalance_problem, tax_lot_ledger)
+
+		# Define the objective function to maximize returns minus risk, concentration, and transaction costs
 		objective = cp.Maximize(mean_vector @ risky_weights - risk_aversion * \
-						  portfolio_risk - concentration_objective - transaction_cost_penalty)
+						  portfolio_risk - concentration_objective - transaction_cost_penalty - tax_cost_objective)
 		return objective
 	
 	def _get_concentration_objective(self, 
@@ -313,6 +453,34 @@ class Optimizer(BaseOptimizer):
 		portfolio_buys = decision_variables.get('portfolio_buys')
 		portfolio_sells = decision_variables.get('portfolio_sells')
 		return transaction_cost * (cp.sum(portfolio_buys) + cp.sum(portfolio_sells))
+
+	def _get_tax_cost_objective(self,
+					  decision_variables: dict,
+					  rebalance_problem: RebalanceProblem,
+					  tax_lot_ledger: TaxLotLedger):
+		"""Set tax cost penalty based on realized gains from selling tax lots."""
+		if tax_lot_ledger is None or rebalance_problem.apply_tax_objective is False:
+			return 0
+
+		tax_lots = tax_lot_ledger.tax_lots
+		sell_fractions = decision_variables.get('portfolio_sell_fractions')
+		total_portfolio_value = tax_lots["CurrentValue"].sum() if not tax_lots.empty else 1.0
+		tax_costs = tax_lots["TaxCost"].values
+		return cp.sum(cp.multiply(tax_costs / total_portfolio_value, sell_fractions))
+
+	def _map_lot_to_ticker(self, tax_lots: pd.DataFrame) -> pd.DataFrame:
+		matrix = np.zeros((len(tax_lots), len(self._risky_tickers)))
+		ticker_positions = {
+			ticker: index
+			for index, ticker in enumerate(self._risky_tickers)
+		}
+
+		for lot_index, ticker in enumerate(tax_lots["Ticker"]):
+			ticker_position = ticker_positions.get(ticker)
+			if ticker_position is not None:
+				matrix[lot_index, ticker_position] = 1
+
+		return matrix
 
 	def _log_failure_diagnostics(self, prob, current_weights, signals):
 		"""Log diagnostic info when optimization fails."""

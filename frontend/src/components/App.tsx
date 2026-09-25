@@ -12,37 +12,57 @@ import DownloadReport from "./components/DownloadReport"
 import AttributionPage from "./components/AttributionPage"
 import type { DateWindow } from "./utils/metricsUtils"
 
+/**
+ * App shell.
+ *
+ * INTEGRATION NOTES — adapting to your existing App.tsx:
+ *  - `experiment` / `setExperiment` are the same pair your Sidebar already
+ *    receives. If your runs live somewhere other than `experiment.runs`,
+ *    change the one line marked RUNS-SOURCE below.
+ *  - The drawer auto-closes when a run completes (runs arriving), landing
+ *    you on Results. Remove that effect if you'd rather close manually.
+ *  - Everything below the shell is your existing components, unchanged.
+ */
+
 export default function App() {
   const [experiment, setExperiment] = useState<any>(null)
   const [page, setPage] = useState<Page>("results")
   const [labOpen, setLabOpen] = useState(true)   // first visit: the Lab is the invitation
 
   const [selectedRun, setSelectedRun] = useState<any>(null)
-  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
+  const [pinnedRuns, setPinnedRuns] = useState<any[]>([])
   const [dateWindow, setDateWindow] = useState<DateWindow | null>(null)
 
-  const runs: any[] = experiment?.strategy_runs ?? []     // RUNS-SOURCE
-  const pinnedRuns = runs.filter((r: any) => pinnedIds.has(r.run_id))
+  const currentRuns: any[] = experiment?.strategy_runs ?? []     // RUNS-SOURCE
+
+  // Pinned runs stay visible across experiments. Anything still in the current
+  // experiment is shown from there; pins from earlier runs are appended.
+  const currentIds = new Set(currentRuns.map((r: any) => r.run_id))
+  const carriedPins = pinnedRuns.filter((r: any) => !currentIds.has(r.run_id))
+  const runs: any[] = [...currentRuns, ...carriedPins]
+  const pinnedIds = new Set(pinnedRuns.map((r: any) => r.run_id))
+  // Pinned strategies are frozen: their result stays visible and they are not re-run.
+  const pinnedNames = new Set(pinnedRuns.map((r: any) => r.strategy_name))
 
   // When a suite finishes (runs appear or change), close the Lab and show Results.
   const prevRunCount = useRef(0)
   useEffect(() => {
-    if (runs.length > 0 && runs.length !== prevRunCount.current) {
+    if (currentRuns.length > 0 && currentRuns.length !== prevRunCount.current) {
       setLabOpen(false)
       setPage("results")
-      if (!selectedRun || !runs.some(r => r.run_id === selectedRun.run_id)) {
-        setSelectedRun(runs[0])
+      if (!selectedRun || !currentRuns.some(r => r.run_id === selectedRun.run_id)) {
+        setSelectedRun(currentRuns[0])
       }
     }
-    prevRunCount.current = runs.length
-  }, [runs.length])   // eslint-disable-line react-hooks/exhaustive-deps
+    prevRunCount.current = currentRuns.length
+  }, [currentRuns.length])   // eslint-disable-line react-hooks/exhaustive-deps
 
   const togglePin = (run: any) => {
-    setPinnedIds(prev => {
-      const next = new Set(prev)
-      next.has(run.run_id) ? next.delete(run.run_id) : next.add(run.run_id)
-      return next
-    })
+    setPinnedRuns(prev =>
+      prev.some((r: any) => r.run_id === run.run_id)
+        ? prev.filter((r: any) => r.run_id !== run.run_id)
+        : [...prev, run]
+    )
   }
 
   return (
@@ -59,8 +79,7 @@ export default function App() {
         onClose={() => setLabOpen(false)}
         experiment={experiment}
         setExperiment={setExperiment}
-        pinnedRuns={pinnedRuns}
-        onClearPinned={() => setPinnedIds(new Set())}
+        pinnedNames={pinnedNames}
       />
 
       <main style={main}>

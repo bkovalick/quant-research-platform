@@ -32,6 +32,10 @@ class RebalanceProblem:
         return self._data.get("apply_sharpe_objective", False)
 
     @property
+    def apply_tax_objective(self) -> bool:
+        return self._data.get("apply_tax_objective", False)
+
+    @property
     def initial_weights(self) -> dict:
         return self._data.get("initial_weights", {})
 
@@ -42,9 +46,17 @@ class RebalanceProblem:
     @property
     def cash_index(self) -> int | None:
         try:
-            return self.investment_universe.index("Cash")
+            cash_index = next(
+                (
+                    index
+                    for index, ticker in enumerate(self.investment_universe)
+                    if ticker.upper() == "CASH"
+                ),
+                None,
+            )
         except:
             return None
+        return cash_index
     
     @property
     def has_cash(self) -> bool:
@@ -145,3 +157,19 @@ class RebalanceProblem:
     @property
     def monitoring_type(self) -> str:
         return self._data.get("monitoring_type", "long_only")
+
+    @property
+    def max_long(self) -> float:
+        return self._data.get("max_long", 1.0)
+
+    @property
+    def max_short(self) -> float:
+        return self._data.get("max_short", 1.0)
+
+    @property
+    def net_exposure(self) -> float:
+        return self.max_long - self.max_short
+
+    @property
+    def gross_exposure(self) -> float:
+        return self.max_long + self.max_short

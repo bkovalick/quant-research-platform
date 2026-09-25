@@ -4,7 +4,7 @@ import type { CSSProperties } from "react"
 
 type Tab = "experiment" | "lab"
 
-export default function Sidebar({ setExperiment, experiment, pinnedRuns = [], onClearPinned }: any) {
+export default function Sidebar({ setExperiment, experiment, pinnedNames }: any) {
   const [tab, setTab] = useState<Tab>("experiment")
   const [loading, setLoading] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
@@ -58,8 +58,20 @@ export default function Sidebar({ setExperiment, experiment, pinnedRuns = [], on
   const runExperiment = async () => {
     if (!strategySet) return
 
-    // Validate fixed weight strategies
-    for (const s of editedStrategies) {
+    // Pinned strategies are frozen — their existing result stays on the Results
+    // page and they are excluded from this run.
+    const pinned: Set<string> = pinnedNames ?? new Set()
+    const candidates = editedStrategies.length ? editedStrategies : strategySet.strategies
+    const strategiesToRun = candidates.filter((s: any) => !pinned.has(s.name))
+
+    if (!strategiesToRun.length) {
+      setRunError("Every loaded strategy is pinned — unpin one to run it again.")
+      return
+    }
+
+    // Validate fixed weight strategies that will actually run
+    for (const s of strategiesToRun) {
+
       if (s.rebalance_problem?.strategy_type === "fwp_strategy") {
         const tickers = s.market_state_config?.investment_universe ?? []
         const w = s.rebalance_problem?.initial_weights
@@ -83,7 +95,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedRuns = [], on
         transaction_cost: transactionCost,
         benchmark: benchmark
       },
-      strategies: editedStrategies.length ? editedStrategies : strategySet.strategies
+      strategies: strategiesToRun
     }
 
     setLoading(true)
@@ -144,17 +156,22 @@ export default function Sidebar({ setExperiment, experiment, pinnedRuns = [], on
     const ticker = rawTicker.trim().toUpperCase()
     if (!ticker) return
 
-    if (!availableUniverseTickers.includes(ticker)) {
-      setNewUniverseTickerError(`Unknown ticker: ${ticker}`)
-      return
-    }
-
     const current = currentStrategy.market_state_config?.investment_universe ?? []
     if (current.includes(ticker)) {
       setNewUniverseTicker("")
       setNewUniverseTickerError(null)
       return
     }
+
+    if (!availableUniverseTickers.includes(ticker)) {
+      setStrategySet((prev: any) => ({
+        ...prev,
+        market_store_config: {
+          ...prev.market_store_config,
+          tickers: [...(prev.market_store_config?.tickers ?? []), ticker],
+        },
+      }))
+    }    
 
     updateUniverseTickers([...current, ticker])
     setNewUniverseTicker("")
@@ -340,15 +357,15 @@ export default function Sidebar({ setExperiment, experiment, pinnedRuns = [], on
             <div style={strategyNav}>
               {editedStrategies.map((s: any, i: number) => {
                 const isNew = !strategySet.strategies.find((orig: any) => orig.name === s.name)
-                const isFromPin = !!s._fromPin
+                const isPinned = (pinnedNames as Set<string> | undefined)?.has(s.name) ?? false
                 return (
                   <div key={i} style={{ display: "flex", gap: 4 }}>
                     <button
                       style={{ ...(i === selectedIdx ? activeStrategyBtn : strategyBtn), flex: 1 }}
                       onClick={() => { setSelectedIdx(i); setJsonMode(false) }}>
                       {s.name}
-                      {isFromPin && <span style={pinnedBadge}>pinned</span>}
-                      {isNew && !isFromPin && <span style={newBadge}>new</span>}
+                      {isPinned && <span style={pinnedBadge}>pinned</span>}
+                      {isNew && !isPinned && <span style={newBadge}>new</span>}
                     </button>
                     <button
                       style={{ ...removeStrategyBtn, opacity: editedStrategies.length <= 1 ? 0.5 : 1, cursor: editedStrategies.length <= 1 ? "not-allowed" : "pointer" }}
@@ -365,25 +382,6 @@ export default function Sidebar({ setExperiment, experiment, pinnedRuns = [], on
                     </div>
                 )
               })}
-              {pinnedRuns
-                .filter((r: any) => !editedStrategies.some((s: any) => s.name === r.strategy_name))
-                .map((r: any) => (
-                  <div key={r.run_id} style={{ display: "flex", gap: 4 }}>
-                    <button
-                      style={{ ...strategyBtn, flex: 1 }}
-                      onClick={() => {
-                        const config = { ...r.strategy_config, name: r.strategy_name, _fromPin: true }
-                        const updated = [...editedStrategies, config]
-                        setEditedStrategies(updated)
-                        setSelectedIdx(updated.length - 1)
-                        setJsonMode(false)
-                      }}>
-                      {r.strategy_name}
-                      <span style={pinnedBadge}>pinned</span>
-                    </button>
-                  </div>
-                ))
-              }
               <button style={addStrategyBtn} onClick={() => {
                 const template = JSON.parse(JSON.stringify(editedStrategies[0]))
                 template.name = `custom_strategy_${editedStrategies.length + 1}`
@@ -793,6 +791,8 @@ export default function Sidebar({ setExperiment, experiment, pinnedRuns = [], on
                   {currentStrategy.rebalance_problem?.constraints && (
                     <Section title="Constraints">
                       {([
+                        ["Max Long Exposure", "max_long", "Maximum long weight. Default to 1 for a long only portfolio (short must be 0)."],
+                        ["Max Short Exposure", "max_short", "Maximum short weight. Default to 0 for a long only portfolio (long must be 1)."],
                         ["Max Pos", "max_position_size", "Maximum weight any single position can hold (e.g. 0.10 = 10% of portfolio)"],
                         ["Min Pos", "min_position_size", "Minimum weight for any held position; prevents trivially small allocations"],
                         ["Max #", "max_positions", "Maximum number of simultaneous positions in the portfolio"],

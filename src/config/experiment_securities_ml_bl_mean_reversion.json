@@ -2,8 +2,8 @@
   "_description": "ML scores feed BL mean reversion view. Compare view direction against momentum variant.",
   "database_name": "research.duckdb",
   "market_store_config": {
-    "start_date": "2020-01-01",
-    "end_date": "2026-07-13",
+    "start_date": "2000-01-01",
+    "end_date": "2026-09-23",
     "data_source": {
       "yfinance": null
     },
@@ -364,6 +364,7 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
+        "apply_tax_objective": false,
         "strategy_rules": {
           "vol_target": 0.15,
           "vol_lookback_days": "1m",
@@ -448,7 +449,7 @@
         "exogenous_tickers": [
           "^VIX"
         ],
-        "universe_tickers": [
+        "investment_universe": [
           "AAPL",
           "MSFT",
           "NVDA",

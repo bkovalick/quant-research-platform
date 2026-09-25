@@ -5,9 +5,6 @@ from models.rebalance_config import RebalanceProblemConfig
 from simulation.market_state import MarketState
 from utils.lookback_windows import LOOKBACK_WINDOWS
 
-import pandas as pd
-
-
 logger = logging.getLogger(__name__)
 
 class RebalanceProblemBuilder:
@@ -87,6 +84,7 @@ class RebalanceProblemBuilder:
             "strategy_type": self.rebalance_config.strategy_type,
             "apply_max_return_objective": self.rebalance_config.apply_max_return_objective,
             "apply_sharpe_objective": self.rebalance_config.apply_sharpe_objective,
+            "apply_tax_objective": self.rebalance_config.apply_tax_objective,
             "initial_weights": initial_weights,
             "cash_allocation": cash_allocation,
             "rebalance_frequency": self.rebalance_config.rebalance_frequency,
@@ -112,7 +110,9 @@ class RebalanceProblemBuilder:
             "transaction_cost": self.market_state.transaction_cost,
             "starting_portfolio_value": self.rebalance_config.starting_portfolio_value,
             "cash_infusion": self.rebalance_config.cash_infusion,
-            "monitoring_type": self.rebalance_config.monitoring_type
+            "monitoring_type": self.rebalance_config.monitoring_type,
+            "max_long": self.rebalance_config.constraints.max_long,
+            "max_short": self.rebalance_config.constraints.max_short,
         }
 
         logger.debug("Prepared rebalance problem with %s keys", len(prepared_data))

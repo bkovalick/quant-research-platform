@@ -14,6 +14,8 @@ class ConstraintsConfig:
     max_return: float = 0.05
     concentration_strength: float = 1.0
     optimizer_vol_constraint: Optional[float] = None
+    max_long: Optional[float] = None
+    max_short: Optional[float] = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "ConstraintsConfig":
@@ -28,8 +30,9 @@ class ConstraintsConfig:
             max_return=d.get("max_return", 0.05),
             concentration_strength=d.get("concentration_strength", 1.0),
             optimizer_vol_constraint=d.get("optimizer_vol_constraint", None),
+            max_long=d.get("max_long", None),
+            max_short=d.get("max_short", None),
         )
-
 
 @dataclass(frozen=True)
 class StrategyRulesConfig:
@@ -45,7 +48,6 @@ class StrategyRulesConfig:
             vol_max_leverage=d.get("vol_max_leverage", None),
         )
 
-
 @dataclass(frozen=True)
 class RebalanceProblemConfig:
     strategy_type: str
@@ -55,6 +57,7 @@ class RebalanceProblemConfig:
     rebalance_frequency: Optional[str]
     apply_max_return_objective: bool
     apply_sharpe_objective: bool
+    apply_tax_objective: bool
     initial_weights: Optional[Any]
     starting_portfolio_value: float
     cash_infusion: float
@@ -71,6 +74,7 @@ class RebalanceProblemConfig:
             rebalance_frequency=d.get("rebalance_frequency", None),
             apply_max_return_objective=d.get("apply_max_return_objective", False),
             apply_sharpe_objective=d.get("apply_sharpe_objective", False),
+            apply_tax_objective=d.get("apply_tax_objective", False),
             initial_weights=d.get("initial_weights", None),
             starting_portfolio_value=d.get("starting_portfolio_value", 10000),
             cash_infusion=d.get("cash_infusion", 1000),
