@@ -11,7 +11,6 @@ from models.signals_config import SignalsConfig
 from models.machine_learning_config import MachineLearningConfig
 from simulation.market_state import MarketState
 
-
 logger = logging.getLogger(__name__)
 
 class MLPredictorSignalsState:

@@ -107,8 +107,14 @@ class Optimizer(BaseOptimizer):
 		for solver in [cp.CLARABEL, cp.SCS, cp.OSQP]:
 			try:
 				prob.solve(solver=solver, verbose=False)
-				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
+				if prob.status in [cp.OPTIMAL]:
+					best_solution = prob
 					break
+
+				if prob.status in [cp.OPTIMAL_INACCURATE] and best_solution is None:
+					best_solution = prob
+					break
+
 			except (cp.SolverError, Exception) as e:
 				continue
 		else:
@@ -418,6 +424,8 @@ class Optimizer(BaseOptimizer):
 		transaction_cost = getattr(rebalance_problem, 'transaction_cost', 0.003)
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		mean_vector = signals.mean_returns()
+		expected_median_vector = np.nanmedian(mean_vector)
+		np.nan_to_num(mean_vector, copy=False, nan=expected_median_vector)
 		cov_matrix = signals.covariance_matrix()
 
 		# Get indices of risky assets and their corresponding weights

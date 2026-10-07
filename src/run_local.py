@@ -93,5 +93,5 @@ if __name__ == '__main__':
     # run_parameter_sweep()
     # run_standard_mean_variance_strategy()
     # run_equal_weight_strategy()
-    # run_fixed_weight_strategy()
-    run_long_short_strategy()
+    run_fixed_weight_strategy()
+    # run_long_short_strategy()

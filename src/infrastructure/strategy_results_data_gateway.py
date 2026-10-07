@@ -324,7 +324,11 @@ class StrategyResultsDataGateway(GatewayBase):
         rows = []
         index = weights.get("index") if isinstance(weights, dict) else None
         columns = weights.get("columns") if isinstance(weights, dict) else None
-        data = weights.get("data") if isinstance(weights, dict) else None
+        data = None
+        if isinstance(weights, dict):
+            data = weights.get("values")
+            if data is None:
+                data = weights.get("data")
 
         if index is not None and columns is not None and data is not None:
             # pandas orient="split"
