@@ -1,7 +1,7 @@
 import logging
 import pandas as pd
 
-from domain.optimizers.optimizer import Optimizer
+from src.domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from domain.optimizers.base_optimizer import BaseOptimizer
 from domain.signals.signals import Signals
 from models.rebalance_context import RebalanceContext
@@ -29,7 +29,7 @@ class FixedWeightOptimizer(BaseOptimizer):
 class OptimizerFactory:
 
     _optimizers = {
-        "portfolio_optimizer": Optimizer,
+        "portfolio_optimizer": TargetWeightOptimizer,
         "fwp_optimizer": FixedWeightOptimizer
     }
 

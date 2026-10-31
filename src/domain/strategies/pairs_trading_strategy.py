@@ -2,7 +2,7 @@ import numpy as np
 
 from domain.strategies.base_strategy import BaseStrategy
 from domain.signals.pairs_trading_signal import PairsTradingSignal
-from domain.optimizers.optimizer import Optimizer
+from src.domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
@@ -12,7 +12,7 @@ import pandas as pd
 class PairsTradingStrategy(BaseStrategy):
     def __init__(self, 
                  rebalance_problem: RebalanceProblem, 
-                 optimizer: Optimizer = None):
+                 optimizer: TargetWeightOptimizer = None):
         super().__init__(rebalance_problem, optimizer)
         self.pairs_cache = []
         self.existing_pairs = None

@@ -102,7 +102,10 @@ class MLPredictorSignalsState:
         self.cached_scores = pd.Series(scores, index=X_now.index)
         self.scores_history[as_of_date] = self.cached_scores.copy()
         logger.info("Cached ML scores for %s assets at %s", len(self.cached_scores), as_of_date)
+        self._update_forward_returns(cursor, self.feature_builder.prices.index)
+        self.last_trained = cursor
 
+    def _update_forward_returns(self, cursor: int, dates: pd.DatetimeIndex):
         for pred_date, pred_scores in list(self.scores_history.items()):
             if pred_date in self.fwd_returns_history:
                 continue
@@ -111,8 +114,6 @@ class MLPredictorSignalsState:
                 fwd = self.feature_builder.build_forward_returns(pred_date, self.horizon)
                 if not fwd.empty:
                     self.fwd_returns_history[pred_date] = fwd.copy()
-
-        self.last_trained = cursor
 
     def _should_retrain(self, cursor: int) -> bool:
         if self.last_trained is None:
