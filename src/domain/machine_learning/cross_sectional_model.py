@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
+
 from domain.machine_learning.return_predictor import ReturnPredictor
 from models.machine_learning_config import MachineLearningConfig
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 
@@ -28,8 +29,8 @@ class CrossSectionalModel(ReturnPredictor):
         if self.model_type == "ridge":
             self.model = Ridge(alpha=self.alpha)
         elif self.model_type == "gradientboostingregressor":
-            self.model = GradientBoostingRegressor(
-                n_estimators=self.n_estimators, max_depth=self.max_depth, learning_rate=self.learning_rate
+            self.model = HistGradientBoostingRegressor(
+                max_iter=self.n_estimators, max_depth=self.max_depth, learning_rate=self.learning_rate
             )
         self.model.fit(X_arr, y_arr)
 

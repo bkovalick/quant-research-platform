@@ -103,6 +103,10 @@ class BacktestingEngine(BacktestingEngineInterface):
             rebalance_solution = self.strategy.rebalance(rebalance_context)
             target_weights = rebalance_solution.target_weights if type(rebalance_solution.target_weights) is np.ndarray \
                 else rebalance_solution.target_weights.values   
+            if np.allclose(target_weights, prev_weights, atol=1e-10):
+                logger.info("reason_code=no_trade_change cursor=%s date=%s", cursor, date)
+            else:
+                logger.info("reason_code=trade_executed cursor=%s date=%s", cursor, date)
     
             self.portfolio.apply(target_weights, prev_weights, cursor)
 

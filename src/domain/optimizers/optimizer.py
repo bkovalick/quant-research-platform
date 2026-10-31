@@ -67,17 +67,52 @@ class Optimizer(BaseOptimizer):
 						category=UserWarning,
 					)
 					prob.solve(solver=solver, verbose=False)
-				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
+
+				if prob.status == cp.OPTIMAL:
+					self.logger.info(
+						"reason_code=solver_success solver=%s status=%s",
+						solver,
+						prob.status,
+					)
 					return None
 
-			except (cp.SolverError, Exception) as e:
+				if prob.status == cp.OPTIMAL_INACCURATE:
+					self.logger.warning(
+						"reason_code=solver_inaccurate solver=%s status=%s",
+						solver,
+						prob.status,
+					)
+					return None
+
+				self.logger.warning(
+					"reason_code=solver_nonoptimal solver=%s status=%s",
+					solver,
+					prob.status,
+				)
+
+			except cp.SolverError as e:
+				self.logger.warning(
+					"reason_code=solver_error solver=%s error=%s",
+					solver,
+					e,
+				)
 				continue
+
+			except Exception as e:
+				self.logger.warning(
+					"reason_code=solver_exception solver=%s error=%s",
+					solver,
+					e,
+				)
+				continue
+
+		self.logger.warning("reason_code=solver_failure_fallback status=%s", prob.status)
 
 		return RebalanceSolution(
 			target_weights=current_weights.reindex(rebalance_problem.investment_universe),
 			sell_allocations={},
 			realized_tax_cost=0.0,
-			tracking_error=0.0
+			tracking_error=0.0,
 		)
 
 	def _prepare_optimizer_output(self, 

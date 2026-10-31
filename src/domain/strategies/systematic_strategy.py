@@ -1,3 +1,5 @@
+import logging
+
 from domain.strategies.base_strategy import BaseStrategy
 from domain.optimizers.optimizer import Optimizer
 from models.rebalance_problem import RebalanceProblem
@@ -5,6 +7,8 @@ from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 class SystematicStrategy(BaseStrategy):
     """ 
@@ -23,6 +27,11 @@ class SystematicStrategy(BaseStrategy):
         active_signal = rebalance_context.signals.get(signal_key)
         
         if active_signal is None:
+            logger.warning(
+                "reason_code=signal_missing strategy=systematic signal_key=%s cursor=%s",
+                signal_key,
+                rebalance_context.cursor,
+            )
             return RebalanceSolution(
                 target_weights=pd.Series(
                     rebalance_context.current_weights,
@@ -35,6 +44,11 @@ class SystematicStrategy(BaseStrategy):
 
         rebalance_solution = self.optimizer.optimize(
             rebalance_context, active_signal
+        )
+        logger.debug(
+            "reason_code=signal_present strategy=systematic signal_key=%s cursor=%s",
+            signal_key,
+            rebalance_context.cursor,
         )
 
         return rebalance_solution

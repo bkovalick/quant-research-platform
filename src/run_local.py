@@ -78,6 +78,12 @@ def run_long_short_strategy():
         config = json.load(f)
     local_run(config)
 
+def run_ls_market_neutral_ml():
+    logger.info("run_ls_market_neutral_ml:: Starting local run of long/short market neutral machine learning strategy")
+    with open(f"src/config/experiment_ls_market_neutral_ml.json", 'r') as f:
+        config = json.load(f)
+    local_run(config)
+
 def run_parameter_sweep():
     with open(f"src/config/experiment_securities_ml_bl_momentum.json", 'r') as f:
         config = json.load(f)
@@ -88,10 +94,11 @@ def run_parameter_sweep():
 if __name__ == '__main__':
     # run_full_suite()
     # run_pairs_strategy()
-    run_ml_momentum_strategy()
+    # run_ml_momentum_strategy()
     # run_ml_mean_reversion_strategy()
     # run_parameter_sweep()
     # run_standard_mean_variance_strategy()
     # run_equal_weight_strategy()
     # run_fixed_weight_strategy()
     # run_long_short_strategy()
+    run_ls_market_neutral_ml()
