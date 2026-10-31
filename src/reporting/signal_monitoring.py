@@ -152,6 +152,12 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
         """Runs a simple FF5 + MOM regression on aligned, frequency-safe data."""
         returns = self._portfolio_returns.copy().replace([np.inf, -np.inf], np.nan).dropna()
         ff_factors = self._get_fama_french_five_factors.copy().replace([np.inf, -np.inf], np.nan).dropna()
+
+        if isinstance(returns.index, pd.PeriodIndex):
+            returns.index = returns.index.to_timestamp()
+        if isinstance(ff_factors.index, pd.PeriodIndex):
+            ff_factors.index = ff_factors.index.to_timestamp()
+
         ff_factors = self.add_momentum_factors(ff_factors)
 
         returns = returns[returns.index.isin(ff_factors.index)]
@@ -174,7 +180,8 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
 
     def add_momentum_factors(self, ff_factors: pd.DataFrame) -> pd.DataFrame:
         mom_factor = self._get_momentum_factor.copy().replace([np.inf, -np.inf], np.nan).dropna()
-        mom_factor.index = pd.to_datetime(mom_factor.index)
+        if isinstance(mom_factor.index, pd.PeriodIndex):
+            mom_factor.index = mom_factor.index.to_timestamp()
         ff_factors = ff_factors.copy()
         ff_factors.index = pd.to_datetime(ff_factors.index)
         factors = ff_factors.join(mom_factor, how='inner')
