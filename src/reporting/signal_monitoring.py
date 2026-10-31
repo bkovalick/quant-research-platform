@@ -153,25 +153,26 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
         Performs an OLS regression of the portfolio's excess returns against the Fama-French five factors plus momentum (FF5 + MOM).
         """
         ff_factors = self._get_fama_french_five_factors
-        ff_factors.index = ff_factors.index.to_timestamp()
-        # mom_factor = self._get_momentum_factor
-        # mom_factor.index = mom_factor.index.to_timestamp()
-        # factors = ff_factors.join(mom_factor, how='inner')
-        factors = ff_factors
+        ff_factors = self.add_momentum_factors(ff_factors)
         regression_data = pd.merge(
-            self._portfolio_returns.to_frame("Returns"), factors, left_index=True, right_index=True
+            self._portfolio_returns.to_frame("Returns"), ff_factors, left_index=True, right_index=True
         )
         regression_data['Asset_Excess_Return'] = regression_data['Returns'] - \
             self._risk_free_rate / self._trading_days_per_year
-        X = regression_data[['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA']]
-        # , 'Mom']]
+        X = regression_data[['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'Mom']]
         X = sm.add_constant(X)
         y = regression_data['Asset_Excess_Return']
         model = sm.OLS(y, X).fit()
         return model.get_robustcov_results(cov_type="HAC", maxlags=7)
-    
+
+    def add_momentum_factors(self, ff_factors: pd.DataFrame) -> pd.DataFrame:
+        mom_factor = self._get_momentum_factor
+        mom_factor.index = mom_factor.index.to_timestamp()
+        factors = ff_factors.join(mom_factor, how='inner')
+        return factors
+
     @property
-    def _get_fama_french_five_factors(self):
+    def _get_fama_french_five_factors(self) -> pd.DataFrame:
         start_date = self._portfolio_returns.index[0]
         end_date = self._portfolio_returns.index[-1]
         ff_dataset = FamaFrenchReader('F-F_Research_Data_5_Factors_2x3_daily', start=start_date, end=end_date)
@@ -179,10 +180,12 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
             raise ValueError("Fama-French dataset could not be retrieved. \
                              Please check your internet connection or the availability of the dataset.")
 
-        return ff_dataset.read()[0]
+        ff_factors = ff_dataset.read()[0]
+        ff_factors.index = ff_factors.index.to_timestamp()
+        return ff_factors
     
     @property
-    def _get_momentum_factor(self):
+    def _get_momentum_factor(self) -> pd.DataFrame:
         start_date = self._portfolio_returns.index[0]
         end_date = self._portfolio_returns.index[-1]
         df_daily = web.DataReader('F-F_Momentum_Factor_daily', 'famafrench', start=start_date, end=end_date)

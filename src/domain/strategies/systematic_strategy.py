@@ -1,12 +1,8 @@
 from domain.strategies.base_strategy import BaseStrategy
-from domain.optimizers.optimizer import PortfolioRebalancer
 from domain.optimizers.optimizer import Optimizer
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
-
-import numpy as np
-import pandas as pd
 
 class SystematicStrategy(BaseStrategy):
     """ 
@@ -37,26 +33,3 @@ class SystematicStrategy(BaseStrategy):
         )
 
         return rebalance_solution
-    
-    def _convert_to_trades(self, 
-                           target_weights: np.ndarray,
-                           market_prices: pd.DataFrame) -> np.ndarray:
-        available_cash = self.rebalance_problem.starting_portfolio_value + \
-            self.rebalance_problem.cash_infusion
-        
-        rebalancer = PortfolioRebalancer(
-            target_weights,
-            available_cash,
-            market_prices.iloc[-1].values
-        )
-        return rebalancer.generate_trades()
-    
-    def _get_prices(self, 
-                    active_signal) -> pd.DataFrame:
-        lookback_prices = getattr(active_signal, "lookback_prices")
-        if not callable(lookback_prices):
-            raise ValueError("Active signal must have a callable lookback_prices method")
-        prices = lookback_prices()
-        return prices
-
-

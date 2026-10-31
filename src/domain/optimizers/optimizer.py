@@ -11,7 +11,7 @@ from models.rebalance_solution import RebalanceSolution
 from models.rebalance_solution import RebalanceSolution
 from models.rebalance_context import RebalanceContext
 
-class PortfolioRebalancer:
+class TargetWeightTradeGenerator:
 	def __init__(self,
 			  	 target_weights: np.ndarray,
 				 available_cash: float, 
@@ -103,6 +103,7 @@ class Optimizer(BaseOptimizer):
 		constraints = self._setup_constraints(decision_variables, rebalance_problem, current_weights, tax_lot_ledger)
 		objective = self._setup_objective(decision_variables, rebalance_problem, active_signal, tax_lot_ledger)
 		prob = cp.Problem(objective, constraints)
+		best_solution = None
 
 		for solver in [cp.CLARABEL, cp.SCS, cp.OSQP]:
 			try:
@@ -307,7 +308,7 @@ class Optimizer(BaseOptimizer):
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		risky_weights = portfolio_weights[self._risky_indices]
 		cov_matrix = signals.covariance_matrix()[np.ix_(self._risky_indices, self._risky_indices)]
-		portfolio_risk = cp.quad_form(risky_weights, cov_matrix)
+		portfolio_risk = cp.quad_form(risky_weights, cp.psd_wrap(cov_matrix))
 		return [
 			portfolio_risk <= optimizer_vol_constraint ** 2
 		]

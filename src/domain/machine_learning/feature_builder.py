@@ -9,8 +9,7 @@ from simulation.market_state import MarketState
 
 class FeatureBuilder:
     """
-    Responsible for constructing features and forward 
-    returns for ML model training and inference.
+    Responsible for constructing features and forward returns for ML model training and inference.
     """
     def __init__(self, 
                  market_state: MarketState,
@@ -102,8 +101,7 @@ class FeatureBuilder:
 
     def build(self, date: pd.Timestamp) -> pd.DataFrame:
         """
-        Build feature matrix for all assets as of a single date, 
-        using cached values if available.
+        Build feature matrix for all assets as of a single date, using cached values if available.
         """
         if self.features_cache is None:
             warnings.warn("FeatureBuilder.precompute() has not been called. Falling back to _build_single_date() which is significantly slower.")
