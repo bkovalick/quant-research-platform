@@ -7,6 +7,8 @@ from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
 
+import pandas as pd
+
 class PairsTradingStrategy(BaseStrategy):
     def __init__(self, 
                  rebalance_problem: RebalanceProblem, 
@@ -25,7 +27,10 @@ class PairsTradingStrategy(BaseStrategy):
 
         if active_signal is None:
             return RebalanceSolution(
-                target_weights=rebalance_context.current_weights,
+                target_weights=pd.Series(
+                    rebalance_context.current_weights,
+                    index=rebalance_context.investment_universe,
+                ),
                 sell_allocations={},
                 realized_tax_cost=0.0,
                 tracking_error=0.0
@@ -42,13 +47,13 @@ class PairsTradingStrategy(BaseStrategy):
         )
 
     def _run_pairs_strategy(self,
-                            current_weights: np.ndarray,
-                            active_signal: PairsTradingSignal) -> np.ndarray:
+                            current_weights: pd.Series,
+                            active_signal: PairsTradingSignal) -> pd.Series:
         if not isinstance(active_signal, PairsTradingSignal):
             raise ValueError("Active signal must be of type PairsTradingSignal")
 
         tickers = list(self.rebalance_problem.initial_weights.keys())
-        active_pairs = active_signal.compute_trading_pairs(dict(zip(tickers, current_weights)), self.existing_pairs)
+        active_pairs = active_signal.compute_trading_pairs(current_weights.to_dict(), self.existing_pairs)
         if active_pairs.empty:
             return current_weights
 
@@ -65,5 +70,5 @@ class PairsTradingStrategy(BaseStrategy):
 
         self.pairs_cache.extend(active.itertuples())
         self.existing_pairs = list(zip(active_pairs["AssetA"], active_pairs["AssetB"]))
-        updated_weights = current_weights if sum(new_weights.values()) == 0 else np.array(list(new_weights.values())) 
+        updated_weights = current_weights if sum(new_weights.values()) == 0 else pd.Series(new_weights, index=tickers, dtype=float)
         return updated_weights

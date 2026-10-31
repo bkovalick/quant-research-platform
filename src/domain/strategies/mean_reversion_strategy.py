@@ -24,26 +24,35 @@ class MeanReversionStrategy(BaseStrategy):
         
         if active_signal is None:
             return RebalanceSolution(
-                target_weights=rebalance_context.current_weights,
+                target_weights=pd.Series(
+                    rebalance_context.current_weights,
+                    index=rebalance_context.investment_universe,
+                ),
                 sell_allocations={},
                 realized_tax_cost=0.0,
                 tracking_error=0.0
             )
 
-        rebalance_solution = self._evaluate_reversion_strategy(active_signal)
+        rebalance_solution = self._generate_reversion_signals(rebalance_context, active_signal)
         return rebalance_solution
 
-    def _evaluate_reversion_strategy(self, 
+    def _generate_reversion_signals(self, 
+                                     rebalance_context: RebalanceContext,
                                      signal: MovingAverageSignals) -> RebalanceSolution:
         """Evaluate the mean reversion strategy based on the provided signal."""
-        if type(signal) is not MovingAverageSignals: # should this be a raise?
-            return RebalanceSolution(
-                target_weights=self.rebalance_problem.initial_weights,
-                sell_allocations={},
-                realized_tax_cost=0.0,
-                tracking_error=0.0
-            )
+        if not isinstance(signal, MovingAverageSignals):
+            raise TypeError("Expected signal to be of type MovingAverageSignals")
 
-        investment_universe = self.rebalance_problem.investment_universe
-        for ticker in investment_universe:
-            pass
+        current_weights = rebalance_context.current_weights
+        z_scores = signal.bollinger_weighted_moving_average()['z_score']
+        todays_z_scores = z_scores.iloc[-1]
+        tuning_factor = 0.05
+        tilts = -todays_z_scores * tuning_factor
+        raw_weights = (current_weights + tilts).clip(lower = 0)
+        target_weights = raw_weights / raw_weights.sum()
+        return RebalanceSolution(
+            target_weights=target_weights,
+            sell_allocations={},
+            realized_tax_cost=0.0,
+            tracking_error=0.0
+        )

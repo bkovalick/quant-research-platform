@@ -4,6 +4,8 @@ from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
 
+import pandas as pd
+
 class SystematicStrategy(BaseStrategy):
     """ 
     Systematic strategy that is entirely driven by configuration files. 
@@ -22,7 +24,10 @@ class SystematicStrategy(BaseStrategy):
         
         if active_signal is None:
             return RebalanceSolution(
-                target_weights=rebalance_context.current_weights,
+                target_weights=pd.Series(
+                    rebalance_context.current_weights,
+                    index=rebalance_context.investment_universe,
+                ),
                 sell_allocations={},
                 realized_tax_cost=0.0,
                 tracking_error=0.0

@@ -1,4 +1,5 @@
 import logging
+import pandas as pd
 
 from domain.optimizers.optimizer import Optimizer
 from domain.optimizers.base_optimizer import BaseOptimizer
@@ -16,7 +17,10 @@ class FixedWeightOptimizer(BaseOptimizer):
                  rebalance_context: RebalanceContext,
                  active_signal: Signals = None) -> RebalanceSolution:
         return RebalanceSolution(
-            target_weights=rebalance_context.current_weights,
+            target_weights=pd.Series(
+                rebalance_context.current_weights,
+                index=rebalance_context.investment_universe,
+            ),
             sell_allocations={},
             realized_tax_cost=0.0,
             tracking_error=0.0

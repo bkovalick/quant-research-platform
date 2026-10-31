@@ -139,7 +139,7 @@ export default function StrategyGrid({ runs, onSelect, onRemove, onRename, selec
                   <td style={rightCell}>{formatPct(s?.volatility)}</td>
                   <td style={rightCell}>{formatNumber(s?.sharpe_ratio)}</td>
                   <td style={rightCellRed(s?.max_drawdown)}>{formatPct(s?.max_drawdown)}</td>
-                  <td style={rightCell}>{formatNumber(s?.turnover)}</td>
+                  <td style={rightCell}>{formatPct(s?.turnover)}</td>
                   <td style={rightCell}>
                     <button
                       style={isPinned ? unpinBtn : pinBtn}

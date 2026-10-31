@@ -1,4 +1,4 @@
-import numpy as np
+import pandas as pd
 from dataclasses import dataclass
 
 from domain.portfolio.portfolio import Portfolio
@@ -10,7 +10,7 @@ class RebalanceContext:
     cursor: int
     signals: dict
     initial_weights: dict
-    current_weights: np.ndarray
+    current_weights: pd.Series
     investment_universe: list
     rebalance_problem: RebalanceProblem
     portfolio: Portfolio

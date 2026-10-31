@@ -31,10 +31,17 @@ class Optimizer(BaseOptimizer):
 		
 		if current_weights is None:
 			tickers = rebalance_problem.investment_universe
-			current_weights = np.array([
-				rebalance_problem.initial_weights.get(ticker, 0.0) 
-				for ticker in tickers
-			])
+			current_weights = pd.Series(
+				[rebalance_problem.initial_weights.get(ticker, 0.0) for ticker in tickers],
+				index=tickers,
+				dtype=float,
+			)
+		elif not isinstance(current_weights, pd.Series):
+			tickers = rebalance_problem.investment_universe
+			current_weights = pd.Series(current_weights, index=tickers, dtype=float)
+		else:
+			tickers = rebalance_problem.investment_universe
+			current_weights = current_weights.reindex(tickers).astype(float)
 
 		decision_variables = self._setup_decision_variables(rebalance_problem, tax_lot_ledger)
 		constraints = self._setup_constraints(decision_variables, rebalance_problem, current_weights, tax_lot_ledger)
@@ -48,7 +55,7 @@ class Optimizer(BaseOptimizer):
 
 	def _run_solver(self, 
 	                prob: cp.Problem, 
-					current_weights: np.ndarray, 
+					current_weights: pd.Series, 
 					rebalance_problem: RebalanceProblem) -> RebalanceSolution | None:
 		"""Run solvers and return fallback solution on failure, else None."""
 		for solver in [cp.CLARABEL, cp.SCS, cp.OSQP]:
@@ -67,7 +74,7 @@ class Optimizer(BaseOptimizer):
 				continue
 
 		return RebalanceSolution(
-			target_weights=pd.Series(current_weights, index=rebalance_problem.investment_universe),
+			target_weights=current_weights.reindex(rebalance_problem.investment_universe),
 			sell_allocations={},
 			realized_tax_cost=0.0,
 			tracking_error=0.0
@@ -166,7 +173,7 @@ class Optimizer(BaseOptimizer):
 	def _setup_constraints(self, 
 						   decision_variables: dict,
 						   rebalance_problem: RebalanceProblem,
-						   current_weights: np.ndarray = None,
+					   current_weights: pd.Series = None,
 						   tax_lot_ledger: TaxLotLedger = None) -> list:
 		"""Setup constraints for the optimization problem."""
 		constraints = []
@@ -196,7 +203,7 @@ class Optimizer(BaseOptimizer):
 	def _setup_portfolio_constraints(self, 
 								     decision_variables: dict,
 								     rebalance_problem: RebalanceProblem,
-									 current_weights: np.ndarray = None) -> list: 
+								 current_weights: pd.Series = None) -> list: 
 		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
 		min_position_size = getattr(rebalance_problem, 'min_position_size', 0.0)
 		max_position_size = getattr(rebalance_problem, 'max_position_size', 1.0)
@@ -261,7 +268,7 @@ class Optimizer(BaseOptimizer):
 	def _setup_turnover_constraints(self, 
 								    decision_variables: dict,
 								    rebalance_problem: RebalanceProblem,
-									current_weights: np.ndarray = None) -> list: 
+								current_weights: pd.Series = None) -> list: 
 		"""Setup turnover constraints based on turnover limit."""
 		if getattr(rebalance_problem, 'turnover_limit') is None or current_weights is None:
 			return []
