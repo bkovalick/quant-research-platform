@@ -3,6 +3,7 @@ from domain.optimizers.optimizer import Optimizer
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
+from signals.moving_average_signals import MovingAverageSignals
 
 import numpy as np
 import pandas as pd
@@ -29,14 +30,19 @@ class MeanReversionStrategy(BaseStrategy):
                 tracking_error=0.0
             )
 
-        rebalance_solution = self.optimizer.optimize(
-            rebalance_context, active_signal
-        )
-
+        rebalance_solution = self._evaluate_reversion_strategy(active_signal)
         return rebalance_solution
 
     def _evaluate_reversion_strategy(self, 
-                                     signals):
+                                     signal: MovingAverageSignals) -> RebalanceSolution:
+        """Evaluate the mean reversion strategy based on the provided signal."""
+        if type(signal) is not MovingAverageSignals: # should this be a raise?
+            return RebalanceSolution(
+                target_weights=self.rebalance_problem.initial_weights,
+                sell_allocations={},
+                realized_tax_cost=0.0,
+                tracking_error=0.0
+            )
 
         investment_universe = self.rebalance_problem.investment_universe
         for ticker in investment_universe:

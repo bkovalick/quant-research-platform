@@ -1,4 +1,5 @@
 import logging
+import warnings
 import numpy as np
 import cvxpy as cp
 import pandas as pd
@@ -30,7 +31,13 @@ class TargetWeightTradeGenerator(BaseOptimizer):
 
 		for solver in ["HIGHS"]:
 			try:
-				prob.solve(solver=solver, verbose=False)
+				with warnings.catch_warnings():
+					warnings.filterwarnings(
+						"ignore",
+						message="Solution may be inaccurate.*",
+						category=UserWarning,
+					)
+					prob.solve(solver=solver, verbose=False)
 				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
 					break
 				self.logger.warning("Solver %s returned status %s", solver, prob.status)
