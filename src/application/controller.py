@@ -4,6 +4,7 @@ from models.experiment import Experiment
 from models.backtest_result import BacktestResult
 from models.strategy_run import StrategyRun
 from models.experiment_model import ExperimentModel
+from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway
 
 from datetime import datetime
 from fastapi import FastAPI, Body
@@ -63,20 +64,25 @@ def download(body: ExperimentModel = Body(...)):
     return Response(
         content=buffer.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=backtest_report.xlsx"}
+        headers={"Content-Disposition": f"attachment; filename=backtest_report_{body.experiment_id}.xlsx"}
     )
 
-# Both of these are future installments that rely on data storage and retrieval, which is not yet implemented. They will be used to load existing experiments and list all available experiments respectively.
 @app.post("/load-experiment")
-def load_experiment(config: dict):
+def load_experiment(config: dict) -> Experiment | None:
     logger.info(f"Loading experiment with configuration: {config}")
-    return {"message": "This endpoint will load an experiment based on the provided configuration, but it is not yet implemented."}
+    gateway = ExperimentMetaDataDataGateway("research.db")
+    experiment = gateway.get_experiment_instance(config["experiment_id"])
+    return experiment
 
 @app.post("/list-experiments")
-def list_experiments(config: dict) -> list:
-    logger.info(f"Listing experiments with configuration: {config}")
-    load_experiments = []
+def list_experiments() -> list[Experiment]:
+    """List all available experiments."""
+    logger.info(f"Listing available experiments")
+    gateway = ExperimentMetaDataDataGateway("research.db")
+    load_experiments = gateway.list_of_experiments()
+    if load_experiments is None:
+        load_experiments = []
     return load_experiments
-
+    
 if __name__ == '__main__':
     pass
