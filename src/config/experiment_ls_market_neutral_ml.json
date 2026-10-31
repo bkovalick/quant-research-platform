@@ -2,8 +2,8 @@
   "_description": "Full suite: baselines, classic optimizer signals, BL, ML feature-set and model comparisons, long/short, and stat arb. Long-only optimizer strategies share one universe and one constraint set so differences come from the signal.",
   "database_name": "research.duckdb",
   "market_store_config": {
-    "start_date": "2000-01-01",
-    "end_date": "2026-09-23",
+    "start_date": "2020-01-01",
+    "end_date": "2026-10-30",
     "data_source": {
       "yfinance": null
     },
@@ -328,7 +328,7 @@
         "starting_portfolio_value": 100000,
         "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
-        "rebalance_frequency": "monthly",
+        "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
         "apply_tax_objective": false,
         "constraints": {
