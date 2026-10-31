@@ -2,7 +2,7 @@ import numpy as np
 
 from domain.strategies.base_strategy import BaseStrategy
 from domain.signals.pairs_trading_signal import PairsTradingSignal
-from src.domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
+from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution

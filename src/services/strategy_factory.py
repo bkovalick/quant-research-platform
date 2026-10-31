@@ -3,7 +3,7 @@ from domain.strategies.fixed_weight_strategy import FixedWeightStrategy
 from domain.strategies.equal_weight_strategy import EqualWeightStrategy
 from domain.strategies.systematic_strategy import SystematicStrategy
 from domain.strategies.pairs_trading_strategy import PairsTradingStrategy
-from src.domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
+from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.rebalance_problem import RebalanceProblem
 
 class BaseStrategyFactory(abc.ABC):

@@ -5,7 +5,7 @@ from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
 from domain.signals.signals import Signals
-from src.domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
+from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 
 class BaseStrategy(abc.ABC):
     """Base interface for all portfolio strategies.

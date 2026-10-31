@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from domain.strategies.base_strategy import BaseStrategy
-from src.domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
+from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution

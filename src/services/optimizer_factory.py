@@ -1,7 +1,7 @@
 import logging
 import pandas as pd
 
-from src.domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
+from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from domain.optimizers.base_optimizer import BaseOptimizer
 from domain.signals.signals import Signals
 from models.rebalance_context import RebalanceContext
