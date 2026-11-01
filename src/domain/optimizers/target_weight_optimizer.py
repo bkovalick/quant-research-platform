@@ -277,8 +277,8 @@ class TargetWeightOptimizer(BaseOptimizer):
 		absw  = decision_variables.get('portfolio_abs_weights')
 
 		return [
-			w == long - short,          # element-wise split
-			absw == long + short,       # ties |w| to the split
+			w == long - short,
+			absw == long + short,
 			cp.sum(long)  <= max_long,
 			cp.sum(short) <= max_short,
 		]

@@ -328,16 +328,60 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
-        "apply_tax_objective": false,
         "constraints": {
           "max_long": 1.0,
           "max_short": 1.0,
           "concentration_strength": 1,
           "risk_aversion": 1.0,
-          "optimizer_vol_constraint": 1.0,
           "turnover_limit": 1.0,
           "min_position_size": -0.04,
-          "max_position_size": 0.04
+          "max_position_size": 0.04,
+          "sector_constraints": {
+            "Information Technology": [
+              -0.1,
+              0.1
+            ],
+            "Health Care": [
+              -0.1,
+              0.1
+            ],
+            "Financials": [
+              -0.1,
+              0.1
+            ],
+            "Consumer Discretionary": [
+              -0.1,
+              0.1
+            ],
+            "Industrials": [
+              -0.1,
+              0.1
+            ],
+            "Consumer Staples": [
+              -0.1,
+              0.1
+            ],
+            "Communication Services": [
+              -0.1,
+              0.1
+            ],
+            "Energy": [
+              -0.1,
+              0.1
+            ],
+            "Utilities": [
+              -0.1,
+              0.1
+            ],
+            "Materials": [
+              -0.1,
+              0.1
+            ],
+            "Real Estate": [
+              -0.1,
+              0.1
+            ]
+          }          
         },
         "strategy_type": "systematic_strategy",
         "signal_source": "ml_cross_sectional"
