@@ -850,6 +850,83 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                           onChange={(e) => updateField(["rebalance_problem", "constraints", key], Number(e.target.value))} />
                       </Row>
                     ))}
+
+                    {(["asset_class_constraints", "sector_constraints"] as const).map((key) => {
+                      const labelText = key === "asset_class_constraints" ? "Asset Class Constraints" : "Sector Constraints"
+                      const tooltip = key === "asset_class_constraints"
+                        ? "Optional per-asset-class bounds, e.g. Equity [-0.20, 0.20]"
+                        : "Optional per-sector bounds, e.g. Information Technology [-0.12, 0.12]"
+                      const entries = currentStrategy.rebalance_problem?.constraints?.[key] ?? {}
+
+                      const addConstraint = () => {
+                        const updated = JSON.parse(JSON.stringify(entries))
+                        const nextKey = `Group ${Object.keys(updated).length + 1}`
+                        updated[nextKey] = [-0.1, 0.1]
+                        updateField(["rebalance_problem", "constraints", key], updated)
+                      }
+
+                      const updateConstraintKey = (oldKey: string, nextKey: string) => {
+                        const updated = JSON.parse(JSON.stringify(entries))
+                        const value = updated[oldKey]
+                        delete updated[oldKey]
+                        updated[nextKey] = value
+                        updateField(["rebalance_problem", "constraints", key], updated)
+                      }
+
+                      const updateConstraintBound = (groupKey: string, boundIndex: number, value: string) => {
+                        const updated = JSON.parse(JSON.stringify(entries))
+                        const bounds = Array.isArray(updated[groupKey]) ? [...updated[groupKey]] : [0, 0]
+                        bounds[boundIndex] = Number(value)
+                        updated[groupKey] = bounds
+                        updateField(["rebalance_problem", "constraints", key], updated)
+                      }
+
+                      const removeConstraint = (groupKey: string) => {
+                        const updated = JSON.parse(JSON.stringify(entries))
+                        delete updated[groupKey]
+                        updateField(["rebalance_problem", "constraints", key], updated)
+                      }
+
+                      return (
+                        <div key={key} style={{ marginTop: 10 }}>
+                          <div style={blHeader}>
+                            <span style={blLabel}>{labelText}</span>
+                            <button style={blAddBtn} onClick={addConstraint}>+ Add</button>
+                          </div>
+
+                          {Object.keys(entries).length === 0 ? (
+                            <div style={{ color: "#8b949e", fontSize: 12, marginTop: 6 }}>No entries</div>
+                          ) : (
+                            Object.entries(entries).map(([groupKey, bounds]) => (
+                              <div key={groupKey} style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+                                <input
+                                  type="text"
+                                  value={groupKey}
+                                  style={{ ...inputStyle, width: 150 }}
+                                  onChange={(e) => updateConstraintKey(groupKey, e.target.value)}
+                                />
+                                <input
+                                  type="number"
+                                  step={0.01}
+                                  value={Array.isArray(bounds) ? bounds[0] ?? "" : ""}
+                                  style={{ ...inputStyle, width: 90 }}
+                                  onChange={(e) => updateConstraintBound(groupKey, 0, e.target.value)}
+                                />
+                                <span style={{ color: "#8b949e" }}>to</span>
+                                <input
+                                  type="number"
+                                  step={0.01}
+                                  value={Array.isArray(bounds) ? bounds[1] ?? "" : ""}
+                                  style={{ ...inputStyle, width: 90 }}
+                                  onChange={(e) => updateConstraintBound(groupKey, 1, e.target.value)}
+                                />
+                                <button style={blRemoveBtn} onClick={() => removeConstraint(groupKey)}>✕</button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )
+                    })}
                   </Section>
 
                   <button style={jsonToggleBtn} onClick={openJsonEditor}>Edit Raw JSON ↗</button>
