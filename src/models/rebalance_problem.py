@@ -168,10 +168,14 @@ class RebalanceProblem:
 
     @property
     def net_exposure(self) -> float:
+        if self.max_long is None or self.max_short is None:
+            return 1.0
         return self.max_long - self.max_short
 
     @property
     def gross_exposure(self) -> float:
+        if self.max_long is None or self.max_short is None:
+            return 1.0
         return self.max_long + self.max_short
 
     @property

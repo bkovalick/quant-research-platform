@@ -1,12 +1,14 @@
+import logging
+
 from domain.strategies.base_strategy import BaseStrategy
-from domain.optimizers.optimizer import PortfolioRebalancer
-from domain.optimizers.optimizer import Optimizer
+from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
 
-import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 class SystematicStrategy(BaseStrategy):
     """ 
@@ -16,7 +18,7 @@ class SystematicStrategy(BaseStrategy):
     """
     def __init__(self, 
                  rebalance_problem: RebalanceProblem, 
-                 optimizer: Optimizer = None):
+                 optimizer: TargetWeightOptimizer = None):
         super().__init__(rebalance_problem, optimizer)
     
     def rebalance(self, rebalance_context: RebalanceContext) -> RebalanceSolution:
@@ -25,8 +27,16 @@ class SystematicStrategy(BaseStrategy):
         active_signal = rebalance_context.signals.get(signal_key)
         
         if active_signal is None:
+            logger.warning(
+                "reason_code=signal_missing strategy=systematic signal_key=%s cursor=%s",
+                signal_key,
+                rebalance_context.cursor,
+            )
             return RebalanceSolution(
-                target_weights=rebalance_context.current_weights,
+                target_weights=pd.Series(
+                    rebalance_context.current_weights,
+                    index=rebalance_context.investment_universe,
+                ),
                 sell_allocations={},
                 realized_tax_cost=0.0,
                 tracking_error=0.0
@@ -35,28 +45,10 @@ class SystematicStrategy(BaseStrategy):
         rebalance_solution = self.optimizer.optimize(
             rebalance_context, active_signal
         )
+        logger.debug(
+            "reason_code=signal_present strategy=systematic signal_key=%s cursor=%s",
+            signal_key,
+            rebalance_context.cursor,
+        )
 
         return rebalance_solution
-    
-    def _convert_to_trades(self, 
-                           target_weights: np.ndarray,
-                           market_prices: pd.DataFrame) -> np.ndarray:
-        available_cash = self.rebalance_problem.starting_portfolio_value + \
-            self.rebalance_problem.cash_infusion
-        
-        rebalancer = PortfolioRebalancer(
-            target_weights,
-            available_cash,
-            market_prices.iloc[-1].values
-        )
-        return rebalancer.generate_trades()
-    
-    def _get_prices(self, 
-                    active_signal) -> pd.DataFrame:
-        lookback_prices = getattr(active_signal, "lookback_prices")
-        if not callable(lookback_prices):
-            raise ValueError("Active signal must have a callable lookback_prices method")
-        prices = lookback_prices()
-        return prices
-
-

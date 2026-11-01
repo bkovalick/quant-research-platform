@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 from domain.strategies.base_strategy import BaseStrategy
-from domain.optimizers.optimizer import Optimizer
+from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
@@ -15,7 +15,7 @@ class EqualWeightStrategy(BaseStrategy):
     """
     def __init__(self, 
                  rebalance_problem: RebalanceProblem, 
-                 optimizer: Optimizer = None):
+                 optimizer: TargetWeightOptimizer = None):
         super().__init__(rebalance_problem, optimizer)
 
     def rebalance(self, rebalance_context: RebalanceContext) -> RebalanceSolution:

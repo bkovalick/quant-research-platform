@@ -139,7 +139,7 @@ export default function StrategyGrid({ runs, onSelect, onRemove, onRename, selec
                   <td style={rightCell}>{formatPct(s?.volatility)}</td>
                   <td style={rightCell}>{formatNumber(s?.sharpe_ratio)}</td>
                   <td style={rightCellRed(s?.max_drawdown)}>{formatPct(s?.max_drawdown)}</td>
-                  <td style={rightCell}>{formatNumber(s?.turnover)}</td>
+                  <td style={rightCell}>{formatTurnover(s?.turnover)}</td>
                   <td style={rightCell}>
                     <button
                       style={isPinned ? unpinBtn : pinBtn}
@@ -208,6 +208,10 @@ function formatStrategyName(name: string) {
   return name.replace("_portfolio", "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
 }
 function formatPct(v: number | null | undefined) { return v == null ? "-" : (v * 100).toFixed(2) + "%" }
+function formatTurnover(v: number | null | undefined) {
+  if (v == null) return "-"
+  return `${(v).toFixed(2)}x`
+}
 function formatNumber(v: number | null | undefined) { return v == null ? "-" : v.toFixed(2) }
 
 const outerContainer: CSSProperties = { background: "#161b22", borderRadius: 8, border: "1px solid #2a2f3a", overflow: "hidden" }

@@ -1,16 +1,16 @@
 import { Component, useEffect, useRef, useState } from "react"
 import type { CSSProperties, ReactNode } from "react"
 
-import NavRail from "./components/NavRail"
-import type { Page } from "./components/NavRail"
-import LabDrawer from "./components/LabDrawer"
-import StrategyGrid from "./components/StrategyGrid"
-import StrategyDetails from "./components/StrategyDetails"
-import AnalysisPanel from "./components/AnalysisPanel"
-import StatisticalEvidence from "./components/StatisticalEvidence"
-import DownloadReport from "./components/DownloadReport"
-import AttributionPage from "./components/AttributionPage"
-import type { DateWindow } from "./utils/metricsUtils"
+import NavRail from "./NavRail"
+import type { Page } from "./NavRail"
+import LabDrawer from "./LabDrawer"
+import StrategyGrid from "./StrategyGrid"
+import StrategyDetails from "./StrategyDetails"
+import AnalysisPanel from "./AnalysisPanel"
+import StatisticalEvidence from "./StatisticalEvidence"
+import DownloadReport from "./DownloadReport"
+import AttributionPage from "./AttributionPage"
+import type { DateWindow } from "../utils/metricsUtils"
 
 /**
  * App shell.
@@ -42,7 +42,9 @@ export default function App() {
   const runs: any[] = [...currentRuns, ...carriedPins]
   const pinnedIds = new Set(pinnedRuns.map((r: any) => r.run_id))
   // Pinned strategies are frozen: their result stays visible and they are not re-run.
-  const pinnedNames = new Set(pinnedRuns.map((r: any) => r.strategy_name))
+  const pinnedNames = new Set(
+    pinnedRuns.map((r: any) => r.strategy_config?.name ?? r.strategy_name)
+  )
 
   // When a suite finishes (runs appear or change), close the Lab and show Results.
   const prevRunCount = useRef(0)

@@ -1,4 +1,5 @@
 import logging
+import warnings
 import numpy as np
 import cvxpy as cp
 import pandas as pd
@@ -8,73 +9,9 @@ from domain.signals.signals import Signals
 from domain.portfolio.tax_lot_ledger import TaxLotLedger
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
-from models.rebalance_solution import RebalanceSolution
 from models.rebalance_context import RebalanceContext
 
-class PortfolioRebalancer:
-	def __init__(self,
-			  	 target_weights: np.ndarray,
-				 available_cash: float, 
-			  	 prices: np.ndarray):
-		self.target_weights = target_weights
-		self.available_cash = available_cash
-		self.prices = prices
-
-	def generate_trades(self):
-		decision_variables = self._setup_decision_variables()
-		constraints = self._setup_constraints(decision_variables)
-		objective = self._setup_objective(decision_variables)
-		prob = cp.Problem(objective, constraints)
-
-		for solver in ["HIGHS"]:
-			try:
-				prob.solve(solver=solver, verbose=False)
-				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
-					break
-			except (cp.SolverError, Exception) as e:
-				continue
-		else:
-			return self.target_weights
-				
-		optimal_weights = decision_variables.get("optimal_weights").value
-		return optimal_weights
-	
-	def _setup_decision_variables(self):
-		n_assets = len(self.target_weights)
-		optimal_weights = cp.Variable(n_assets, integer = True)
-		remaining_cash = cp.Variable()
-		return {
-			"optimal_weights": optimal_weights,
-			"remaining_cash": remaining_cash
-		}
-	
-	def _setup_constraints(self, decision_variables: dict):
-		constraints = []
-		constraints.extend(
-			self._setup_unallocated_constraint(decision_variables)
-		)
-		return constraints
-
-	def _setup_unallocated_constraint(self, decision_variables: dict):
-		optimal_weights = decision_variables.get("optimal_weights")
-		remaining_cash = decision_variables.get("remaining_cash")
-		actual_dollars = cp.multiply(self.prices, optimal_weights)
-		return [
-			remaining_cash + cp.sum(actual_dollars) == self.available_cash,
-			remaining_cash >= 0,
-			optimal_weights >= 0
-		]
-		
-	def _setup_objective(self, decision_variables: dict):
-		optimal_weights = decision_variables.get("optimal_weights")
-		remaining_cash = decision_variables.get("remaining_cash")
-		target_dollars = self.target_weights * self.available_cash
-		actual_dollars = cp.multiply(self.prices, optimal_weights)
-		tracking_error = cp.norm1(target_dollars - actual_dollars)
-		objective = cp.Minimize(remaining_cash + tracking_error)
-		return objective
-
-class Optimizer(BaseOptimizer):
+class TargetWeightOptimizer(BaseOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
 	def __init__(self):
 		super().__init__()
@@ -94,32 +31,89 @@ class Optimizer(BaseOptimizer):
 		
 		if current_weights is None:
 			tickers = rebalance_problem.investment_universe
-			current_weights = np.array([
-				rebalance_problem.initial_weights.get(ticker, 0.0) 
-				for ticker in tickers
-			])
+			current_weights = pd.Series(
+				[rebalance_problem.initial_weights.get(ticker, 0.0) for ticker in tickers],
+				index=tickers,
+				dtype=float,
+			)
+		elif not isinstance(current_weights, pd.Series):
+			tickers = rebalance_problem.investment_universe
+			current_weights = pd.Series(current_weights, index=tickers, dtype=float)
+		else:
+			tickers = rebalance_problem.investment_universe
+			current_weights = current_weights.reindex(tickers).astype(float)
 
 		decision_variables = self._setup_decision_variables(rebalance_problem, tax_lot_ledger)
 		constraints = self._setup_constraints(decision_variables, rebalance_problem, current_weights, tax_lot_ledger)
 		objective = self._setup_objective(decision_variables, rebalance_problem, active_signal, tax_lot_ledger)
 		prob = cp.Problem(objective, constraints)
-
-		for solver in [cp.CLARABEL, cp.SCS, cp.OSQP]:
-			try:
-				prob.solve(solver=solver, verbose=False)
-				if prob.status in [cp.OPTIMAL, cp.OPTIMAL_INACCURATE]:
-					break
-			except (cp.SolverError, Exception) as e:
-				continue
-		else:
-			return RebalanceSolution(
-				target_weights=pd.Series(current_weights, index=rebalance_problem.investment_universe),
-				sell_allocations={},
-				realized_tax_cost=0.0,
-				tracking_error=0.0
-			)
+		solver_fallback = self._run_solver(prob, current_weights, rebalance_problem)
+		if solver_fallback is not None:
+			return solver_fallback
 
 		return self._prepare_optimizer_output(decision_variables, rebalance_problem, tax_lot_ledger)
+
+	def _run_solver(self, 
+	                prob: cp.Problem, 
+					current_weights: pd.Series, 
+					rebalance_problem: RebalanceProblem) -> RebalanceSolution | None:
+		"""Run solvers and return fallback solution on failure, else None."""
+		for solver in [cp.CLARABEL, cp.SCS, cp.OSQP]:
+			try:
+				with warnings.catch_warnings():
+					warnings.filterwarnings(
+						"ignore",
+						message="Solution may be inaccurate.*",
+						category=UserWarning,
+					)
+					prob.solve(solver=solver, verbose=False)
+
+				if prob.status == cp.OPTIMAL:
+					self.logger.info(
+						"reason_code=solver_success solver=%s status=%s",
+						solver,
+						prob.status,
+					)
+					return None
+
+				if prob.status == cp.OPTIMAL_INACCURATE:
+					self.logger.warning(
+						"reason_code=solver_inaccurate solver=%s status=%s",
+						solver,
+						prob.status,
+					)
+					return None
+
+				self.logger.warning(
+					"reason_code=solver_nonoptimal solver=%s status=%s",
+					solver,
+					prob.status,
+				)
+
+			except cp.SolverError as e:
+				self.logger.warning(
+					"reason_code=solver_error solver=%s error=%s",
+					solver,
+					e,
+				)
+				continue
+
+			except Exception as e:
+				self.logger.warning(
+					"reason_code=solver_exception solver=%s error=%s",
+					solver,
+					e,
+				)
+				continue
+
+		self.logger.warning("reason_code=solver_failure_fallback status=%s", prob.status)
+
+		return RebalanceSolution(
+			target_weights=current_weights.reindex(rebalance_problem.investment_universe),
+			sell_allocations={},
+			realized_tax_cost=0.0,
+			tracking_error=0.0,
+		)
 
 	def _prepare_optimizer_output(self, 
 							   	  decision_variables: dict, 
@@ -214,7 +208,7 @@ class Optimizer(BaseOptimizer):
 	def _setup_constraints(self, 
 						   decision_variables: dict,
 						   rebalance_problem: RebalanceProblem,
-						   current_weights: np.ndarray = None,
+					   current_weights: pd.Series = None,
 						   tax_lot_ledger: TaxLotLedger = None) -> list:
 		"""Setup constraints for the optimization problem."""
 		constraints = []
@@ -244,7 +238,7 @@ class Optimizer(BaseOptimizer):
 	def _setup_portfolio_constraints(self, 
 								     decision_variables: dict,
 								     rebalance_problem: RebalanceProblem,
-									 current_weights: np.ndarray = None) -> list: 
+								 current_weights: pd.Series = None) -> list: 
 		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
 		min_position_size = getattr(rebalance_problem, 'min_position_size', 0.0)
 		max_position_size = getattr(rebalance_problem, 'max_position_size', 1.0)
@@ -283,8 +277,8 @@ class Optimizer(BaseOptimizer):
 		absw  = decision_variables.get('portfolio_abs_weights')
 
 		return [
-			w == long - short,          # element-wise split
-			absw == long + short,       # ties |w| to the split
+			w == long - short,
+			absw == long + short,
 			cp.sum(long)  <= max_long,
 			cp.sum(short) <= max_short,
 		]
@@ -301,7 +295,7 @@ class Optimizer(BaseOptimizer):
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		risky_weights = portfolio_weights[self._risky_indices]
 		cov_matrix = signals.covariance_matrix()[np.ix_(self._risky_indices, self._risky_indices)]
-		portfolio_risk = cp.quad_form(risky_weights, cov_matrix)
+		portfolio_risk = cp.quad_form(risky_weights, cp.psd_wrap(cov_matrix))
 		return [
 			portfolio_risk <= optimizer_vol_constraint ** 2
 		]
@@ -309,7 +303,7 @@ class Optimizer(BaseOptimizer):
 	def _setup_turnover_constraints(self, 
 								    decision_variables: dict,
 								    rebalance_problem: RebalanceProblem,
-									current_weights: np.ndarray = None) -> list: 
+								current_weights: pd.Series = None) -> list: 
 		"""Setup turnover constraints based on turnover limit."""
 		if getattr(rebalance_problem, 'turnover_limit') is None or current_weights is None:
 			return []
@@ -418,6 +412,8 @@ class Optimizer(BaseOptimizer):
 		transaction_cost = getattr(rebalance_problem, 'transaction_cost', 0.003)
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		mean_vector = signals.mean_returns()
+		expected_median_vector = np.nanmedian(mean_vector)
+		np.nan_to_num(mean_vector, copy=False, nan=expected_median_vector)
 		cov_matrix = signals.covariance_matrix()
 
 		# Get indices of risky assets and their corresponding weights

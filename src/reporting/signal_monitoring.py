@@ -149,29 +149,46 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
         )
 
     def _ols_fama_french_factor_regression(self):
-        """
-        Performs an OLS regression of the portfolio's excess returns against the Fama-French five factors plus momentum (FF5 + MOM).
-        """
-        ff_factors = self._get_fama_french_five_factors
-        ff_factors.index = ff_factors.index.to_timestamp()
-        # mom_factor = self._get_momentum_factor
-        # mom_factor.index = mom_factor.index.to_timestamp()
-        # factors = ff_factors.join(mom_factor, how='inner')
-        factors = ff_factors
-        regression_data = pd.merge(
-            self._portfolio_returns.to_frame("Returns"), factors, left_index=True, right_index=True
-        )
-        regression_data['Asset_Excess_Return'] = regression_data['Returns'] - \
-            self._risk_free_rate / self._trading_days_per_year
-        X = regression_data[['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA']]
-        # , 'Mom']]
+        """Runs a simple FF5 + MOM regression on aligned, frequency-safe data."""
+        returns = self._portfolio_returns.copy().replace([np.inf, -np.inf], np.nan).dropna()
+        ff_factors = self._get_fama_french_five_factors.copy().replace([np.inf, -np.inf], np.nan).dropna()
+
+        if isinstance(returns.index, pd.PeriodIndex):
+            returns.index = returns.index.to_timestamp()
+        if isinstance(ff_factors.index, pd.PeriodIndex):
+            ff_factors.index = ff_factors.index.to_timestamp()
+
+        ff_factors = self.add_momentum_factors(ff_factors)
+
+        returns = returns[returns.index.isin(ff_factors.index)]
+        ff_factors = ff_factors.loc[returns.index]
+
+        rf_per_period = self._risk_free_rate / self._periods_per_year
+        regression_data = pd.concat({
+            "Returns": returns,
+            "RiskFree": pd.Series(rf_per_period, index=returns.index),
+            **{col: ff_factors[col] for col in ff_factors.columns},
+        }, axis=1)
+        regression_data["Asset_Excess_Return"] = regression_data["Returns"] - regression_data["RiskFree"]
+
+        X = regression_data[["Mkt-RF", "SMB", "HML", "RMW", "CMA", "Mom"]]
         X = sm.add_constant(X)
-        y = regression_data['Asset_Excess_Return']
-        model = sm.OLS(y, X).fit()
-        return model.get_robustcov_results(cov_type="HAC", maxlags=7)
-    
+        y = regression_data["Asset_Excess_Return"]
+
+        model = sm.OLS(y, X, missing="drop").fit(cov_type="HAC", cov_kwds={"maxlags": 7})
+        return model
+
+    def add_momentum_factors(self, ff_factors: pd.DataFrame) -> pd.DataFrame:
+        mom_factor = self._get_momentum_factor.copy().replace([np.inf, -np.inf], np.nan).dropna()
+        if isinstance(mom_factor.index, pd.PeriodIndex):
+            mom_factor.index = mom_factor.index.to_timestamp()
+        ff_factors = ff_factors.copy()
+        ff_factors.index = pd.to_datetime(ff_factors.index)
+        factors = ff_factors.join(mom_factor, how='inner')
+        return factors
+
     @property
-    def _get_fama_french_five_factors(self):
+    def _get_fama_french_five_factors(self) -> pd.DataFrame:
         start_date = self._portfolio_returns.index[0]
         end_date = self._portfolio_returns.index[-1]
         ff_dataset = FamaFrenchReader('F-F_Research_Data_5_Factors_2x3_daily', start=start_date, end=end_date)
@@ -179,20 +196,27 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
             raise ValueError("Fama-French dataset could not be retrieved. \
                              Please check your internet connection or the availability of the dataset.")
 
-        return ff_dataset.read()[0]
+        ff_factors = ff_dataset.read()[0]
+        ff_factors.index = ff_factors.index.to_timestamp()
+        return ff_factors
     
     @property
-    def _get_momentum_factor(self):
+    def _get_momentum_factor(self) -> pd.DataFrame:
         start_date = self._portfolio_returns.index[0]
         end_date = self._portfolio_returns.index[-1]
         df_daily = web.DataReader('F-F_Momentum_Factor_daily', 'famafrench', start=start_date, end=end_date)
         return df_daily[0]
 
     @property
-    def _trading_days_per_year(self) -> int:
-        n_years = (self._portfolio_returns.index[-1] - self._portfolio_returns.index[0]).days / 365.25
-        trading_days_per_year = round(len(self._portfolio_returns) / n_years)
-        return trading_days_per_year 
+    def _periods_per_year(self) -> int:
+        freq = getattr(self._portfolio_returns.index, "inferred_freq", None)
+        if freq is None:
+            return 252
+        if freq.startswith("M") or freq.startswith("Q"):
+            return 12
+        if freq.startswith("W"):
+            return 52
+        return 252
 
     def _format_factor_regression(self, result) -> dict:
         parameter_names = result.model.exog_names

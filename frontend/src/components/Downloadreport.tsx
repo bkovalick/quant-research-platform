@@ -39,7 +39,7 @@ export default function DownloadReport({ experiment, pinnedRuns = [] }: Props) {
       const url = window.URL.createObjectURL(new Blob([res.data]))
       const link = document.createElement("a")
       link.href = url
-      link.setAttribute("download", "backtest_report.xlsx")
+      link.setAttribute("download", `backtest_report_${experiment.experiment_id}.xlsx`)
       document.body.appendChild(link)
       link.click()
       link.remove()

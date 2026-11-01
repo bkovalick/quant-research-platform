@@ -9,9 +9,7 @@ from datetime import date, datetime, time
 from models.experiment import Experiment
 from models.strategy_run import StrategyRun
 
-
 logger = logging.getLogger(__name__)
-
 
 class _DataclassEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -324,7 +322,11 @@ class StrategyResultsDataGateway(GatewayBase):
         rows = []
         index = weights.get("index") if isinstance(weights, dict) else None
         columns = weights.get("columns") if isinstance(weights, dict) else None
-        data = weights.get("data") if isinstance(weights, dict) else None
+        data = None
+        if isinstance(weights, dict):
+            data = weights.get("values")
+            if data is None:
+                data = weights.get("data")
 
         if index is not None and columns is not None and data is not None:
             # pandas orient="split"
@@ -425,3 +427,43 @@ class ExperimentMetaDataDataGateway(GatewayBase):
             d["created_at"],
             _dumps(d["market_config"]),
         ])
+
+    def get_experiment_instance(self, experiment_id: str) -> Experiment | None:
+        row = self.conn.execute(
+            """
+            SELECT experiment_id, created_at, market_config
+            FROM experiments
+            WHERE experiment_id = ?
+            """,
+            [experiment_id],
+        ).fetchone()
+
+        if row is None:
+            return None
+
+        experiment_id, created_at, market_config_json = row
+        return Experiment(
+            experiment_id=experiment_id,
+            created_at=created_at,
+            market_config=json.loads(market_config_json) if market_config_json else {},
+        )
+
+    def list_of_experiments(self) -> list[Experiment]:
+        rows = self.conn.execute(
+            """
+            SELECT experiment_id, created_at, market_config
+            FROM experiments
+            ORDER BY created_at DESC
+            """
+        ).fetchall()
+
+        experiments = []
+        for experiment_id, created_at, market_config_json in rows:
+            experiments.append(
+                Experiment(
+                    experiment_id=experiment_id,
+                    created_at=created_at,
+                    market_config=json.loads(market_config_json) if market_config_json else {},
+                )
+            )
+        return experiments    

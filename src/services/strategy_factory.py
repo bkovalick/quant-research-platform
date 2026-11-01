@@ -3,13 +3,13 @@ from domain.strategies.fixed_weight_strategy import FixedWeightStrategy
 from domain.strategies.equal_weight_strategy import EqualWeightStrategy
 from domain.strategies.systematic_strategy import SystematicStrategy
 from domain.strategies.pairs_trading_strategy import PairsTradingStrategy
-from domain.optimizers.optimizer import Optimizer
+from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.rebalance_problem import RebalanceProblem
 
 class BaseStrategyFactory(abc.ABC):
     """Interface for optimizer factories."""
     @abc.abstractmethod
-    def create_strategy(self, rebalance_problem: RebalanceProblem, optimizer: Optimizer):
+    def create_strategy(self, rebalance_problem: RebalanceProblem, optimizer: TargetWeightOptimizer):
         ...
 
 class StrategyFactory(BaseStrategyFactory):
@@ -25,7 +25,7 @@ class StrategyFactory(BaseStrategyFactory):
     @classmethod
     def create_strategy(cls, 
                         rebalance_problem: RebalanceProblem, 
-                        optimizer: Optimizer=None):
+                        optimizer: TargetWeightOptimizer=None):
         strategy = cls._strategies.get(rebalance_problem.strategy_type)
         if strategy:
             return strategy(rebalance_problem, optimizer)

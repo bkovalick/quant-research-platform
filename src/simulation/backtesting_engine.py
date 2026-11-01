@@ -101,7 +101,14 @@ class BacktestingEngine(BacktestingEngineInterface):
             rebalance_context = self._build_rebalance_context(cursor, signals, rebalance_problem)
 
             rebalance_solution = self.strategy.rebalance(rebalance_context)
-            self.portfolio.apply(rebalance_solution.target_weights.values, prev_weights, cursor)
+            target_weights = rebalance_solution.target_weights if type(rebalance_solution.target_weights) is np.ndarray \
+                else rebalance_solution.target_weights.values   
+            if np.allclose(target_weights, prev_weights, atol=1e-10):
+                logger.info("reason_code=no_trade_change cursor=%s date=%s", cursor, date)
+            else:
+                logger.info("reason_code=trade_executed cursor=%s date=%s", cursor, date)
+    
+            self.portfolio.apply(target_weights, prev_weights, cursor)
 
             if self.tax_lot_ledger is not None:
                 self.tax_lot_ledger.apply_rebalance(
@@ -111,7 +118,7 @@ class BacktestingEngine(BacktestingEngineInterface):
                     cursor
                 )
 
-            prev_weights = rebalance_solution.target_weights.values
+            prev_weights = target_weights
 
         logger.info("Backtest completed in %.2f seconds", time.time() - start_time)
         print("Backtest completed in %.2f seconds" % (time.time() - start_time))

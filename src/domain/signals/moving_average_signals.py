@@ -13,17 +13,20 @@ class MovingAverageSignals:
         self.windsor_percentiles = signals_cfg.windsor_percentiles
 
     def simple_moving_average(self, window: int) -> float:
+        """Calculate the Simple Moving Average."""
         p = self.market_state.lookback_prices()
         return p.rolling(window).mean()
 
     def exponential_weighted_moving_average(self, span: int = 20) -> pd.DataFrame:
+        """Calculate the Exponential Weighted Moving Average."""
         p = self.market_state.lookback_prices()
         return p.ewm(span=span, adjust=False).mean()
 
     def bollinger_weighted_moving_average(self, window: int = 20, num_std: float = 2.0) -> dict:
+        """Calculate the Bollinger weighted moving average."""
         p = self.market_state.lookback_prices()
         sma = p.rolling(window).mean()
         rolling_std = p.rolling(window).std()
         upper_band = sma + num_std * rolling_std
         lower_band = sma - num_std * rolling_std
-        return { 'middle': sma, 'upper': upper_band, 'lower': lower_band }
+        return { 'middle': sma, 'upper': upper_band, 'lower': lower_band, 'z_score': (p - sma) / rolling_std }

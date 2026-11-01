@@ -11,7 +11,6 @@ from models.signals_config import SignalsConfig
 from models.machine_learning_config import MachineLearningConfig
 from simulation.market_state import MarketState
 
-
 logger = logging.getLogger(__name__)
 
 class MLPredictorSignalsState:
@@ -67,6 +66,22 @@ class MLPredictorSignalsState:
             y_t = self.feature_builder.build_forward_returns(date, self.horizon)
             if X_t.empty or y_t.empty:
                 continue
+
+            y_t = y_t.reindex(X_t.index).replace([np.inf, -np.inf], np.nan)
+            valid = y_t.notna()
+            if valid.sum() < 10:
+                continue
+
+            # cross-sectional label: rank within the date, centered at 0.
+            # Removes the market's move so the model learns stock selection, not timing.
+            y_t = y_t[valid].rank(pct=True) - 0.5
+            X_t = X_t[valid]
+
+            # (date, ticker) index so X and y align row-for-row
+            X_t.index = pd.MultiIndex.from_product([[date], X_t.index], names=["date", "ticker"])
+            y_t.index = X_t.index
+
+            # append to the training list
             X_list.append(X_t)
             y_list.append(y_t)
 
@@ -87,7 +102,10 @@ class MLPredictorSignalsState:
         self.cached_scores = pd.Series(scores, index=X_now.index)
         self.scores_history[as_of_date] = self.cached_scores.copy()
         logger.info("Cached ML scores for %s assets at %s", len(self.cached_scores), as_of_date)
+        self._update_forward_returns(cursor, self.feature_builder.prices.index)
+        self.last_trained = cursor
 
+    def _update_forward_returns(self, cursor: int, dates: pd.DatetimeIndex):
         for pred_date, pred_scores in list(self.scores_history.items()):
             if pred_date in self.fwd_returns_history:
                 continue
@@ -96,8 +114,6 @@ class MLPredictorSignalsState:
                 fwd = self.feature_builder.build_forward_returns(pred_date, self.horizon)
                 if not fwd.empty:
                     self.fwd_returns_history[pred_date] = fwd.copy()
-
-        self.last_trained = cursor
 
     def _should_retrain(self, cursor: int) -> bool:
         if self.last_trained is None:
@@ -148,13 +164,15 @@ class MLPredictorSignal(RiskReturnSignals):
     def mean_returns(self):
         if not self._ml_config.enabled:
             return super().mean_returns()
-        if self._predictor_state.scores is None:
+
+        predictor_scores = self._predictor_state.scores
+        if predictor_scores is None:
             return super().mean_returns()
+
         universe = self.market_state.investment_universe
-        scores = self._predictor_state.scores.reindex(universe).to_numpy(dtype=float)
-        if np.isnan(scores).any():
-            logger.warning("ML scores contained %s NaNs; falling back for missing values", np.isnan(scores).sum())
-            fallback = super().mean_returns()
-            nan_mask = np.isnan(scores)
-            scores[nan_mask] = fallback[nan_mask]
+        scores = predictor_scores.reindex(universe).to_numpy(dtype=float)
+        fallback = np.asarray(super().mean_returns(), dtype=float)
+        nan_mask = np.isnan(scores)
+        if np.any(nan_mask):
+            scores = np.where(nan_mask, fallback, scores)
         return scores

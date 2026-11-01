@@ -277,9 +277,13 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const hasPairsTrading = !!currentStrategy?.signals_config?.pairs_trading
   const hasMeanReversionSignals = currentStrategy?.signals_config?.mean_reversion_window !== undefined
   const hasMomentumSignals = currentStrategy?.signals_config?.momentum_skip_periods !== undefined
+  const hasConstraints = !!currentStrategy?.rebalance_problem?.constraints
   // BL is an overlay available on any view-producing signal — i.e. everything
   // except pairs trading, which is market-neutral with no prior-vs-views model.
   const blApplies = !!inferredSignalSource && inferredSignalSource !== "pairs_trading"
+  const currentExperimentLabel = currentStrategy?.name
+    ? `${currentStrategy.name} (${selectedIdx + 1} of ${editedStrategies.length})`
+    : null
 
   return (
     <div style={container}>
@@ -635,7 +639,17 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                       <>
                         <div style={blHeader}>
                           <span style={blLabel}>Machine Learning</span>
-                          {!hasMlSignals && (
+                          {hasMlSignals ? (
+                            <button style={blRemoveBtn} onClick={() => {
+                              const updated = JSON.parse(JSON.stringify(editedStrategies))
+                              if (!updated[selectedIdx].rebalance_problem) {
+                                updated[selectedIdx].rebalance_problem = {}
+                              }
+                              updated[selectedIdx].rebalance_problem.signal_source = "ml_cross_sectional"
+                              delete updated[selectedIdx].signals_config.ml_signals_config
+                              setEditedStrategies(updated)
+                            }}>Remove ✕</button>
+                          ) : (
                             <button
                               style={blAddBtn}
                               onClick={() => updateField(["signals_config", "ml_signals_config"], {
@@ -804,26 +818,39 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                       </Section>
                     )
                   })()}
-                  {currentStrategy.rebalance_problem?.constraints && (
-                    <Section title="Constraints">
-                      {([
-                        ["Max Long Exposure", "max_long", "Maximum long weight. Default to 1 for a long only portfolio (short must be 0)."],
-                        ["Max Short Exposure", "max_short", "Maximum short weight. Default to 0 for a long only portfolio (long must be 1)."],
-                        ["Max Pos", "max_position_size", "Maximum weight any single position can hold (e.g. 0.10 = 10% of portfolio)"],
-                        ["Min Pos", "min_position_size", "Minimum weight for any held position; prevents trivially small allocations"],
-                        ["Max #", "max_positions", "Maximum number of simultaneous positions in the portfolio"],
-                        ["Turnover", "turnover_limit", "Maximum allowable portfolio turnover per rebalance period"],
-                        ["Risk Aversion", "risk_aversion", "0.10 — barely penalizes risk, near pure return maximization\n1.0 — balanced, textbook mean-variance\n2.5 — moderately risk averse, common in institutional settings\n5.0+ — conservative, heavily penalizes variance"],
-                        ["Vol Limit", "optimizer_vol_constraint", "Maximum annualized portfolio volatility the optimizer will target; leave blank for unconstrained"],
-                      ] as [string, string, string][]).map(([labelText, key, tooltip]) => (
-                        <Row key={key} label={labelText} tooltip={tooltip}>
-                          <input type="number" step={0.01} style={inputStyle}
-                            value={currentStrategy.rebalance_problem?.constraints?.[key] ?? ""}
-                            onChange={(e) => updateField(["rebalance_problem", "constraints", key], Number(e.target.value))} />
-                        </Row>
-                      ))}
-                    </Section>
-                  )}
+                  <Section title="Constraints">
+                    <div style={blHeader}>
+                      <span style={blLabel}>Optimizer Constraints</span>
+                      {hasConstraints ? (
+                        <button style={blRemoveBtn} onClick={() => {
+                          const updated = JSON.parse(JSON.stringify(editedStrategies))
+                          delete updated[selectedIdx].rebalance_problem.constraints
+                          setEditedStrategies(updated)
+                        }}>Remove ✕</button>
+                      ) : (
+                        <button style={blAddBtn} onClick={() => {
+                          updateField(["rebalance_problem", "constraints"], {})
+                        }}>+ Add</button>
+                      )}
+                    </div>
+
+                    {hasConstraints && ([
+                      ["Max Long Exposure", "max_long", "Maximum long weight. Default to 1 for a long only portfolio (short must be 0)."],
+                      ["Max Short Exposure", "max_short", "Maximum short weight. Default to 0 for a long only portfolio (long must be 1)."],
+                      ["Max Pos", "max_position_size", "Maximum weight any single position can hold (e.g. 0.10 = 10% of portfolio)"],
+                      ["Min Pos", "min_position_size", "Minimum weight for any held position; prevents trivially small allocations"],
+                      ["Max #", "max_positions", "Maximum number of simultaneous positions in the portfolio"],
+                      ["Turnover", "turnover_limit", "Maximum allowable portfolio turnover per rebalance period"],
+                      ["Risk Aversion", "risk_aversion", "0.10 — barely penalizes risk, near pure return maximization\n1.0 — balanced, textbook mean-variance\n2.5 — moderately risk averse, common in institutional settings\n5.0+ — conservative, heavily penalizes variance"],
+                      ["Vol Limit", "optimizer_vol_constraint", "Maximum annualized portfolio volatility the optimizer will target; leave blank for unconstrained"],
+                    ] as [string, string, string][]).map(([labelText, key, tooltip]) => (
+                      <Row key={key} label={labelText} tooltip={tooltip}>
+                        <input type="number" step={0.01} style={inputStyle}
+                          value={currentStrategy.rebalance_problem?.constraints?.[key] ?? ""}
+                          onChange={(e) => updateField(["rebalance_problem", "constraints", key], Number(e.target.value))} />
+                      </Row>
+                    ))}
+                  </Section>
 
                   <button style={jsonToggleBtn} onClick={openJsonEditor}>Edit Raw JSON ↗</button>
                 </div>
@@ -833,7 +860,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
 
           <hr style={divider} />
           <button style={loading ? loadButton : runButton} disabled={loading} onClick={runExperiment}>
-            {loading ? "Running…" : "Run Experiment"}
+            {loading ? "Running…" : currentExperimentLabel ? `Run ${currentExperimentLabel}` : "Run Experiment"}
           </button>
         </>
       )}

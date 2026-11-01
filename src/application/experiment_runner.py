@@ -1,5 +1,7 @@
 import numpy as np
 import uuid, logging, multiprocessing, pandas as pd
+import json
+import os
 from datetime import datetime
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Optional
@@ -25,6 +27,19 @@ from infrastructure.market_data_gateway import MarketDataStore
 from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway, StrategyResultsDataGateway
 
 logger = logging.getLogger(__name__)
+
+_MARKET_STORE_CACHE = {}
+
+def _market_store_cache_key(market_store_config: MarketStoreConfig) -> str:
+    """Build a stable, hashable cache key from config contents."""
+    return json.dumps(market_store_config.to_dict(), sort_keys=True, default=str)
+
+def get_market_store(market_store_config: MarketStoreConfig) -> MarketDataStore:
+    """Cache market data store per process and config to avoid repeated loads."""
+    cache_key = _market_store_cache_key(market_store_config)
+    if cache_key not in _MARKET_STORE_CACHE:
+        _MARKET_STORE_CACHE[cache_key] = MarketDataStore(market_store_config)
+    return _MARKET_STORE_CACHE[cache_key]
 
 def build_monitors(run, monitoring_type):
     monitors = []
@@ -88,7 +103,7 @@ def build_tax_lot_ledger(rebalance_problem) -> Optional[TaxLotLedger]:
 def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConfig) -> StrategyRun:
     logger.info(f"Running strategy: {strategy_cfg.get('name', 'Unnamed Strategy')}")
     print(f"Running strategy: {strategy_cfg.get('name', 'Unnamed Strategy')}")
-    market_store = MarketDataStore(market_store_config)
+    market_store = get_market_store(market_store_config)
     market_state_config = build_market_state_config(strategy_cfg)
     market_state = MarketState(market_store, market_state_config)
 
@@ -171,23 +186,30 @@ class ExperimentRunner:
         return experiment
 
     def _save_results(self, experiment: Experiment):
-        db = self.config.get("results_database", "research.duckdb")
-        logger.info("Saving %s strategy runs to %s", len(experiment.strategy_runs), db)
-        print("Saving %s strategy runs to %s" % (len(experiment.strategy_runs), db))
-        with ExperimentMetaDataDataGateway(db) as exp_gateway:
+        db = self.config.get("results_database") or self.config.get("database_name") or "research.duckdb"
+        resolved_db = os.path.abspath(db)
+        logger.info("Saving %s strategy runs to %s", len(experiment.strategy_runs), resolved_db)
+        print("Saving %s strategy runs to %s" % (len(experiment.strategy_runs), resolved_db))
+        with ExperimentMetaDataDataGateway(resolved_db) as exp_gateway:
             exp_gateway.save_experiment_instance(experiment)
-        with StrategyResultsDataGateway(db) as strategy_gateway:
-            for run in experiment.strategy_runs:
-                strategy_gateway.save_strategy_run(experiment.experiment_id, run)
-        logger.info("Saved experiment %s results to %s", experiment.experiment_id, db)
-        print("Saved experiment %s results to %s" % (experiment.experiment_id, db))
+        with StrategyResultsDataGateway(resolved_db) as strategy_gateway:
+            strategy_gateway.conn.execute("BEGIN TRANSACTION")
+            try:
+                for run in experiment.strategy_runs:
+                    strategy_gateway.save_strategy_run(experiment.experiment_id, run)
+                strategy_gateway.conn.execute("COMMIT")
+            except Exception:
+                strategy_gateway.conn.execute("ROLLBACK")
+                raise
+        logger.info("Saved experiment %s results to %s", experiment.experiment_id, resolved_db)
+        print("Saved experiment %s results to %s" % (experiment.experiment_id, resolved_db))
 
     def _build_benchmark_run(self, m_cfg: MarketStoreConfig, experiment: Experiment) -> StrategyRun:
         first = experiment.strategy_runs[0]
         state_cfg = build_market_state_config(self.config["strategies"][0])
         dates = first.result.series["portfolio_returns"].index
 
-        store = MarketDataStore(m_cfg)
+        store = get_market_store(m_cfg)
         bench_prices = store.prices[m_cfg.benchmark]
         rule = {"d": "B", "w": "W-FRI", "m": "ME"}[state_cfg.market_frequency]
         bench_returns = (bench_prices.resample(rule).last()

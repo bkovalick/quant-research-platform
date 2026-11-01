@@ -9,8 +9,7 @@ from simulation.market_state import MarketState
 
 class FeatureBuilder:
     """
-    Responsible for constructing features and forward 
-    returns for ML model training and inference.
+    Responsible for constructing features and forward returns for ML model training and inference.
     """
     def __init__(self, 
                  market_state: MarketState,
@@ -92,9 +91,13 @@ class FeatureBuilder:
                 "beta_1y": beta_1y.loc[date],
                 "idiosyncratic_vol": idiosyncratic_vol.loc[date]
             })
-            feat = feat.rank(axis=0, pct=True).dropna()
-            if not feat.empty:
+
+            feat = feat.rank(axis=0, pct=True).replace([np.inf, -np.inf], np.nan)
+            feat = feat.fillna(0.5)
+            if self.features:
                 feat = feat[self.features]
+
+            if not feat.empty:
                 features_cache[date] = feat
 
         self.features_cache = features_cache
@@ -102,8 +105,7 @@ class FeatureBuilder:
 
     def build(self, date: pd.Timestamp) -> pd.DataFrame:
         """
-        Build feature matrix for all assets as of a single date, 
-        using cached values if available.
+        Build feature matrix for all assets as of a single date, using cached values if available.
         """
         if self.features_cache is None:
             warnings.warn("FeatureBuilder.precompute() has not been called. Falling back to _build_single_date() which is significantly slower.")
@@ -143,8 +145,8 @@ class FeatureBuilder:
         predicted = beta_1y.values * market_rets.iloc[-self.lookbacks["1y"]:].values[:, None]
         residuals = rets.iloc[-self.lookbacks["1y"]:].values - predicted
         features["idiosyncratic_vol"] = pd.Series(residuals.std(axis=0), index=rets.columns)
-        features = features.rank(axis=0, pct=True)
-        return features.dropna()
+        features = features.rank(axis=0, pct=True).replace([np.inf, -np.inf], np.nan)
+        return features.fillna(0.0)
     
     def build_forward_returns(self,
                               as_of_date: pd.Timestamp,
