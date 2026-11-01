@@ -1,14 +1,22 @@
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
 import numpy as np
 import pandas as pd
 import pytest
-from types import SimpleNamespace
 
-from src.domain.strategies.systematic_strategy import SystematicStrategy
-from src.models.market_config import MarketStateConfig
-from src.models.rebalance_context import RebalanceContext
-from src.models.rebalance_problem import RebalanceProblem
-from src.services.optimizer_factory import OptimizerFactory
-from src.simulation.market_state import MarketState
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+from domain.strategies.systematic_strategy import SystematicStrategy
+from models.market_config import MarketStateConfig
+from models.rebalance_context import RebalanceContext
+from models.rebalance_problem import RebalanceProblem
+from services.optimizer_factory import OptimizerFactory
+from simulation.market_state import MarketState
 
 TICKERS = ["AAPL", "MSFT", "NVDA", "AMZN"]
 

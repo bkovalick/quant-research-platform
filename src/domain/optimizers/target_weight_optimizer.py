@@ -218,21 +218,21 @@ class TargetWeightOptimizer(BaseOptimizer):
 		constraints.extend(
 			self._setup_gross_exposure_constraints(decision_variables, rebalance_problem)
 		)
-		constraints.extend(
-			self._setup_long_short_decomposition_constraints(decision_variables, rebalance_problem)
-		)
-		constraints.extend(
-			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
-		)
+		# constraints.extend(
+		# 	self._setup_long_short_decomposition_constraints(decision_variables, rebalance_problem)
+		# )
+		# constraints.extend(
+		# 	self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
+		# )
 		constraints.extend(
 			self._setup_asset_class_constraints(decision_variables, rebalance_problem)
 		)
-		constraints.extend(
-			self._setup_sector_constraints(decision_variables, rebalance_problem)
-		)
-		constraints.extend(
-			self._setup_tax_constraints(decision_variables, rebalance_problem, tax_lot_ledger)
-		)
+		# constraints.extend(
+		# 	self._setup_sector_constraints(decision_variables, rebalance_problem)
+		# )
+		# constraints.extend(
+		# 	self._setup_tax_constraints(decision_variables, rebalance_problem, tax_lot_ledger)
+		# )
 		return constraints
 	
 	def _setup_portfolio_constraints(self, 
