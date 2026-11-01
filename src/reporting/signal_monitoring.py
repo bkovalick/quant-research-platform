@@ -229,14 +229,14 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
             "cov_type": "HAC (Newey-West, 7 lags)",
             "r_squared": float(result.rsquared),
             "alpha": {
-                "coef": float(parameters["const"]),
+                "coef": float(parameters["const"]) * 100,
                 "t_stat": float(t_statistics["const"]),
                 "p_value": float(p_values["const"]),
             },
             "factors": [
                 {
                     "name": factor_name,
-                    "beta": float(parameters[factor_name]),
+                    "beta": float(parameters[factor_name]) * 100,
                     "t_stat": float(t_statistics[factor_name]),
                     "p_value": float(p_values[factor_name]),
                 }
