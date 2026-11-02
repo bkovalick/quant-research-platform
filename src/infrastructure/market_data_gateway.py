@@ -106,6 +106,7 @@ class MarketDataStore:
     def __init__(self, 
                  market_store_config: MarketStoreConfig):
         """ Initialize with market data gateway and parameters """
+        self.benchmark = market_store_config.benchmark
         self.transaction_cost = market_store_config.transaction_cost
         self.apply_market_caps = market_store_config.apply_market_caps
         logger.info("Initializing MarketDataStore for %s to %s", market_store_config.start_date, market_store_config.end_date)

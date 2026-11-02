@@ -113,9 +113,9 @@ class RebalanceProblemBuilder:
             "monitoring_type": self.rebalance_config.monitoring_type,
             "max_long": self.rebalance_config.constraints.max_long,
             "max_short": self.rebalance_config.constraints.max_short,
+            "max_beta_exposure": self.rebalance_config.constraints.max_beta_exposure,
             "leverage": self.rebalance_config.leverage,
             "financing_spread": self.rebalance_config.financing_spread,
         }
-
         logger.debug("Prepared rebalance problem with %s keys", len(prepared_data))
         return RebalanceProblem(prepared_data)

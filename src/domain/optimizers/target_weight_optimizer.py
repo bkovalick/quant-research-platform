@@ -44,7 +44,15 @@ class TargetWeightOptimizer(BaseOptimizer):
 			current_weights = current_weights.reindex(tickers).astype(float)
 
 		decision_variables = self._setup_decision_variables(rebalance_problem, tax_lot_ledger)
-		constraints = self._setup_constraints(decision_variables, rebalance_problem, current_weights, tax_lot_ledger)
+		beta_vector = getattr(active_signal, "beta_vector", None)
+			
+		constraints = self._setup_constraints(
+			decision_variables,
+			rebalance_problem,
+			current_weights,
+			tax_lot_ledger,
+			beta_vector=beta_vector,
+		)
 		objective = self._setup_objective(decision_variables, rebalance_problem, active_signal, tax_lot_ledger)
 		prob = cp.Problem(objective, constraints)
 		solver_fallback = self._run_solver(prob, current_weights, rebalance_problem)
@@ -208,8 +216,9 @@ class TargetWeightOptimizer(BaseOptimizer):
 	def _setup_constraints(self, 
 						   decision_variables: dict,
 						   rebalance_problem: RebalanceProblem,
-					   current_weights: pd.Series = None,
-						   tax_lot_ledger: TaxLotLedger = None) -> list:
+					   	   current_weights: pd.Series = None,
+						   tax_lot_ledger: TaxLotLedger = None,
+						   beta_vector: np.ndarray = None) -> list:
 		"""Setup constraints for the optimization problem."""
 		constraints = []
 		constraints.extend(
@@ -218,21 +227,24 @@ class TargetWeightOptimizer(BaseOptimizer):
 		constraints.extend(
 			self._setup_gross_exposure_constraints(decision_variables, rebalance_problem)
 		)
-		# constraints.extend(
-		# 	self._setup_long_short_decomposition_constraints(decision_variables, rebalance_problem)
-		# )
-		# constraints.extend(
-		# 	self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
-		# )
+		constraints.extend(
+			self._setup_long_short_decomposition_constraints(decision_variables, rebalance_problem)
+		)
+		constraints.extend(
+			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
+		)
+		constraints.extend(
+			self._setup_beta_exposure_constraints(decision_variables, rebalance_problem, beta_vector)
+		)
 		constraints.extend(
 			self._setup_asset_class_constraints(decision_variables, rebalance_problem)
 		)
-		# constraints.extend(
-		# 	self._setup_sector_constraints(decision_variables, rebalance_problem)
-		# )
-		# constraints.extend(
-		# 	self._setup_tax_constraints(decision_variables, rebalance_problem, tax_lot_ledger)
-		# )
+		constraints.extend(
+			self._setup_sector_constraints(decision_variables, rebalance_problem)
+		)
+		constraints.extend(
+			self._setup_tax_constraints(decision_variables, rebalance_problem, tax_lot_ledger)
+		)
 		return constraints
 	
 	def _setup_portfolio_constraints(self, 
@@ -256,10 +268,16 @@ class TargetWeightOptimizer(BaseOptimizer):
 				portfolio_weights <= max_position_size
 			]
 
+	def _allows_shorts(self, rebalance_problem) -> bool:
+		return (getattr(rebalance_problem, "max_short", 0.0) or 0.0) > 0 \
+			or (getattr(rebalance_problem, "min_position_size", 0.0) or 0.0) < 0
+	
 	def _setup_gross_exposure_constraints(self,
 										  decision_variables: dict,
 										  rebalance_problem: RebalanceProblem) -> list:
 		"""Setup gross exposure constraints based on the gross exposure limit."""
+		if not self._allows_shorts(rebalance_problem):
+			return []		
 		gross_exposure = getattr(rebalance_problem, 'gross_exposure', 1.0)
 		portfolio_long_weights = decision_variables.get('portfolio_long_weights')
 		portfolio_short_weights = decision_variables.get('portfolio_short_weights')
@@ -268,7 +286,9 @@ class TargetWeightOptimizer(BaseOptimizer):
 		]
 
 	def _setup_long_short_decomposition_constraints(self, decision_variables, rebalance_problem):
-		"""Setup long/short decomposition constraints."""
+		"""Setup long/short decomposition constraints."""	
+		if not self._allows_shorts(rebalance_problem):
+			return []
 		max_long  = getattr(rebalance_problem, 'max_long', 1.0)
 		max_short = getattr(rebalance_problem, 'max_short', 0.0)
 		w     = decision_variables.get('portfolio_weights')
@@ -316,6 +336,22 @@ class TargetWeightOptimizer(BaseOptimizer):
 			cp.norm1(risky_weights - risky_current) <= rebalance_problem.turnover_limit
 		]
 
+	def _setup_beta_exposure_constraints(self,
+									  decision_variables: dict,
+									  rebalance_problem: RebalanceProblem,
+									  beta_vector: np.ndarray = None) -> list:
+		"""Setup a beta-neutral exposure cap when configured."""
+		max_beta_exposure = getattr(rebalance_problem, 'max_beta_exposure', None)
+		if max_beta_exposure is None or beta_vector is None:
+			return []
+		portfolio_weights = decision_variables.get('portfolio_weights')
+		beta_vector = np.asarray(beta_vector, dtype=float)
+		if beta_vector.shape[0] != portfolio_weights.shape[0]:
+			return []
+		return [
+			cp.abs(beta_vector @ portfolio_weights) <= max_beta_exposure
+		]
+
 	def _setup_asset_class_constraints(self, 
 								       decision_variables: dict,
 								       rebalance_problem: RebalanceProblem) -> list:
@@ -357,7 +393,7 @@ class TargetWeightOptimizer(BaseOptimizer):
 		sector_constraints = rebalance_problem.sector_constraints
 		sector_map = rebalance_problem.sector_map
 		constraints = []
-		if sector_constraints is None:
+		if sector_constraints is None or sector_map is None:
 			return constraints
 				
 		for sector, min_max in sector_constraints.items():

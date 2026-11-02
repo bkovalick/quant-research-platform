@@ -1,4 +1,6 @@
 
+import numpy as np
+
 class RebalanceProblem:    
     """
     Pure data container for a prepared rebalance problem.
@@ -165,6 +167,10 @@ class RebalanceProblem:
     @property
     def max_short(self) -> float:
         return self._data.get("max_short", 1.0)
+
+    @property
+    def max_beta_exposure(self) -> float | None:
+        return self._data.get("max_beta_exposure", None)
 
     @property
     def net_exposure(self) -> float:

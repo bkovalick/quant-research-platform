@@ -31,6 +31,7 @@ class MarketState:
         self.signal_returns = self.signal_prices.pct_change(fill_method=None).fillna(0)
         self.exogenous_universe = self._resample(self.market_frequency, self._parse_universe(self.exogenous_tickers)) \
                             if set(self.exogenous_tickers).issubset(self.store.prices.columns) else pd.DataFrame()        
+        self.market_returns = self.get_market_returns(store)
 
     @property
     def asset_class_map(self):
@@ -110,3 +111,18 @@ class MarketState:
     
     def has_next(self) -> bool:
         return self.cursor < len(self.investment_prices) - 1
+
+    def get_market_returns(self, store: MarketDataStore) -> pd.Series:
+        benchmark = getattr(store, "benchmark", None)
+        if benchmark is not None and benchmark not in store.prices.columns:
+            raise ValueError(f"Benchmark ticker {benchmark!r} is missing from market prices")
+        benchmark_prices = store.prices[[benchmark]] if benchmark is not None else None
+        market_returns = (
+            self._resample(self.market_frequency, benchmark_prices)[benchmark]
+            .pct_change(fill_method=None)
+            .fillna(0)
+            .reindex(self.investment_returns.index)
+            if benchmark_prices is not None
+            else None
+        )
+        return market_returns

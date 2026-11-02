@@ -259,6 +259,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     ["volatility_forecast", "Volatility Forecast"],
     ["momentum", "Momentum"],
     ["ml_cross_sectional", "Machine Learning"],
+    ["black_litterman", "Black Litterman"],
     ["pairs_trading", "Pairs Trading"],
   ] as const
 
@@ -269,6 +270,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     if (currentStrategy?.signals_config?.pairs_trading) return "pairs_trading"
     if (currentStrategy?.signals_config?.mean_reversion_window !== undefined) return "mean_reversion"
     if (currentStrategy?.signals_config?.momentum_skip_periods !== undefined) return "momentum"
+    if (currentStrategy?.signals_config?.black_litterman) return "black_litterman"
     return "risk_return"
   })()
 
@@ -388,7 +390,13 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
               })}
               <button style={addStrategyBtn} onClick={() => {
                 const template = JSON.parse(JSON.stringify(editedStrategies[0]))
-                template.name = `custom_strategy_${editedStrategies.length + 1}`
+                const nextNumber = Array.from(new Set(
+                  editedStrategies
+                    .map((s: any) => String(s?.name ?? ""))
+                    .filter((name: string) => /^custom_strategy_\d+$/.test(name))
+                    .map((name: string) => Number(name.replace(/^custom_strategy_/, "")))
+                )).reduce((max, value) => Math.max(max, value), 0) + 1
+                template.name = `custom_strategy_${nextNumber}`
                 const updated = [...editedStrategies, template]
                 setEditedStrategies(updated)
                 setSelectedIdx(updated.length - 1)

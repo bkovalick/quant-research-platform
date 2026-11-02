@@ -24,6 +24,7 @@ TICKERS = ["AAPL", "MSFT", "NVDA", "AMZN"]
 class DummySignal:
     def __init__(self):
         self._signal = pd.Series([0.03, 0.015, -0.01, 0.02], index=TICKERS)
+        self.beta_vector = np.array([0.8, 0.6, -0.4, 0.2], dtype=float)
 
     def mean_returns(self):
         return self._signal.to_numpy(dtype=float)
@@ -96,8 +97,9 @@ def test_ls_market_neutral_ml_one_off_date_is_feasible_after_warmup():
             "signal_source": "ml_cross_sectional",
             "investment_universe": TICKERS,
             "max_long": 0.8,
-            "max_short": 0.8,
+            "max_short": 0.8, "max_beta_exposure": 0.15, "beta_vector": np.array([0.8, 0.6, -0.4, 0.2], dtype=float),
             "sector_constraints": {"Information Technology": [-0.1, 0.1]},
+            "sector_map": {ticker: "Information Technology" for ticker in TICKERS}
         }
     )
 
@@ -123,6 +125,7 @@ def test_ls_market_neutral_ml_one_off_date_is_feasible_after_warmup():
     assert np.all(weights >= rebalance_problem.min_position_size - 1e-9)
     assert np.all(weights <= rebalance_problem.max_position_size + 1e-9)
     assert weights.abs().sum() <= (rebalance_problem.max_long + rebalance_problem.max_short) + 1e-9
+    assert np.abs(np.dot(rebalance_problem.beta_vector, weights)) <= rebalance_problem.max_beta_exposure + 1e-9
 
 
 STRATEGY_SCAFFOLD = [
