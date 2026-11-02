@@ -314,8 +314,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "None",
         "rebalance_frequency": "daily",
         "strategy_type": "pairs_trading_strategy",
