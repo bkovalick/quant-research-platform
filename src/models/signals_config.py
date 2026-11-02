@@ -12,6 +12,10 @@ class SignalsConfig:
     black_litterman: Optional[Dict[str, Any]]
     ml_signals_config: Optional[MachineLearningConfig]
     pairs_trading: Optional[PairsTradingConfig]
+    mean_reversion_method: str = "rank_reversal"
+    bollinger_window: int = 20
+    bollinger_num_std: float = 2.0
+    bollinger_scale: float = 0.01
     
     @classmethod
     def from_dict(cls, d: dict, market_frequency: str = "d"):
@@ -26,5 +30,9 @@ class SignalsConfig:
             momentum_skip_periods = d.get("momentum_skip_periods", 4),
             black_litterman = d.get("black_litterman", None),
             ml_signals_config = MachineLearningConfig.from_dict(ml_config, market_frequency) if ml_config is not None else None,
-            pairs_trading = PairsTradingConfig.from_dict(d.get("pairs_trading", {})) if d.get("pairs_trading", None) is not None else None
+            pairs_trading = PairsTradingConfig.from_dict(d.get("pairs_trading", {})) if d.get("pairs_trading", None) is not None else None,
+            mean_reversion_method = d.get("mean_reversion_method", "rank_reversal"),
+            bollinger_window = d.get("bollinger_window", 20),
+            bollinger_num_std = d.get("bollinger_num_std", 2.0),
+            bollinger_scale = d.get("bollinger_scale", 0.01)
         )

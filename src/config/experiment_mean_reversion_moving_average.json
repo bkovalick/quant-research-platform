@@ -1,5 +1,5 @@
 {
-  "_description": "Mean reversion strategy driven by MovingAverageSignals (Bollinger z-score tilts) on a diversified ETF universe.",
+  "_description": "Mean reversion via SystematicStrategy + TargetWeightOptimizer, using the Bollinger z-score signal (mean_reversion_method=bollinger). Set to rank_reversal for the short-term-return rank signal.",
   "database_name": "research.duckdb",
   "market_store_config": {
     "start_date": "2005-01-01",
@@ -38,18 +38,31 @@
         ]
       },
       "signals_config": {
-        "apply_winsorizing": false
+        "apply_winsorizing": false,
+        "mean_reversion_method": "bollinger",
+        "bollinger_window": 20,
+        "bollinger_num_std": 2.0,
+        "bollinger_scale": 0.01
       },
       "rebalance_problem": {
-        "strategy_type": "mean_reversion_strategy",
-        "optimizer_type": "None",
-        "signal_source": "moving_average",
+        "strategy_type": "systematic_strategy",
+        "optimizer_type": "portfolio_optimizer",
+        "signal_source": "mean_reversion",
         "monitoring_type": "long_only",
         "rebalance_frequency": "weekly",
+        "apply_max_return_objective": true,
         "starting_portfolio_value": 100000,
         "cash_infusion": 0,
         "leverage": 1.0,
         "financing_spread": 0.005,
+        "constraints": {
+          "concentration_strength": 1,
+          "max_return": 0.25,
+          "risk_aversion": 1.0,
+          "turnover_limit": 0.3,
+          "min_position_size": 0.0,
+          "max_position_size": 0.35
+        },
         "initial_weights": {
           "SPY": 0.142857,
           "AGG": 0.142857,
