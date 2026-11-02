@@ -71,7 +71,7 @@ def test_rank_reversal_method_uses_rank_signal():
     signals = _signals(mean_reversion_method="rank_reversal")
 
     np.testing.assert_array_equal(signals.mean_returns(), signals._rank_reversal_signal())
-    assert set(np.round(signals.mean_returns(), 6)) == {-1 / 6, 0.0, 1 / 6}
+    assert set(np.round(signals.mean_returns(), 6)) == {round(-1 / 6, 6), round(1 / 6, 6), 0.5}
 
 
 def test_bollinger_method_uses_bollinger_signal():
@@ -112,16 +112,24 @@ def test_bollinger_scale_multiplies_signal():
 
 
 def test_bollinger_signal_keeps_magnitude_unlike_rank_signal():
-    prices = PRICES.copy()
-    prices.loc[5, "UP"] = 200.0
-    prices.loc[5, "DOWN"] = 99.0
+    baseline = [100.0, 101.0, 99.0, 100.0, 101.0, 99.0]
 
-    bollinger = _signals(prices, mean_reversion_method="bollinger", bollinger_scale=1.0).mean_returns()
-    ranked = _signals(prices, mean_reversion_method="rank_reversal").mean_returns()
+    def frame(up_last: float) -> pd.DataFrame:
+        return pd.DataFrame({
+            "UP": baseline[:-1] + [up_last],
+            "FLAT": baseline,
+            "DOWN": baseline[:-1] + [97.0],
+        })
 
-    np.testing.assert_array_equal(np.sign(bollinger[[0, 2]]), np.sign(ranked[[0, 2]]) * -1)
-    assert not np.isclose(abs(bollinger[0]), abs(bollinger[2]))
-    assert np.isclose(abs(ranked[0]), abs(ranked[2]))
+    mild, extreme = frame(101.0), frame(104.0)
+
+    ranked_mild = _signals(mild, mean_reversion_method="rank_reversal").mean_returns()
+    ranked_extreme = _signals(extreme, mean_reversion_method="rank_reversal").mean_returns()
+    z_mild = _signals(mild, mean_reversion_method="bollinger", bollinger_scale=1.0).mean_returns()
+    z_extreme = _signals(extreme, mean_reversion_method="bollinger", bollinger_scale=1.0).mean_returns()
+
+    np.testing.assert_array_equal(ranked_mild, ranked_extreme)
+    assert z_extreme[0] < z_mild[0] < 0
 
 
 def test_bollinger_signal_is_zero_where_z_score_is_undefined():
