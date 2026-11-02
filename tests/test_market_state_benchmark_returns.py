@@ -26,12 +26,12 @@ class _BetaSignals(Signals):
         raise NotImplementedError
 
 
-def _build_market_state():
-    dates = pd.date_range("2024-01-01", periods=5, freq="B")
+def _build_market_state(market_frequency="d"):
+    dates = pd.date_range("2024-01-01", periods=10, freq="B")
     prices = pd.DataFrame(
         {
-            "ASSET": [100.0, 120.0, 96.0, 115.2, 100.0],
-            "SPY": [100.0, 110.0, 99.0, 108.9, 87.12],
+            "ASSET": [100.0, 120.0, 96.0, 115.2, 100.0, 105.0, 110.0, 100.0, 90.0, 95.0],
+            "SPY": [100.0, 110.0, 99.0, 108.9, 87.12, 95.832, 90.0, 100.0, 96.0, 99.0],
         },
         index=dates,
     )
@@ -43,7 +43,7 @@ def _build_market_state():
     )
     config = MarketStateConfig.from_dict(
         {
-            "market_frequency": "d",
+            "market_frequency": market_frequency,
             "investment_universe": ["ASSET"],
             "signal_universe": ["ASSET"],
         }
@@ -56,6 +56,23 @@ def test_market_state_exposes_frequency_aligned_benchmark_returns():
 
     expected = market_state.store.prices["SPY"].pct_change(fill_method=None).fillna(0)
     pd.testing.assert_series_equal(market_state.market_returns, expected)
+
+
+def test_market_state_resamples_benchmark_returns_to_market_frequency():
+    market_state = _build_market_state("w")
+
+    expected = (
+        market_state.store.prices["SPY"]
+        .resample("W-FRI")
+        .last()
+        .pct_change(fill_method=None)
+        .fillna(0)
+    )
+    pd.testing.assert_series_equal(market_state.market_returns, expected)
+    pd.testing.assert_index_equal(
+        market_state.market_returns.index,
+        market_state.investment_returns.index,
+    )
 
 
 def test_beta_vector_uses_market_state_returns_only_through_current_cursor():

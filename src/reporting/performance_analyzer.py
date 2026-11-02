@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pandas as pd
 import numpy as np
 
@@ -11,16 +13,12 @@ class PerformanceAnalyzer:
                 portfolio: Portfolio,
                 market_store_config: MarketStoreConfig,
                 market_state_config: MarketStateConfig,
-                benchmark_index: pd.Series) -> BacktestResult:
+                benchmark_returns: Optional[pd.Series]) -> BacktestResult:
         """ Build each piece of the backtest result """
         self._portfolio = portfolio
         self._market_store_config = market_store_config
-        self._market_state_config = market_state_config
-        self._benchmark_index = benchmark_index
         self._annual_trading_days = market_state_config.annual_trading_days
-        self._market_frequency = market_state_config.market_frequency
-        self._rule = {"d": "B", "w": "W-FRI", "m": "ME"}[self._market_frequency]
-        self._cached_benchmark_returns = self._compute_benchmark_returns()
+        self._cached_benchmark_returns = self._align_benchmark_returns(benchmark_returns)
         performance_metrics = self._calculate_performance_metrics()
         performance_series = self._build_performance_series(performance_metrics)
         summary = self._build_summary(performance_metrics)
@@ -29,12 +27,12 @@ class PerformanceAnalyzer:
             series=performance_series
         )
     
-    def _compute_benchmark_returns(self) -> pd.Series:
+    def _align_benchmark_returns(self, benchmark_returns: Optional[pd.Series]) -> pd.Series:
         portfolio_returns = self._portfolio.returns
         if portfolio_returns is None or len(portfolio_returns) == 0:
             raise ValueError("Portfolio Returns must exist in order to reindex Benchmark")
-        benchmark_resampled = self._benchmark_index.resample(self._rule).last()
-        benchmark_returns = benchmark_resampled.pct_change(fill_method=None).fillna(0)
+        if benchmark_returns is None:
+            raise ValueError("Benchmark returns must exist in order to analyze performance")
         return benchmark_returns.reindex(portfolio_returns.index).fillna(0)
 
     @property

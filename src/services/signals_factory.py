@@ -1,5 +1,4 @@
 from typing import Any, Dict
-import pandas as pd
 from datetime import datetime
 
 from domain.signals.risk_return_signals import RiskReturnSignals 
@@ -19,11 +18,9 @@ from simulation.market_state import MarketState
 class SignalFactory:
     def __init__(self, 
                  signals_config: SignalsConfig,
-                 market_state: MarketState,
-                 benchmark: pd.Series):
+                 market_state: MarketState):
         self._signals_config = signals_config
         self._market_state = market_state
-        self._benchmark = benchmark
         self._ml_signals_config = signals_config.ml_signals_config if signals_config is not None else None
         self._signals: Dict[str, Signals] = {}
 
@@ -33,7 +30,6 @@ class SignalFactory:
         if self._ml_signals_config is not None:
             self._feature_builder = FeatureBuilder(
                 self._market_state,
-                self._benchmark,
                 self._market_state.market_frequency,
                 self._ml_signals_config.features
             )

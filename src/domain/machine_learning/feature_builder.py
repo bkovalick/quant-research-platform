@@ -13,7 +13,6 @@ class FeatureBuilder:
     """
     def __init__(self, 
                  market_state: MarketState,
-                 benchmark: pd.Series,
                  market_frequency: str = "d",
                  features: Optional[List[str]] = None):
         features = features or []
@@ -21,8 +20,9 @@ class FeatureBuilder:
         self.prices = market_state.signal_prices.copy()
         self.returns = market_state.signal_returns.copy()
         self.exogenous_universe = market_state.exogenous_universe.copy()
-        self.benchmark = benchmark.copy()
-        self.benchmark_returns = benchmark.pct_change(fill_method=None).fillna(0)
+        if market_state.market_returns is None:
+            raise ValueError("Benchmark returns are required to build market features")
+        self.market_returns = market_state.market_returns.copy()
         self.lookbacks = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
         self.reversal_window = self.lookbacks.get("1w", 1)
         self.features_cache = None
@@ -43,7 +43,7 @@ class FeatureBuilder:
         w = self.lookbacks
         px = self.prices
         rets = self.returns
-        mret = self.benchmark_returns.reindex(rets.index).fillna(0)
+        mret = self.market_returns.reindex(rets.index).fillna(0)
         
         # vectorized rolling features
         mom_1m = px / px.shift(w["1m"]) - 1
@@ -121,7 +121,7 @@ class FeatureBuilder:
         """
         px   = self.prices.loc[:date]
         rets = self.returns.loc[:date]
-        market_rets = self.benchmark_returns.reindex(rets.index).fillna(0)
+        market_rets = self.market_returns.reindex(rets.index).fillna(0)
         vix_prices = self.exogenous_universe["^VIX"].loc[:date] \
             if "^VIX" in self.exogenous_universe else pd.Series(dtype=float)
         high_vol = self._compute_high_vol(vix_prices)

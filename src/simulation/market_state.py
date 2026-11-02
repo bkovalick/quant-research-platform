@@ -1,9 +1,11 @@
+from datetime import datetime
+from typing import Optional
+
+import pandas as pd
+
 from models.market_config import MarketStateConfig
 from infrastructure.market_data_gateway import MarketDataStore
 from reference.market_metadata import MarketMetadata
-
-import pandas as pd
-from datetime import datetime
 
 class MarketState:
     def __init__(self, 
@@ -31,7 +33,7 @@ class MarketState:
         self.signal_returns = self.signal_prices.pct_change(fill_method=None).fillna(0)
         self.exogenous_universe = self._resample(self.market_frequency, self._parse_universe(self.exogenous_tickers)) \
                             if set(self.exogenous_tickers).issubset(self.store.prices.columns) else pd.DataFrame()        
-        self.market_returns = self.get_market_returns(store)
+        self.market_returns = self._build_market_returns()
 
     @property
     def asset_class_map(self):
@@ -112,11 +114,11 @@ class MarketState:
     def has_next(self) -> bool:
         return self.cursor < len(self.investment_prices) - 1
 
-    def get_market_returns(self, store: MarketDataStore) -> pd.Series:
-        benchmark = getattr(store, "benchmark", None)
-        if benchmark is not None and benchmark not in store.prices.columns:
+    def _build_market_returns(self) -> Optional[pd.Series]:
+        benchmark = getattr(self.store, "benchmark", None)
+        if benchmark is not None and benchmark not in self.store.prices.columns:
             raise ValueError(f"Benchmark ticker {benchmark!r} is missing from market prices")
-        benchmark_prices = store.prices[[benchmark]] if benchmark is not None else None
+        benchmark_prices = self.store.prices[[benchmark]] if benchmark is not None else None
         market_returns = (
             self._resample(self.market_frequency, benchmark_prices)[benchmark]
             .pct_change(fill_method=None)
