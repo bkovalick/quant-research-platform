@@ -85,6 +85,12 @@ class PerformanceAnalyzer:
             "rolling_returns": self._calculate_rolling_returns(portfolio_returns, self._annual_trading_days),
             "rolling_volatility": self._calculate_rolling_volatility(portfolio_returns, self._annual_trading_days),
             "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(portfolio_returns, risk_free_rate, self._annual_trading_days),
+            "rolling_alpha": self._calculate_rolling_alpha(
+                portfolio_returns,
+                benchmark_returns,
+                risk_free_rate,
+                self._annual_trading_days,
+            ),
             "rolling_drawdown": rolling_dd,
             "rolling_turnover": self._calculate_rolling_turnover(portfolio_turnover, self._annual_trading_days),
             "return": annualized_return,
@@ -178,6 +184,26 @@ class PerformanceAnalyzer:
         sharpe = ((rolling_mean - rf_per_period) / rolling_std) * np.sqrt(self._annual_trading_days)
         return sharpe.replace([np.inf, -np.inf], np.nan)
 
+    def _calculate_rolling_alpha(
+        self,
+        portfolio_returns: pd.Series,
+        benchmark_returns: pd.Series,
+        risk_free_rate: float,
+        window: int,
+    ) -> pd.Series:
+        """Calculate annualized rolling Jensen's alpha from portfolio and benchmark returns."""
+        rf_per_period = risk_free_rate / self._annual_trading_days
+        portfolio_excess = portfolio_returns - rf_per_period
+        benchmark_excess = benchmark_returns - rf_per_period
+        rolling_covariance = portfolio_excess.rolling(window=window).cov(benchmark_excess)
+        rolling_benchmark_variance = benchmark_excess.rolling(window=window).var()
+        rolling_beta = rolling_covariance / rolling_benchmark_variance
+        rolling_alpha = (
+            portfolio_excess.rolling(window=window).mean()
+            - rolling_beta * benchmark_excess.rolling(window=window).mean()
+        ) * self._annual_trading_days
+        return rolling_alpha.replace([np.inf, -np.inf], np.nan)
+
     def _calculate_rolling_turnover(self, turnover: pd.Series, window: int):
         """Calculate rolling annualised turnover over a specified window."""
         return turnover.rolling(window=window).mean() * self._annual_trading_days
@@ -231,6 +257,7 @@ class PerformanceAnalyzer:
             "rolling_returns": performance_metrics["rolling_returns"],
             "rolling_volatility": performance_metrics["rolling_volatility"],
             "rolling_sharpe_ratio": performance_metrics["rolling_sharpe_ratio"],
+            "rolling_alpha": performance_metrics["rolling_alpha"],
             "rolling_drawdown": performance_metrics["rolling_drawdown"],
             "rolling_turnover": performance_metrics["rolling_turnover"]
         }

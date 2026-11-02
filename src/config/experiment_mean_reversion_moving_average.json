@@ -1,0 +1,65 @@
+{
+  "_description": "Mean reversion strategy driven by MovingAverageSignals (Bollinger z-score tilts) on a diversified ETF universe.",
+  "database_name": "research.duckdb",
+  "market_store_config": {
+    "start_date": "2005-01-01",
+    "end_date": "2026-02-19",
+    "data_source": {
+      "yfinance": null
+    },
+    "benchmark": "SPY",
+    "risk_free_rate": 0.03,
+    "transaction_cost": 0.003,
+    "tickers": [
+      "SPY",
+      "AGG",
+      "GLD",
+      "EFA",
+      "EEM",
+      "TLT",
+      "VNQ"
+    ]
+  },
+  "strategies": [
+    {
+      "name": "mean_reversion_moving_average",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "w",
+        "cash_allocation": 0.0,
+        "investment_universe": [
+          "SPY",
+          "AGG",
+          "GLD",
+          "EFA",
+          "EEM",
+          "TLT",
+          "VNQ"
+        ]
+      },
+      "signals_config": {
+        "apply_winsorizing": false
+      },
+      "rebalance_problem": {
+        "strategy_type": "mean_reversion_strategy",
+        "optimizer_type": "None",
+        "signal_source": "moving_average",
+        "monitoring_type": "long_only",
+        "rebalance_frequency": "weekly",
+        "starting_portfolio_value": 100000,
+        "cash_infusion": 0,
+        "leverage": 1.0,
+        "financing_spread": 0.005,
+        "initial_weights": {
+          "SPY": 0.142857,
+          "AGG": 0.142857,
+          "GLD": 0.142857,
+          "EFA": 0.142857,
+          "EEM": 0.142857,
+          "TLT": 0.142857,
+          "VNQ": 0.142857
+        }
+      }
+    }
+  ]
+}

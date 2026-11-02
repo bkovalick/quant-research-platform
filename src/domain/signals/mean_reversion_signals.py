@@ -18,11 +18,16 @@ class MeanReversionSignals(RiskReturnSignals):
             return super().mean_returns()        
         
         lookback_prices = self.market_state.lookback_prices()
-        short_returns = lookback_prices.pct_change(mean_reversion_window).iloc[-1]
+        short_returns = lookback_prices.pct_change(mean_reversion_window, fill_method=None).iloc[-1]
         if self.apply_winsorizing:
             lower_bound = short_returns.quantile(self.windsor_percentiles["lower"])
             upper_bound = short_returns.quantile(self.windsor_percentiles["upper"])
             short_returns = short_returns.clip(lower=lower_bound, upper=upper_bound)
-            
-        ranked = rankdata(-short_returns.values) / len(short_returns) - 0.5
+
+        # Rank only assets with a return; rankdata would otherwise turn the whole vector NaN.
+        values = short_returns.values.astype(float)
+        finite = np.isfinite(values)
+        ranked = np.zeros(len(values))
+        if finite.any():
+            ranked[finite] = rankdata(-values[finite]) / finite.sum() - 0.5
         return ranked

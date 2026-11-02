@@ -448,7 +448,7 @@ class TargetWeightOptimizer(BaseOptimizer):
 		transaction_cost = getattr(rebalance_problem, 'transaction_cost', 0.003)
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		mean_vector = signals.mean_returns()
-		expected_median_vector = np.nanmedian(mean_vector)
+		expected_median_vector = np.nanmedian(mean_vector) if np.isfinite(mean_vector).any() else 0.0
 		np.nan_to_num(mean_vector, copy=False, nan=expected_median_vector)
 		cov_matrix = signals.covariance_matrix()
 

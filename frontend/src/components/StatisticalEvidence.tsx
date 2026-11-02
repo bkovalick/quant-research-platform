@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
   LineChart, Line, ReferenceLine, Tooltip,
 } from "recharts"
-import { getCachedIcSeries, getEffectiveSummary } from "../utils/metricsUtils"
+import { deserializeToArray, getCachedIcSeries, getEffectiveSummary } from "../utils/metricsUtils"
 import type { DateWindow } from "../utils/metricsUtils"
 
 /**
@@ -60,9 +60,15 @@ export default function StatisticalEvidence({ run, dateWindow }: Props) {
 
   const statistics = run.statistics ?? {}
   const monitoringStats = run.monitoring_stats ?? {}
+  const seriesAlpha = deserializeToArray(run.result?.series?.rolling_alpha)
+    .filter(p => p.value != null)
+    .map(p => ({ date: p.date, alpha: p.value }))
+  const rollingAlpha = statistics.rolling_alpha?.length ? statistics.rolling_alpha : seriesAlpha
+  const rollingAlphaAnnualized = !statistics.rolling_alpha?.length
   const stats = {
     ...statistics,
     factor_regression: statistics.factor_regression ?? monitoringStats.regression_summary,
+    rolling_alpha: rollingAlpha
   }
   const summary = getEffectiveSummary(run, dateWindow)
 
@@ -90,7 +96,7 @@ export default function StatisticalEvidence({ run, dateWindow }: Props) {
             : <EmptyCard title="Bootstrap confidence interval"
                 line="Stationary block bootstrap not computed — resample the return series to put an interval around the Sharpe." />}
           {stats.rolling_alpha?.length
-            ? <RollingAlpha data={stats.rolling_alpha} />
+            ? <RollingAlpha data={stats.rolling_alpha} annualized={rollingAlphaAnnualized} />
             : <EmptyCard title="Rolling alpha"
                 line="Rolling factor alpha not computed — a 252-day rolling regression shows whether the edge is stable or episodic." />}
         </div>
@@ -309,24 +315,26 @@ function BootstrapInterval({ bs, dsr }: { bs: any; dsr: any }) {
   )
 }
 
-function RollingAlpha({ data }: { data: any[] }) {
+function RollingAlpha({ data, annualized = false }: { data: any[]; annualized?: boolean }) {
+  const fmtTick = (v: number) => annualized ? (v * 100).toFixed(0) + "%" : (v * 10000).toFixed(0) + "bp"
+  const fmtValue = (v: number) => annualized ? (v * 100).toFixed(1) + "%/yr" : (v * 10000).toFixed(1) + " bp/period"
   return (
     <div style={card}>
-      <div style={cardTitle}>Rolling alpha (252d)</div>
+      <div style={cardTitle}>Rolling alpha (1y{annualized ? ", annualized" : ""})</div>
       <ResponsiveContainer width="100%" height={140}>
         <LineChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: 0 }}>
           <XAxis dataKey="date" tick={{ fill: "#8b949e", fontSize: 10 }}
             tickFormatter={(d: string) => new Date(d).getFullYear().toString()}
             minTickGap={40} />
           <YAxis tick={{ fill: "#8b949e", fontSize: 10 }} width={44}
-            tickFormatter={(v: number) => (v * 10000).toFixed(0) + "bp"} />
+            tickFormatter={fmtTick} />
           <ReferenceLine y={0} stroke="#444" strokeDasharray="3 3" />
           <Tooltip content={({ active, payload, label }: any) => {
             if (!active || !payload?.length) return null
             return (
               <div style={tooltipBox}>
                 <div style={{ color: "#8b949e" }}>{label}</div>
-                <div style={MONO}>{(payload[0].value * 10000).toFixed(1)} bp/period</div>
+                <div style={MONO}>{fmtValue(payload[0].value)}</div>
               </div>
             )
           }} />

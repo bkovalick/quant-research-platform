@@ -1,6 +1,7 @@
 import logging
 import math
 import numpy as np
+import pandas as pd
 import duckdb as db
 import json
 import dataclasses
@@ -8,6 +9,7 @@ from datetime import date, datetime, time
 
 from models.experiment import Experiment
 from models.strategy_run import StrategyRun
+from reference.market_metadata import MarketMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -394,6 +396,52 @@ class StrategyResultsDataGateway(GatewayBase):
 
         self.conn.executemany(self.INSERT_IC_SERIES, rows)
         logger.debug("Saved %d IC rows for run %s", len(rows), run_id)
+
+    def get_portfolio_positions(self, experiment_id: str | None = None, run_id: str | None = None) -> pd.DataFrame:
+        """
+        Long-format positions: one row per (strategy, date, ticker) with weight,
+        previous weight, trade (weight - prev_weight) and sector. The first date
+        has prev_weight 0, so its trade is the initial allocation. Weights are
+        the stored post-drift weights, so trade includes drift, not only rebalances.
+        """
+        filters, params = [], []
+        if experiment_id is not None:
+            filters.append("w.experiment_id = ?")
+            params.append(experiment_id)
+        if run_id is not None:
+            filters.append("w.run_id = ?")
+            params.append(run_id)
+        where = ("WHERE " + " AND ".join(filters)) if filters else ""
+
+        positions = self.conn.execute(f"""
+            SELECT
+                w.experiment_id,
+                w.run_id,
+                r.strategy_name,
+                w.observed_at AS date,
+                w.ticker,
+                w.weight,
+                LAG(w.weight, 1, 0.0) OVER (
+                    PARTITION BY w.run_id, w.ticker ORDER BY w.observed_at
+                ) AS prev_weight
+            FROM portfolio_weights w
+            LEFT JOIN strategy_runs r USING (run_id)
+            {where}
+            ORDER BY r.strategy_name, w.run_id, w.observed_at, w.ticker
+        """, params).df()
+
+        positions["trade"] = positions["weight"] - positions["prev_weight"]
+        sectors = (
+            MarketMetadata.get_full_mapping_universe()
+            .drop_duplicates("ticker")
+            .set_index("ticker")["sector"]
+        )
+        positions["sector"] = positions["ticker"].map(sectors)
+        positions.loc[positions["ticker"] == "CASH", "sector"] = "Cash"
+        return positions[[
+            "experiment_id", "run_id", "strategy_name", "date", "ticker", "sector",
+            "weight", "prev_weight", "trade",
+        ]]
 
 
 class ExperimentMetaDataDataGateway(GatewayBase):
