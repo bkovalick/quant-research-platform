@@ -1,9 +1,8 @@
 import logging
-
 import yfinance as yf
 import pandas as pd
-from models.market_config import MarketStoreConfig
 
+from models.market_config import MarketStoreConfig
 
 logger = logging.getLogger(__name__)
 
@@ -11,8 +10,7 @@ class MarketDataGateway:
     """ Data gateway for fetching market data using yfinance """
     @staticmethod
     def get_price_data(market_store_config: MarketStoreConfig):
-        # use_sp500_constituents = market_store_config.use_sp500_constituents
-        use_sp500_constituents = False # this pull doesn't work in parallel due to pickling issue and sequential to an access issue
+        use_sp500_constituents = False
         tickers = MarketDataGateway.get_sp500_tickers() if \
             use_sp500_constituents else market_store_config.tickers
         benchmark_ticker = market_store_config.benchmark
@@ -96,7 +94,6 @@ class MarketDataGateway:
         table = pd.read_html(url)
         df = table[0]
 
-        # Clean tickers (yfinance uses '-' instead of '.' for classes like BRK.B)
         tickers = df["Symbol"].str.replace(".", "-", regex=False).tolist()
         return tickers
     
