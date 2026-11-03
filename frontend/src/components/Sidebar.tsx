@@ -69,7 +69,6 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
       return
     }
 
-    // Validate fixed weight strategies that will actually run
     for (const s of strategiesToRun) {
 
       if (s.rebalance_problem?.strategy_type === "fwp_strategy") {
@@ -178,9 +177,6 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     setNewUniverseTickerError(null)
   }
 
-  // BL is an overlay, not a signal. It's preserved when switching between any
-  // view-producing signal, and stripped only when switching to pairs (which is
-  // market-neutral and has no prior-vs-views framework).
   const SIGNAL_CONFIG_KEYS: Record<string, string[]> = {
     mean_reversion:      ["mean_reversion_window", "black_litterman"],
     momentum:            ["momentum_skip_periods", "black_litterman"],
@@ -201,9 +197,6 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     const keep = new Set(SIGNAL_CONFIG_KEYS[newSource] ?? [])
     const allSignalKeys = new Set(Object.values(SIGNAL_CONFIG_KEYS).flat())
 
-    // Strip any signal-specific block that doesn't belong to the new source.
-    // Generic keys (apply_winsorizing, windsor_percentiles) are never in
-    // allSignalKeys, so they persist across switches.
     for (const key of Object.keys(sc)) {
       if (allSignalKeys.has(key) && !keep.has(key)) delete sc[key]
     }
@@ -280,8 +273,8 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const hasMeanReversionSignals = currentStrategy?.signals_config?.mean_reversion_window !== undefined
   const hasMomentumSignals = currentStrategy?.signals_config?.momentum_skip_periods !== undefined
   const hasConstraints = !!currentStrategy?.rebalance_problem?.constraints
-  // BL is an overlay available on any view-producing signal — i.e. everything
-  // except pairs trading, which is market-neutral with no prior-vs-views model.
+  const mean_reversion_method = currentStrategy?.signals_config?.mean_reversion_method ?? "rank_reversal"
+  const showMeanReversion = inferredSignalSource === "mean_reversion" || hasMeanReversionSignals
   const blApplies = !!inferredSignalSource && inferredSignalSource !== "pairs_trading"
   const currentExperimentLabel = currentStrategy?.name
     ? `${currentStrategy.name} (${selectedIdx + 1} of ${editedStrategies.length})`
@@ -515,21 +508,18 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                     </Row>
                   </Section>
 
-                  {(currentStrategy?.rebalance_problem?.strategy_type === "fwp_strategy" ||
-                    currentStrategy?.rebalance_problem?.strategy_type === "ewp_strategy") && (
-                    <Section title="Leverage">
-                      <Row label="Leverage" tooltip="Target gross exposure as a multiple of NAV. 1.0 = unlevered; 1.5 borrows 50% of NAV.">
-                        <input type="number" step={0.1} min={0} style={inputStyle}
-                          value={currentStrategy?.rebalance_problem?.leverage ?? 1.0}
-                          onChange={(e) => updateField(["rebalance_problem", "leverage"], Number(e.target.value))} />
-                      </Row>
-                      <Row label="Fin Spread" tooltip="Annual spread over the risk-free rate paid on borrowed capital. Total financing rate = risk free rate + spread.">
-                        <input type="number" step={0.001} min={0} style={inputStyle}
-                          value={currentStrategy?.rebalance_problem?.financing_spread ?? 0.005}
-                          onChange={(e) => updateField(["rebalance_problem", "financing_spread"], Number(e.target.value))} />
-                      </Row>
-                    </Section>
-                  )}                  
+                  <Section title="Leverage">
+                    <Row label="Leverage" tooltip="Scales the strategy's target weights as a multiple of NAV. 1.0 = unlevered; 1.5 borrows 50% of NAV. Applied after the strategy/optimizer, so optimizer constraints apply before scaling.">
+                      <input type="number" step={0.1} min={0} style={inputStyle}
+                        value={currentStrategy?.rebalance_problem?.leverage ?? 1.0}
+                        onChange={(e) => updateField(["rebalance_problem", "leverage"], Number(e.target.value))} />
+                    </Row>
+                    <Row label="Fin Spread" tooltip="Annual spread over the risk-free rate paid on borrowed capital. Total financing rate = risk free rate + spread.">
+                      <input type="number" step={0.001} min={0} style={inputStyle}
+                        value={currentStrategy?.rebalance_problem?.financing_spread ?? 0.005}
+                        onChange={(e) => updateField(["rebalance_problem", "financing_spread"], Number(e.target.value))} />
+                    </Row>
+                  </Section>
 
                   <Section title="Rebalance">
                     <Row label="Frequency" tooltip="How often the portfolio is rebalanced and positions updated">
@@ -585,8 +575,22 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                       </>
                     )}
 
-                    {(inferredSignalSource === "mean_reversion" || hasMeanReversionSignals) && (
-                      <Row label="MR Window" tooltip="Lookback window (in periods) for computing mean reversion z-scores">
+                    {showMeanReversion && (
+                      <Row label="MR Method" tooltip="rank_reversal: cross-sectional rank of short-window returns (losers up, winners down). bollinger: negative rolling z-score, which keeps the size of the deviation.">
+                        <select
+                          style={inputStyle}
+                          value={mean_reversion_method}
+                          onChange={(e) => updateField(["signals_config", "mean_reversion_method"], e.target.value)}
+                        >
+                          <option value="rank_reversal">Rank reversal</option>
+                          <option value="bollinger">Bollinger z-score</option>
+                        </select>
+                      </Row>
+                    )}
+
+                    {showMeanReversion && mean_reversion_method === "rank_reversal" && (
+                      <Row label="MR Window" tooltip="Lookback window (in periods) for the short-term return that is ranked">
+
                         <input
                           type="number"
                           style={inputStyle}
@@ -595,6 +599,35 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                         />
                       </Row>
                     )}
+
+                    {showMeanReversion && mean_reversion_method === "bollinger" && (
+                      <div style={blBlock}>
+                        <Row label="Bollinger Window" tooltip="Lookback window (in periods) for computing Bollinger bands">
+                          <input
+                            type="number"
+                            style={inputStyle}
+                            value={currentStrategy.signals_config?.bollinger_window ?? 0}
+                            onChange={(e) => updateField(["signals_config", "bollinger_window"], Number(e.target.value))}
+                          />
+                        </Row>
+                        <Row label="Bollinger Num Std" tooltip="Number of standard deviations for Bollinger bands">
+                          <input
+                            type="number"
+                            style={inputStyle}
+                            value={currentStrategy.signals_config?.bollinger_num_std ?? 0}
+                            onChange={(e) => updateField(["signals_config", "bollinger_num_std"], Number(e.target.value))}
+                          />
+                        </Row>
+                        <Row label="Bollinger Scale" tooltip="Scale factor for Bollinger bands">
+                          <input
+                            type="number"
+                            style={inputStyle}
+                            value={currentStrategy.signals_config?.bollinger_scale ?? 0}
+                            onChange={(e) => updateField(["signals_config", "bollinger_scale"], Number(e.target.value))}
+                          />
+                        </Row>                              
+                      </div>
+                    )}                    
 
                     {(inferredSignalSource === "momentum" || hasMomentumSignals) && (
                       <Row label="Mom Skip" tooltip="Periods to skip at the recent end when computing momentum, avoiding short-term reversal (e.g. 1 = skip last month)">

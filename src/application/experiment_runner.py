@@ -120,7 +120,13 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
         periods_per_year=market_state_config.annual_trading_days
     )
     
-    run = BacktestingEngine(portfolio, strategy, market_state, signals_factory, tax_lot_ledger).run_backtest(rebalance_problem)
+    run = BacktestingEngine(
+        portfolio, 
+        strategy, 
+        market_state, 
+        signals_factory, 
+        tax_lot_ledger
+    ).run_backtest(rebalance_problem)
     
     portfolio_results = PerformanceAnalyzer().compute(
         run.portfolio,

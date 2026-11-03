@@ -22,7 +22,7 @@
       "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "DVN", "APA", "BKR",
       "NEE", "DUK", "SO", "AEP", "EXC", "SRE", "AWK", "AEE", "CMS", "ATO",
       "LIN", "APD", "SHW", "NEM", "ALB", "NUE", "BALL", "AVY", "AMCR", "CE",
-      "PLD", "AMT", "EQIX", "SPG", "ARE", "AVB", "BXP", "CBRE"
+      "PLD", "AMT", "EQIX", "SPG", "ARE", "BXP", "CBRE"
     ]
   },
   "strategies": [
@@ -45,7 +45,7 @@
           "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "DVN", "APA", "BKR",
           "NEE", "DUK", "SO", "AEP", "EXC", "SRE", "AWK", "AEE", "CMS", "ATO",
           "LIN", "APD", "SHW", "NEM", "ALB", "NUE", "BALL", "AVY", "AMCR", "CE",
-          "PLD", "AMT", "EQIX", "SPG", "ARE", "AVB", "BXP", "CBRE"
+          "PLD", "AMT", "EQIX", "SPG", "ARE", "BXP", "CBRE"
         ]
       },
       "signals_config": {
@@ -133,7 +133,7 @@
           "XOM", "CVX", "COP", "EOG", "SLB", "MPC", "PSX", "DVN", "APA", "BKR",
           "NEE", "DUK", "SO", "AEP", "EXC", "SRE", "AWK", "AEE", "CMS", "ATO",
           "LIN", "APD", "SHW", "NEM", "ALB", "NUE", "BALL", "AVY", "AMCR", "CE",
-          "PLD", "AMT", "EQIX", "SPG", "ARE", "AVB", "BXP", "CBRE"
+          "PLD", "AMT", "EQIX", "SPG", "ARE", "BXP", "CBRE"
         ]
       },
       "signals_config": {

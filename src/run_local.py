@@ -84,6 +84,12 @@ def run_ls_market_neutral_ml():
         config = json.load(f)
     local_run(config)
 
+def run_mean_reversion_strategy():
+    logger.info("run_mean_reversion_strategy:: Starting local run of mean reversion strategy")
+    with open(f"src/config/experiment_mean_reversion_moving_average.json", 'r') as f:
+        config = json.load(f)
+    local_run(config)
+
 def run_parameter_sweep():
     with open(f"src/config/experiment_securities_ml_bl_momentum.json", 'r') as f:
         config = json.load(f)
@@ -97,8 +103,9 @@ if __name__ == '__main__':
     # run_ml_momentum_strategy()
     # run_ml_mean_reversion_strategy()
     # run_parameter_sweep()
-    run_standard_mean_variance_strategy()
+    # run_standard_mean_variance_strategy()
     # run_equal_weight_strategy()
     # run_fixed_weight_strategy()
     # run_long_short_strategy()
     # run_ls_market_neutral_ml()
+    run_mean_reversion_strategy()

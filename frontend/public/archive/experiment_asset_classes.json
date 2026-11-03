@@ -1,7 +1,7 @@
 {
   "market_store_config": {
 	"tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-              "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX",
+              "NFLX", "MAS","KLAC", "IDXX", "CMS", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX",
               "SPY", "IVW", "IWM", "SHY", "IJH", "EMB", "XLE", "IWD", "IWF", "EFA", "EEM", "TLT", "IEF", 
               "LQD", "HYG", "TIP", "GLD", "PDBC", "VNQ", "XLU", "XLV"               
             ],

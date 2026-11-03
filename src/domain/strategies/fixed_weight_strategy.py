@@ -27,7 +27,7 @@ class FixedWeightStrategy(BaseStrategy):
         ])
 
         return RebalanceSolution(
-            target_weights=pd.Series(target_weights * self.rebalance_problem.leverage, index=tickers),
+            target_weights=pd.Series(target_weights, index=tickers),
             sell_allocations={},
             realized_tax_cost=0.0,
             tracking_error=0.0

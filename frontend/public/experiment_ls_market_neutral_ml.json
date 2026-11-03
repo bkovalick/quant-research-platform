@@ -2,8 +2,8 @@
   "_description": "Full suite: baselines, classic optimizer signals, BL, ML feature-set and model comparisons, long/short, and stat arb. Long-only optimizer strategies share one universe and one constraint set so differences come from the signal.",
   "database_name": "research.duckdb",
   "market_store_config": {
-    "start_date": "2000-01-01",
-    "end_date": "2026-09-23",
+    "start_date": "2020-01-01",
+    "end_date": "2026-10-30",
     "data_source": {
       "yfinance": null
     },
@@ -41,7 +41,6 @@
       "AMGN",
       "BIIB",
       "IDXX",
-      "HOLX",
       "UHS",
       "JPM",
       "BAC",
@@ -102,7 +101,6 @@
       "T",
       "VZ",
       "BIDU",
-      "EA",
       "CHTR",
       "NWSA",
       "XOM",
@@ -140,7 +138,6 @@
       "EQIX",
       "SPG",
       "ARE",
-      "AVB",
       "BXP",
       "CBRE",
       "AGG",
@@ -192,7 +189,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -253,7 +249,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -291,7 +286,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE"
         ]
@@ -328,12 +322,10 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
-        "apply_tax_objective": false,
         "constraints": {
           "max_long": 1.0,
           "max_short": 1.0,
           "concentration_strength": 1,
-          "max_return": 0.25,
           "risk_aversion": 1.0,
           "turnover_limit": 1.0,
           "min_position_size": -0.04,
@@ -383,7 +375,7 @@
               -0.1,
               0.1
             ]
-          }
+          }          
         },
         "strategy_type": "systematic_strategy",
         "signal_source": "ml_cross_sectional"

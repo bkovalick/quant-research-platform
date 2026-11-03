@@ -1,7 +1,7 @@
 {
   "market_store_config": {
 	"tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-                "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX"
+                "NFLX", "MAS","KLAC", "IDXX", "CMS", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX"
             ],
     "start_date": "2005-01-01",
     "end_date": "2026-02-19",

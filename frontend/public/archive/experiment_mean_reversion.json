@@ -1,7 +1,7 @@
 {
   "market_store_config": {
 	"tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-                "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX"
+                "NFLX", "MAS","KLAC", "IDXX", "CMS", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX"
             ],
     "start_date": "2005-01-01",
     "end_date": "2026-02-19",
@@ -18,7 +18,7 @@
         "market_frequency": "d",
         "cash_allocation": 0.05,
         "universe_tickers": ["AAPL", "GOOGL", "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-            "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA"
+            "NFLX", "MAS","KLAC", "IDXX", "CMS", "APH", "TFC", "BIDU", "ZION", "V", "UA"
         ]        
       },
       "signals_config": {
