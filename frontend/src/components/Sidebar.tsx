@@ -21,6 +21,47 @@ function baseName(path: string) {
   return path.split(/[\\/]/).pop() ?? path
 }
 
+const SIGNAL_SOURCE_OPTIONS = [
+  ["risk_return", "Risk / Return"],
+  ["mean_reversion", "Mean Reversion"],
+  ["moving_average", "Moving Average"],
+  ["volatility_forecast", "Volatility Forecast"],
+  ["momentum", "Momentum"],
+  ["ml_cross_sectional", "Machine Learning"],
+  ["black_litterman", "Black Litterman"],
+  ["pairs_trading", "Pairs Trading"],
+  ["vix_basis", "VIX Basis"],
+] as const
+
+/**
+ * Which signal sources each strategy type can consume. Mirrors the isinstance
+ * checks in the backend strategies (src/domain/strategies/): an empty list means
+ * the strategy allocates without signals; a single entry means the signal is fixed.
+ */
+const STRATEGY_SIGNALS: Record<string, readonly string[]> = {
+  systematic_strategy: ["risk_return", "mean_reversion", "moving_average", "volatility_forecast",
+                        "momentum", "ml_cross_sectional", "black_litterman"],
+  mean_reversion_strategy: ["moving_average"],
+  pairs_trading_strategy: ["pairs_trading"],
+  vix_basis_strategy: ["vix_basis"],
+  fwp_strategy: [],
+  ewp_strategy: [],
+}
+const STRATEGY_TYPE_ORDER = Object.keys(STRATEGY_SIGNALS)
+
+const STRATEGY_TYPE_LABELS: Record<string, string> = {
+  systematic_strategy: "Systematic (optimizer)",
+  mean_reversion_strategy: "Mean reversion",
+  pairs_trading_strategy: "Pairs trading",
+  vix_basis_strategy: "VIX basis",
+  fwp_strategy: "Fixed weight",
+  ewp_strategy: "Equal weight",
+}
+
+function signalLabel(source: string) {
+  return SIGNAL_SOURCE_OPTIONS.find(([v]) => v === source)?.[1] ?? source
+}
+
 type Tab = "experiment" | "lab"
 
 export default function Sidebar({ setExperiment, experiment, pinnedNames }: any) {
@@ -105,9 +146,8 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     setEditedStrategies(structuredClone(merged.strategies))
     if (!append) setSelectedIdx(0)
 
+    // start/end dates in the JSON are for local Python runs; the UI's date fields win.
     const msc = merged.market_store_config
-    if (typeof msc.start_date === "string") setStartDate(msc.start_date)
-    if (typeof msc.end_date === "string") setEndDate(msc.end_date)
     if (typeof msc.benchmark === "string") setBenchmark(msc.benchmark)
     if (typeof msc.transaction_cost === "number") setTransactionCost(msc.transaction_cost)
     if (typeof msc.risk_free_rate === "number") setRiskFreeRate(msc.risk_free_rate)
@@ -255,27 +295,48 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     mean_reversion:      ["mean_reversion_window", "black_litterman"],
     momentum:            ["momentum_skip_periods", "black_litterman"],
     pairs_trading:       ["pairs_trading"],
+    vix_basis:           ["vix_basis"],
     ml_cross_sectional:  ["ml_signals_config", "black_litterman"],
     risk_return:         ["black_litterman"],
     moving_average:      ["black_litterman"],
     volatility_forecast: ["black_litterman"],
   }
 
-  const changeSignalSource = (newSource: string) => {
-    const updated = JSON.parse(JSON.stringify(editedStrategies))
-    const strat = updated[selectedIdx]
+  /** Mutates `strat`: set its signal source and drop config blocks that belong to other sources. */
+  const applySignalSource = (
+    strat: { rebalance_problem?: Record<string, unknown>; signals_config?: Record<string, unknown> },
+    newSource: string,
+  ) => {
     if (!strat.rebalance_problem) strat.rebalance_problem = {}
     strat.rebalance_problem.signal_source = newSource
 
     const sc = strat.signals_config ?? {}
     const keep = new Set(SIGNAL_CONFIG_KEYS[newSource] ?? [])
     const allSignalKeys = new Set(Object.values(SIGNAL_CONFIG_KEYS).flat())
-
     for (const key of Object.keys(sc)) {
       if (allSignalKeys.has(key) && !keep.has(key)) delete sc[key]
     }
-
     strat.signals_config = sc
+  }
+
+  const changeSignalSource = (newSource: string) => {
+    const updated = JSON.parse(JSON.stringify(editedStrategies))
+    applySignalSource(updated[selectedIdx], newSource)
+    setEditedStrategies(updated)
+  }
+
+  /** Switching strategy type also moves the signal onto one the new type accepts. */
+  const changeStrategyType = (newType: string) => {
+    const updated = JSON.parse(JSON.stringify(editedStrategies))
+    const strat = updated[selectedIdx]
+    if (!strat.rebalance_problem) strat.rebalance_problem = {}
+    strat.rebalance_problem.strategy_type = newType
+
+    const allowed = STRATEGY_SIGNALS[newType]
+    const current = strat.rebalance_problem.signal_source
+    if (allowed && allowed.length > 0 && !allowed.includes(current)) {
+      applySignalSource(strat, allowed[0])
+    }
     setEditedStrategies(updated)
   }
 
@@ -318,23 +379,21 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   })()
 
   const rebalanceOptions = ["daily", "weekly", "monthly", "quarterly"]
-  const strategyTypes = ["systematic_strategy","fwp_strategy","ewp_strategy", "pairs_trading_strategy"]
-  const signalSourceOptions = [
-    ["risk_return", "Risk / Return"],
-    ["mean_reversion", "Mean Reversion"],
-    ["moving_average", "Moving Average"],
-    ["volatility_forecast", "Volatility Forecast"],
-    ["momentum", "Momentum"],
-    ["ml_cross_sectional", "Machine Learning"],
-    ["black_litterman", "Black Litterman"],
-    ["pairs_trading", "Pairs Trading"],
-  ] as const
+  const currentStrategyType: string = currentStrategy?.rebalance_problem?.strategy_type ?? ""
+  // Keep an unrecognised type from a loaded file selectable instead of silently showing another one.
+  const strategyTypes = STRATEGY_TYPE_ORDER.includes(currentStrategyType) || !currentStrategyType
+    ? STRATEGY_TYPE_ORDER
+    : [...STRATEGY_TYPE_ORDER, currentStrategyType]
+  const allowedSignals = STRATEGY_SIGNALS[currentStrategyType]   // undefined = unknown type, no restriction
+  const signalAllowed = (source: string) => !allowedSignals || allowedSignals.includes(source)
+  const signalSourceOptions = SIGNAL_SOURCE_OPTIONS.filter(([value]) => signalAllowed(value))
 
   const inferredSignalSource = (() => {
     const explicit = currentStrategy?.rebalance_problem?.signal_source
     if (explicit) return explicit
     if (currentStrategy?.signals_config?.ml_signals_config) return "ml_cross_sectional"
     if (currentStrategy?.signals_config?.pairs_trading) return "pairs_trading"
+    if (currentStrategy?.signals_config?.vix_basis) return "vix_basis"
     if (currentStrategy?.signals_config?.mean_reversion_window !== undefined) return "mean_reversion"
     if (currentStrategy?.signals_config?.momentum_skip_periods !== undefined) return "momentum"
     if (currentStrategy?.signals_config?.black_litterman) return "black_litterman"
@@ -348,8 +407,17 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const hasMomentumSignals = currentStrategy?.signals_config?.momentum_skip_periods !== undefined
   const hasConstraints = !!currentStrategy?.rebalance_problem?.constraints
   const mean_reversion_method = currentStrategy?.signals_config?.mean_reversion_method ?? "rank_reversal"
-  const showMeanReversion = inferredSignalSource === "mean_reversion" || hasMeanReversionSignals
-  const blApplies = !!inferredSignalSource && inferredSignalSource !== "pairs_trading"
+  const usesSignals = !allowedSignals || allowedSignals.length > 0
+  const signalLocked = !!allowedSignals && allowedSignals.length === 1
+  // Pairs and VIX signals don't go through the Signals base class, so winsorizing has no effect on them.
+  const usesWinsorizing = !["pairs_trading", "vix_basis"].includes(inferredSignalSource)
+  const showMeanReversion = signalAllowed("mean_reversion") && (inferredSignalSource === "mean_reversion" || hasMeanReversionSignals)
+  const showMomentum = signalAllowed("momentum") && (inferredSignalSource === "momentum" || hasMomentumSignals)
+  const showPairs = signalAllowed("pairs_trading") && (inferredSignalSource === "pairs_trading" || hasPairsTrading)
+  const showMl = signalAllowed("ml_cross_sectional") && (inferredSignalSource === "ml_cross_sectional" || hasMlSignals)
+  // The Black-Litterman overlay is applied by the systematic strategy's optimizer only.
+  const blApplies = (currentStrategyType === "systematic_strategy" || !allowedSignals)
+    && !!inferredSignalSource && !["pairs_trading", "vix_basis"].includes(inferredSignalSource)
   const currentExperimentLabel = currentStrategy?.name
     ? `${currentStrategy.name} (${selectedIdx + 1} of ${editedStrategies.length})`
     : null
@@ -612,11 +680,11 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                   </Section>
                   
                   <Section title="Strategy Type">
-                    <Row label="Strategy" tooltip="Portfolio construction method: systematic (signal-driven), fwp (fixed weights), ewp (equal weight), pairs (statistical arbitrage)">
+                    <Row label="Strategy" tooltip="Portfolio construction method. Systematic uses a signal and the optimizer; fixed and equal weight allocate without signals; pairs, VIX basis and mean reversion each require their own signal.">
                       <select style={inputStyle}
-                        value={currentStrategy.rebalance_problem?.strategy_type ?? ""}
-                        onChange={(e) => updateField(["rebalance_problem", "strategy_type"], e.target.value)}>
-                        {strategyTypes.map(o => <option key={o} value={o}>{o}</option>)}
+                        value={currentStrategyType}
+                        onChange={(e) => changeStrategyType(e.target.value)}>
+                        {strategyTypes.map(o => <option key={o} value={o}>{STRATEGY_TYPE_LABELS[o] ?? o}</option>)}
                       </select>
                     </Row>
                   </Section>
@@ -644,20 +712,46 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                     </Row>
                   </Section>
                   <Section title="Signals">
-                    {currentStrategy ? (
+                    {currentStrategy && !usesSignals ? (
+                      <div style={signalNote}>
+                        {STRATEGY_TYPE_LABELS[currentStrategyType] ?? currentStrategyType} strategies allocate
+                        without a signal, so there is nothing to configure here.
+                      </div>
+                    ) : currentStrategy ? (
                     <>
-                    <Row label="Signal" tooltip="Alpha signal source driving stock selection and portfolio weighting">
-                      <select
-                        style={inputStyle}
-                        value={inferredSignalSource}
-                        onChange={(e) => changeSignalSource(e.target.value)}
-                      >
-                        {signalSourceOptions.map(([value, label]) => (
-                          <option key={value} value={value}>{label}</option>
-                        ))}
-                      </select>
+                    <Row label="Signal" tooltip={signalLocked
+                      ? "This strategy type only works with one signal, so it is fixed."
+                      : "Alpha signal source driving stock selection and portfolio weighting"}>
+                      {signalLocked ? (
+                        <div style={lockedValue}>
+                          <span>{signalLabel(allowedSignals![0])}</span>
+                          <span style={lockedHint}>required</span>
+                        </div>
+                      ) : (
+                        <select
+                          style={inputStyle}
+                          value={inferredSignalSource}
+                          onChange={(e) => changeSignalSource(e.target.value)}
+                        >
+                          {!signalAllowed(inferredSignalSource) && (
+                            <option value={inferredSignalSource} disabled>
+                              {signalLabel(inferredSignalSource)} (not supported)
+                            </option>
+                          )}
+                          {signalSourceOptions.map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                      )}
                     </Row>
 
+                    {inferredSignalSource === "vix_basis" && (
+                      <div style={signalNote}>
+                        Thresholds and tickers live in <code>signals_config.vix_basis</code>; edit them with Raw JSON.
+                      </div>
+                    )}
+
+                    {usesWinsorizing && (<>
                     <Row label="Winsorize" tooltip="Clip extreme signal values to reduce the influence of outliers before ranking">
                       <select
                         style={inputStyle}
@@ -687,6 +781,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                         </Row>
                       </>
                     )}
+                    </>)}
 
                     {showMeanReversion && (
                       <Row label="MR Method" tooltip="rank_reversal: cross-sectional rank of short-window returns (losers up, winners down). bollinger: negative rolling z-score, which keeps the size of the deviation.">
@@ -742,7 +837,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                       </div>
                     )}                    
 
-                    {(inferredSignalSource === "momentum" || hasMomentumSignals) && (
+                    {showMomentum && (
                       <Row label="Mom Skip" tooltip="Periods to skip at the recent end when computing momentum, avoiding short-term reversal (e.g. 1 = skip last month)">
                         <input
                           type="number"
@@ -753,7 +848,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                       </Row>
                     )}
 
-                    {(inferredSignalSource === "pairs_trading" || hasPairsTrading) && (
+                    {showPairs && (
                         <div style={blBlock}>
                           <Row label="Lookback Horizon" tooltip="Rolling window length (in periods) for estimating pair relationships and spread statistics">
                             <input type="number" step={0.1} style={inputStyle}
@@ -789,7 +884,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                     )}
 
                     
-                    {(inferredSignalSource === "ml_cross_sectional" || hasMlSignals) && (
+                    {showMl && (
                       <>
                         <div style={blHeader}>
                           <span style={blLabel}>Machine Learning</span>
@@ -1201,7 +1296,14 @@ const tickerChipActive: CSSProperties = { ...tickerChip, background: "#0f2b14", 
 const smallBtn: CSSProperties = { background: "none", border: "1px solid #30363d", borderRadius: 3, color: "#8b949e", fontSize: 10, cursor: "pointer", padding: "2px 6px" }
 const loadButton: CSSProperties = { padding: "8px 12px", background: "#1f6feb", border: "none", color: "white", cursor: "pointer", borderRadius: 6, fontWeight: 600, fontSize: 12, width: "100%" }
 const exportButton: CSSProperties = { padding: "8px 12px", background: "none", border: "1px solid #238636", color: "#3fb950", cursor: "pointer", borderRadius: 6, fontWeight: 600, fontSize: 12, width: "100%" }
-const sourceList: CSSProperties = { listStyle: "none", margin: "6px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 2 }
+const signalNote: CSSProperties = { fontSize: 10.5, color: "#8b949e", lineHeight: 1.5, padding: "2px 0" }
+const lockedValue: CSSProperties = {
+  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+  padding: "3px 6px", fontSize: 11, color: "#e6edf3",
+  border: "1px solid #21262d", borderRadius: 4, background: "#0d1117",
+}
+const lockedHint: CSSProperties = { fontSize: 9.5, color: "#6e7681", textTransform: "uppercase", letterSpacing: "0.4px" }
+const sourceList: CSSProperties ={ listStyle: "none", margin: "6px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 2 }
 const sourceItem: CSSProperties = { display: "flex", justifyContent: "space-between", gap: 8, fontSize: 10.5, color: "#8b949e" }
 const sourceName: CSSProperties = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
 const sourceCount: CSSProperties = { fontVariantNumeric: "tabular-nums", color: "#6e7681", flexShrink: 0 }

@@ -30,6 +30,8 @@ export interface MergeResult {
 }
 
 const IGNORED_TOP_LEVEL = new Set(["strategies", "market_store_config", "_description"])
+// The UI's date fields override these, so a conflict between files isn't worth a note.
+const SILENT_MARKET_FIELDS = new Set(["start_date", "end_date"])
 
 export function mergeStrategySets(
   files: StrategySetFile[],
@@ -62,7 +64,8 @@ export function mergeStrategySets(
     const msc: StrategySet["market_store_config"] = json.market_store_config ?? {}
     for (const [key, value] of Object.entries(msc)) {
       if (key === "tickers") continue
-      takeFirst(merged.market_store_config, key, value, key, label, fieldOrigin, warnings, "msc.")
+      takeFirst(merged.market_store_config, key, value, key, label, fieldOrigin,
+                SILENT_MARKET_FIELDS.has(key) ? [] : warnings, "msc.")
     }
     for (const t of msc.tickers ?? []) {
       if (!tickers.includes(t)) tickers.push(t)
