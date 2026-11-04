@@ -1,4 +1,4 @@
-import { Component, useEffect, useRef, useState } from "react"
+import { Component, useEffect, useState } from "react"
 import type { CSSProperties, ReactNode } from "react"
 
 import NavRail from "./components/NavRail"
@@ -24,18 +24,18 @@ export default function App() {
   const runs: any[] = experiment?.strategy_runs ?? []     // RUNS-SOURCE
   const pinnedRuns = runs.filter((r: any) => pinnedIds.has(r.run_id))
 
-  // When a suite finishes (runs appear or change), close the Lab and show Results.
-  const prevRunCount = useRef(0)
+  // When a suite finishes (a new experiment arrives), close the Lab and show Results.
+  // Keyed on the experiment, not the run count: re-running the same number of
+  // strategies must still replace the selected run with the fresh one.
   useEffect(() => {
-    if (runs.length > 0 && runs.length !== prevRunCount.current) {
+    if (runs.length > 0) {
       setLabOpen(false)
       setPage("results")
       if (!selectedRun || !runs.some(r => r.run_id === selectedRun.run_id)) {
         setSelectedRun(runs[0])
       }
     }
-    prevRunCount.current = runs.length
-  }, [runs.length])   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [experiment])   // eslint-disable-line react-hooks/exhaustive-deps
 
   const togglePin = (run: any) => {
     setPinnedIds(prev => {

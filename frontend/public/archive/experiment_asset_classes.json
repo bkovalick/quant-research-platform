@@ -1,7 +1,7 @@
 {
   "market_store_config": {
 	"tickers": ["AAPL", "GOOGL",  "MSFT", "NVDA", "TSLA", "VZ", "AGG", "SPAB", "SBUX", "UHS", "VTRS", "NWSA",
-              "NFLX", "MAS","KLAC", "IDXX", "CMS", "HOLX", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX",
+              "NFLX", "MAS","KLAC", "IDXX", "CMS", "APH", "TFC", "BIDU", "ZION", "V", "UA", "^IRX",
               "SPY", "IVW", "IWM", "SHY", "IJH", "EMB", "XLE", "IWD", "IWF", "EFA", "EEM", "TLT", "IEF", 
               "LQD", "HYG", "TIP", "GLD", "PDBC", "VNQ", "XLU", "XLV"               
             ],
@@ -60,9 +60,8 @@
         "constraints": {
             "concentration_strength": 1,
             "max_return": 0.25,
-            "risk_aversion": 0.10,
-            "optimizer_vol_constraint": 0.20,
-            "turnover_limit": 0.30,
+            "risk_aversion": 1.0,
+            "turnover_limit": 1.0,
             "min_position_size": 0.0,
             "max_position_size": 0.35,  
             "max_positions": 50,

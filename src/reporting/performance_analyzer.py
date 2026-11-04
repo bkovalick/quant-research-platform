@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pandas as pd
 import numpy as np
 
@@ -11,16 +13,12 @@ class PerformanceAnalyzer:
                 portfolio: Portfolio,
                 market_store_config: MarketStoreConfig,
                 market_state_config: MarketStateConfig,
-                benchmark_index: pd.Series) -> BacktestResult:
+                benchmark_returns: Optional[pd.Series]) -> BacktestResult:
         """ Build each piece of the backtest result """
         self._portfolio = portfolio
         self._market_store_config = market_store_config
-        self._market_state_config = market_state_config
-        self._benchmark_index = benchmark_index
         self._annual_trading_days = market_state_config.annual_trading_days
-        self._market_frequency = market_state_config.market_frequency
-        self._rule = {"d": "B", "w": "W-FRI", "m": "ME"}[self._market_frequency]
-        self._cached_benchmark_returns = self._compute_benchmark_returns()
+        self._cached_benchmark_returns = self._align_benchmark_returns(benchmark_returns)
         performance_metrics = self._calculate_performance_metrics()
         performance_series = self._build_performance_series(performance_metrics)
         summary = self._build_summary(performance_metrics)
@@ -29,12 +27,12 @@ class PerformanceAnalyzer:
             series=performance_series
         )
     
-    def _compute_benchmark_returns(self) -> pd.Series:
+    def _align_benchmark_returns(self, benchmark_returns: Optional[pd.Series]) -> pd.Series:
         portfolio_returns = self._portfolio.returns
         if portfolio_returns is None or len(portfolio_returns) == 0:
             raise ValueError("Portfolio Returns must exist in order to reindex Benchmark")
-        benchmark_resampled = self._benchmark_index.resample(self._rule).last()
-        benchmark_returns = benchmark_resampled.pct_change(fill_method=None).fillna(0)
+        if benchmark_returns is None:
+            raise ValueError("Benchmark returns must exist in order to analyze performance")
         return benchmark_returns.reindex(portfolio_returns.index).fillna(0)
 
     @property
@@ -87,6 +85,12 @@ class PerformanceAnalyzer:
             "rolling_returns": self._calculate_rolling_returns(portfolio_returns, self._annual_trading_days),
             "rolling_volatility": self._calculate_rolling_volatility(portfolio_returns, self._annual_trading_days),
             "rolling_sharpe_ratio": self._calculate_rolling_sharpe_ratio(portfolio_returns, risk_free_rate, self._annual_trading_days),
+            "rolling_alpha": self._calculate_rolling_alpha(
+                portfolio_returns,
+                benchmark_returns,
+                risk_free_rate,
+                self._annual_trading_days,
+            ),
             "rolling_drawdown": rolling_dd,
             "rolling_turnover": self._calculate_rolling_turnover(portfolio_turnover, self._annual_trading_days),
             "return": annualized_return,
@@ -180,6 +184,26 @@ class PerformanceAnalyzer:
         sharpe = ((rolling_mean - rf_per_period) / rolling_std) * np.sqrt(self._annual_trading_days)
         return sharpe.replace([np.inf, -np.inf], np.nan)
 
+    def _calculate_rolling_alpha(
+        self,
+        portfolio_returns: pd.Series,
+        benchmark_returns: pd.Series,
+        risk_free_rate: float,
+        window: int,
+    ) -> pd.Series:
+        """Calculate annualized rolling Jensen's alpha from portfolio and benchmark returns."""
+        rf_per_period = risk_free_rate / self._annual_trading_days
+        portfolio_excess = portfolio_returns - rf_per_period
+        benchmark_excess = benchmark_returns - rf_per_period
+        rolling_covariance = portfolio_excess.rolling(window=window).cov(benchmark_excess)
+        rolling_benchmark_variance = benchmark_excess.rolling(window=window).var()
+        rolling_beta = rolling_covariance / rolling_benchmark_variance
+        rolling_alpha = (
+            portfolio_excess.rolling(window=window).mean()
+            - rolling_beta * benchmark_excess.rolling(window=window).mean()
+        ) * self._annual_trading_days
+        return rolling_alpha.replace([np.inf, -np.inf], np.nan)
+
     def _calculate_rolling_turnover(self, turnover: pd.Series, window: int):
         """Calculate rolling annualised turnover over a specified window."""
         return turnover.rolling(window=window).mean() * self._annual_trading_days
@@ -233,6 +257,7 @@ class PerformanceAnalyzer:
             "rolling_returns": performance_metrics["rolling_returns"],
             "rolling_volatility": performance_metrics["rolling_volatility"],
             "rolling_sharpe_ratio": performance_metrics["rolling_sharpe_ratio"],
+            "rolling_alpha": performance_metrics["rolling_alpha"],
             "rolling_drawdown": performance_metrics["rolling_drawdown"],
             "rolling_turnover": performance_metrics["rolling_turnover"]
         }

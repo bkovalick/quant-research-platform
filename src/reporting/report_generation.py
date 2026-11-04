@@ -187,12 +187,18 @@ class ExcelGenerator:
             if "rolling_returns" in series:
                 try:
                     rr = deserialize_series(series["rolling_returns"])
+                    rolling_alpha = (
+                        deserialize_series(series["rolling_alpha"]).values
+                        if "rolling_alpha" in series
+                        else np.full(len(rr), np.nan)
+                    )
                     rolling_df = pd.DataFrame({
                         "Date": pd.to_datetime(rr.index),
                         "Strategy": strategy_name,
                         "RollingReturns": rr.values,
                         "RollingVolatility": deserialize_series(series["rolling_volatility"]).values,
                         "RollingSharpe": deserialize_series(series["rolling_sharpe_ratio"]).values,
+                        "RollingAlpha": rolling_alpha,
                         "RollingDrawdown": deserialize_series(series["rolling_drawdown"]).values,
                         "RollingTurnover": deserialize_series(series["rolling_turnover"]).values,
                     })

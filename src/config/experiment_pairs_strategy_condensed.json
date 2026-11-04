@@ -101,7 +101,6 @@
       "T",
       "VZ",
       "BIDU",
-      "EA",
       "CHTR",
       "NWSA",
       "XOM",
@@ -139,7 +138,6 @@
       "EQIX",
       "SPG",
       "ARE",
-      "AVB",
       "BXP",
       "CBRE",
       "IVW",
@@ -185,8 +183,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "None",
         "rebalance_frequency": "daily",
         "apply_market_caps": false,

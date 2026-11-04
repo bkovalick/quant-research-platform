@@ -16,6 +16,7 @@ class ConstraintsConfig:
     optimizer_vol_constraint: Optional[float] = None
     max_long: Optional[float] = None
     max_short: Optional[float] = None
+    max_beta_exposure: Optional[float] = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "ConstraintsConfig":
@@ -32,6 +33,7 @@ class ConstraintsConfig:
             optimizer_vol_constraint=d.get("optimizer_vol_constraint", None),
             max_long=d.get("max_long", None),
             max_short=d.get("max_short", None),
+            max_beta_exposure=d.get("max_beta_exposure", None),
         )
 
 @dataclass(frozen=True)

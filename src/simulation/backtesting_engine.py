@@ -101,6 +101,9 @@ class BacktestingEngine(BacktestingEngineInterface):
             rebalance_context = self._build_rebalance_context(cursor, signals, rebalance_problem)
 
             rebalance_solution = self.strategy.rebalance(rebalance_context)
+            leverage = getattr(rebalance_problem, "leverage", 1.0)
+            if leverage != 1.0:
+                rebalance_solution.target_weights = rebalance_solution.target_weights * leverage
             target_weights = rebalance_solution.target_weights if type(rebalance_solution.target_weights) is np.ndarray \
                 else rebalance_solution.target_weights.values   
             if np.allclose(target_weights, prev_weights, atol=1e-10):

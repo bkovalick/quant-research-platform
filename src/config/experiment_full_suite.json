@@ -41,7 +41,6 @@
       "AMGN",
       "BIIB",
       "IDXX",
-      "HOLX",
       "UHS",
       "JPM",
       "BAC",
@@ -102,7 +101,6 @@
       "T",
       "VZ",
       "BIDU",
-      "EA",
       "CHTR",
       "NWSA",
       "XOM",
@@ -140,7 +138,6 @@
       "EQIX",
       "SPG",
       "ARE",
-      "AVB",
       "BXP",
       "CBRE",
       "AGG",
@@ -192,7 +189,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -253,7 +249,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -291,7 +286,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -417,7 +411,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -478,7 +471,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -516,7 +508,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -533,8 +524,6 @@
         "momentum_skip_periods": 21
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -542,9 +531,8 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.3,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": 0.0,
           "max_position_size": 0.1,
           "asset_class_constraints": {
@@ -647,7 +635,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -708,7 +695,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -746,7 +732,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -763,8 +748,6 @@
         "momentum_skip_periods": 21
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -772,9 +755,8 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.3,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": 0.0,
           "max_position_size": 0.1,
           "asset_class_constraints": {
@@ -877,7 +859,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -938,7 +919,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -976,7 +956,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -993,8 +972,6 @@
         "momentum_skip_periods": 21
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -1002,9 +979,8 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.3,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": 0.0,
           "max_position_size": 0.1,
           "asset_class_constraints": {
@@ -1106,7 +1082,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -1167,7 +1142,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -1205,7 +1179,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -1229,8 +1202,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -1238,9 +1209,8 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.3,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": 0.0,
           "max_position_size": 0.1,
           "asset_class_constraints": {
@@ -1342,7 +1312,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -1403,7 +1372,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -1441,7 +1409,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -1465,8 +1432,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -1474,9 +1439,8 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.3,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": 0.0,
           "max_position_size": 0.1,
           "asset_class_constraints": {
@@ -1579,7 +1543,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -1640,7 +1603,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -1678,7 +1640,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -1719,8 +1680,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -1728,9 +1687,8 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.3,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": 0.0,
           "max_position_size": 0.1,
           "asset_class_constraints": {
@@ -1833,7 +1791,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -1894,7 +1851,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -1932,7 +1888,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -1980,8 +1935,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -1989,9 +1942,8 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.3,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": 0.0,
           "max_position_size": 0.1,
           "asset_class_constraints": {
@@ -2094,7 +2046,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -2155,7 +2106,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -2193,7 +2143,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -2229,8 +2178,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -2238,9 +2185,8 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.3,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": 0.0,
           "max_position_size": 0.1,
           "asset_class_constraints": {
@@ -2343,7 +2289,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -2404,7 +2349,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -2442,7 +2386,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -2485,8 +2428,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -2494,9 +2435,8 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.3,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": 0.0,
           "max_position_size": 0.1,
           "asset_class_constraints": {
@@ -2599,7 +2539,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -2660,7 +2599,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -2698,7 +2636,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE",
           "AGG",
@@ -2744,8 +2681,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -2753,9 +2688,8 @@
         "constraints": {
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.3,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": 0.0,
           "max_position_size": 0.1,
           "asset_class_constraints": {
@@ -2858,7 +2792,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -2919,7 +2852,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -2957,7 +2889,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE"
         ]
@@ -2998,8 +2929,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -3009,9 +2938,8 @@
           "max_short": 0.3,
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.2,
-          "turnover_limit": 0.5,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": -0.04,
           "max_position_size": 0.06,
           "asset_class_constraints": {
@@ -3110,7 +3038,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -3171,7 +3098,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -3209,7 +3135,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE"
         ]
@@ -3243,8 +3168,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_max_return_objective": true,
@@ -3254,9 +3177,8 @@
           "max_short": 1.0,
           "concentration_strength": 1,
           "max_return": 0.25,
-          "risk_aversion": 2.5,
-          "optimizer_vol_constraint": 0.12,
-          "turnover_limit": 0.6,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
           "min_position_size": -0.04,
           "max_position_size": 0.04,
           "sector_constraints": {
@@ -3349,7 +3271,6 @@
           "AMGN",
           "BIIB",
           "IDXX",
-          "HOLX",
           "UHS",
           "JPM",
           "BAC",
@@ -3410,7 +3331,6 @@
           "T",
           "VZ",
           "BIDU",
-          "EA",
           "CHTR",
           "NWSA",
           "XOM",
@@ -3448,7 +3368,6 @@
           "EQIX",
           "SPG",
           "ARE",
-          "AVB",
           "BXP",
           "CBRE"
         ]
@@ -3464,8 +3383,6 @@
         }
       },
       "rebalance_problem": {
-        "starting_portfolio_value": 100000,
-        "cash_infusion": 0,
         "optimizer_type": "None",
         "rebalance_frequency": "weekly",
         "apply_market_caps": false,

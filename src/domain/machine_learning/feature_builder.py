@@ -13,7 +13,6 @@ class FeatureBuilder:
     """
     def __init__(self, 
                  market_state: MarketState,
-                 benchmark: pd.Series,
                  market_frequency: str = "d",
                  features: Optional[List[str]] = None):
         features = features or []
@@ -21,8 +20,9 @@ class FeatureBuilder:
         self.prices = market_state.signal_prices.copy()
         self.returns = market_state.signal_returns.copy()
         self.exogenous_universe = market_state.exogenous_universe.copy()
-        self.benchmark = benchmark.copy()
-        self.benchmark_returns = benchmark.pct_change(fill_method=None).fillna(0)
+        if market_state.market_returns is None:
+            raise ValueError("Benchmark returns are required to build market features")
+        self.market_returns = market_state.market_returns.copy()
         self.lookbacks = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
         self.reversal_window = self.lookbacks.get("1w", 1)
         self.features_cache = None
@@ -31,21 +31,13 @@ class FeatureBuilder:
 
     def precompute(self, horizon: int = 21):
         """
-        Precompute features for all dates and cache them in memory for
-        fast retrieval during training/inference.
-
-        All rolling computations are vectorized over the full history first
-        (one O(T) pass each), then a single O(T) loop assembles per-date
-        feature matrices — avoiding the O(T²) cost of growing .loc[:date]
-        slices inside the loop.
+        Precompute features for all dates and cache them in memory for fast retrieval during training/inference.
         """
         self.precomputed_horizon = horizon
         w = self.lookbacks
         px = self.prices
         rets = self.returns
-        mret = self.benchmark_returns.reindex(rets.index).fillna(0)
-        
-        # vectorized rolling features
+        mret = self.market_returns.reindex(rets.index).fillna(0)
         mom_1m = px / px.shift(w["1m"]) - 1
         mom_12m = px.shift(w["1m"]) / px.shift(w["1y"]) - 1
         vol_1m = rets.rolling(w["1m"]).std()
@@ -53,7 +45,6 @@ class FeatureBuilder:
         reversal = -(px / px.shift(self.reversal_window) - 1)
         max_ret = rets.rolling(w["1m"]).max()
         high_52w = px / px.rolling(w["1y"]).max()
-        
         market_var_1m = mret.rolling(w["1m"]).var()
         market_var_1y = mret.rolling(w["1y"]).var()
         beta_1m = rets.rolling(w["1m"]).cov(mret).div(market_var_1m.replace(0, np.nan), axis=0)
@@ -66,42 +57,11 @@ class FeatureBuilder:
         else:
             high_vol_series = pd.Series(0.0, index=px.index)
 
-        # forward returns
-        fwd_returns_cache = {}
-        for i in range(len(px) - horizon):
-            fwd = px.iloc[i + horizon] / px.iloc[i] - 1
-            if not fwd.empty:
-                fwd_returns_cache[px.index[i]] = fwd
-
-        # assemble per-date feature matrices
-        features_cache = {}
-        for date in px.index[w["1y"]:]:
-            hv = float(high_vol_series.get(date, 0.0))
-            feat = pd.DataFrame({
-                "mom_1m": mom_1m.loc[date],
-                "mom_12m": mom_12m.loc[date],
-                "vol_1m":  vol_1m.loc[date],
-                "vol_3m":  vol_3m.loc[date],
-                "reversal": reversal.loc[date],
-                "mom_x_vol_regime": mom_12m.loc[date] * (1 - hv),
-                "reversal_x_vol_regime": reversal.loc[date] * hv,
-                "max_return": max_ret.loc[date],
-                "high_52w": high_52w.loc[date],
-                "beta_1m": beta_1m.loc[date],
-                "beta_1y": beta_1y.loc[date],
-                "idiosyncratic_vol": idiosyncratic_vol.loc[date]
-            })
-
-            feat = feat.rank(axis=0, pct=True).replace([np.inf, -np.inf], np.nan)
-            feat = feat.fillna(0.5)
-            if self.features:
-                feat = feat[self.features]
-
-            if not feat.empty:
-                features_cache[date] = feat
-
-        self.features_cache = features_cache
-        self.forward_returns_cache = fwd_returns_cache
+        self.features_cache = self._cache_features(px, w, high_vol_series, 
+                                                   mom_1m, mom_12m, vol_1m, vol_3m,
+                                                   reversal, max_ret, high_52w,
+                                                   beta_1m, beta_1y, idiosyncratic_vol)
+        self.forward_returns_cache = self._cache_forward_returns(px, self.precomputed_horizon)
 
     def build(self, date: pd.Timestamp) -> pd.DataFrame:
         """
@@ -121,7 +81,7 @@ class FeatureBuilder:
         """
         px   = self.prices.loc[:date]
         rets = self.returns.loc[:date]
-        market_rets = self.benchmark_returns.reindex(rets.index).fillna(0)
+        market_rets = self.market_returns.reindex(rets.index).fillna(0)
         vix_prices = self.exogenous_universe["^VIX"].loc[:date] \
             if "^VIX" in self.exogenous_universe else pd.Series(dtype=float)
         high_vol = self._compute_high_vol(vix_prices)
@@ -172,6 +132,57 @@ class FeatureBuilder:
             return pd.Series(dtype=float)
         fwd = px.iloc[idx + horizon] / px.iloc[idx] - 1
         return fwd
+
+    def _cache_features(self,
+                        px: pd.DataFrame,
+                        w: dict,
+                        high_vol_series: pd.Series,
+                        mom_1m: pd.Series,
+                        mom_12m: pd.Series,
+                        vol_1m: pd.Series,
+                        vol_3m: pd.Series,
+                        reversal: pd.Series,
+                        max_ret: pd.Series,
+                        high_52w: pd.Series,
+                        beta_1m: pd.Series,
+                        beta_1y: pd.Series,
+                        idiosyncratic_vol: pd.Series) -> dict:
+        features_cache = {}
+        for date in px.index[w["1y"]:]:
+            hv = float(high_vol_series.get(date, 0.0))
+            feat = pd.DataFrame({
+                "mom_1m": mom_1m.loc[date],
+                "mom_12m": mom_12m.loc[date],
+                "vol_1m":  vol_1m.loc[date],
+                "vol_3m":  vol_3m.loc[date],
+                "reversal": reversal.loc[date],
+                "mom_x_vol_regime": mom_12m.loc[date] * (1 - hv),
+                "reversal_x_vol_regime": reversal.loc[date] * hv,
+                "max_return": max_ret.loc[date],
+                "high_52w": high_52w.loc[date],
+                "beta_1m": beta_1m.loc[date],
+                "beta_1y": beta_1y.loc[date],
+                "idiosyncratic_vol": idiosyncratic_vol.loc[date]
+            })
+
+            feat = feat.rank(axis=0, pct=True).replace([np.inf, -np.inf], np.nan)
+            feat = feat.fillna(0.5)
+            if self.features:
+                feat = feat[self.features]
+
+            if not feat.empty:
+                features_cache[date] = feat
+        return features_cache
+
+    def _cache_forward_returns(self,
+                              px: pd.DataFrame,
+                              horizon: int) -> dict:
+        fwd_returns_cache = {}
+        for i in range(len(px) - horizon):
+            fwd = px.iloc[i + horizon] / px.iloc[i] - 1
+            if not fwd.empty:
+                fwd_returns_cache[px.index[i]] = fwd
+        return fwd_returns_cache
     
     def _compute_high_vol(self, vix_prices: pd.Series) -> float:
         if vix_prices.empty:
@@ -191,7 +202,6 @@ class FeatureBuilder:
         )
 
         market_variance = market_returns.iloc[-window:].var()
-
         if market_variance == 0:
             return pd.Series(np.nan, index=stock_returns.columns)
         

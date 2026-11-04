@@ -1,5 +1,8 @@
 import numpy as np
-import uuid, logging, multiprocessing, pandas as pd
+import pandas as pd
+import uuid
+import logging
+import multiprocessing 
 import json
 import os
 from datetime import datetime
@@ -90,9 +93,9 @@ def build_market_state_config(strategy_cfg: dict) -> MarketStateConfig:
     if not cfg: raise ValueError("Error: Market state configuration must be present to run a backtest")
     return MarketStateConfig.from_dict(cfg)
 
-def build_signals_factory(strategy_cfg: dict, market_state: MarketState, benchmark: pd.Series) -> SignalFactory:
+def build_signals_factory(strategy_cfg: dict, market_state: MarketState) -> SignalFactory:
     signal_config = build_signal_config(strategy_cfg)
-    signals_factory = SignalFactory(signal_config, market_state, benchmark)
+    signals_factory = SignalFactory(signal_config, market_state)
     return signals_factory
 
 def build_tax_lot_ledger(rebalance_problem) -> Optional[TaxLotLedger]:
@@ -114,16 +117,26 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
     optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type)
     tax_lot_ledger = build_tax_lot_ledger(rebalance_problem)
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
-    benchmark = market_store.prices[market_store_config.benchmark]
-    signals_factory = build_signals_factory(strategy_cfg, market_state, benchmark)
+    signals_factory = build_signals_factory(strategy_cfg, market_state)
     portfolio = Portfolio(
         financing_rate=market_store_config.risk_free_rate + rebalance_problem.financing_spread,
         periods_per_year=market_state_config.annual_trading_days
     )
     
-    run = BacktestingEngine(portfolio, strategy, market_state, signals_factory, tax_lot_ledger).run_backtest(rebalance_problem)
+    run = BacktestingEngine(
+        portfolio, 
+        strategy, 
+        market_state, 
+        signals_factory, 
+        tax_lot_ledger
+    ).run_backtest(rebalance_problem)
     
-    portfolio_results = PerformanceAnalyzer().compute(run.portfolio, market_store_config, market_state_config, benchmark)
+    portfolio_results = PerformanceAnalyzer().compute(
+        run.portfolio,
+        market_store_config,
+        market_state_config,
+        market_state.market_returns,
+    )
 
     stats = [
         monitor.analyze()
@@ -210,13 +223,12 @@ class ExperimentRunner:
         dates = first.result.series["portfolio_returns"].index
 
         store = get_market_store(m_cfg)
-        bench_prices = store.prices[m_cfg.benchmark]
-        rule = {"d": "B", "w": "W-FRI", "m": "ME"}[state_cfg.market_frequency]
-        bench_returns = (bench_prices.resample(rule).last()
-                         .pct_change(fill_method=None).fillna(0)
-                         .reindex(dates).fillna(0))
+        market_state = MarketState(store, state_cfg)
+        if market_state.market_returns is None:
+            raise ValueError("Benchmark returns are required to build the benchmark run")
+        bench_returns = market_state.market_returns.reindex(dates).fillna(0)
 
-        result = self._benchmark_result(m_cfg, state_cfg, bench_returns, bench_prices, dates)
+        result = self._benchmark_result(m_cfg, state_cfg, bench_returns, dates)
         return StrategyRun(
             run_id=str(uuid.uuid4()),
             strategy_name=m_cfg.benchmark,
@@ -230,7 +242,6 @@ class ExperimentRunner:
                           market_store_config: MarketStoreConfig,
                           market_state_config: MarketStateConfig, 
                           benchmark_returns: pd.Series,
-                          benchmark_prices: pd.Series, 
                           dates: pd.DatetimeIndex) -> BacktestResult:
         """Compute benchmark results for comparison."""
         benchmark_name = market_store_config.benchmark
@@ -241,7 +252,7 @@ class ExperimentRunner:
         portfolio.turnover = pd.Series(0.0, index=dates)
         analyzer = PerformanceAnalyzer()
         return analyzer.compute(
-            portfolio, market_store_config, market_state_config, benchmark_prices
+            portfolio, market_store_config, market_state_config, benchmark_returns
         )        
 
 if __name__ == "__main__":

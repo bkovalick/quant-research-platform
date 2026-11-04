@@ -3,7 +3,7 @@ from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
-from signals.moving_average_signals import MovingAverageSignals
+from domain.signals.moving_average_signals import MovingAverageSignals
 
 import numpy as np
 import pandas as pd
