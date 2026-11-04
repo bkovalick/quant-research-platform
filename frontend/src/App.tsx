@@ -12,22 +12,39 @@ import DownloadReport from "./components/DownloadReport"
 import AttributionPage from "./components/AttributionPage"
 import type { DateWindow } from "./utils/metricsUtils"
 
+/** The fields App relies on; the rest of a strategy run passes through untouched. */
+interface Run { run_id: string; strategy_name: string; [key: string]: unknown }
+
 export default function App() {
   const [experiment, setExperiment] = useState<any>(null)
   const [page, setPage] = useState<Page>("results")
   const [labOpen, setLabOpen] = useState(true)   // first visit: the Lab is the invitation
 
   const [selectedRun, setSelectedRun] = useState<any>(null)
-  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set())
+  // Pinned runs are held as snapshots, not ids into the current experiment, so
+  // they survive the next run: the Lab skips them and their old result stays on
+  // the Results page alongside the new runs.
+  const [pinnedRuns, setPinnedRuns] = useState<Run[]>([])
   const [dateWindow, setDateWindow] = useState<DateWindow | null>(null)
 
-  const runs: any[] = experiment?.strategy_runs ?? []     // RUNS-SOURCE
-  const pinnedRuns = runs.filter((r: any) => pinnedIds.has(r.run_id))
+  const experimentRuns: Run[] = experiment?.strategy_runs ?? []
+  const experimentRunIds = new Set(experimentRuns.map(r => r.run_id))
+  const carriedOver = pinnedRuns.filter(r => !experimentRunIds.has(r.run_id))
+  const runs: Run[] = [...experimentRuns, ...carriedOver]     // RUNS-SOURCE
+  const pinnedIds = new Set(pinnedRuns.map(r => r.run_id))
+  const pinnedNames = new Set(pinnedRuns.map(r => r.strategy_name))
 
   // When a suite finishes (a new experiment arrives), close the Lab and show Results.
   // Keyed on the experiment, not the run count: re-running the same number of
   // strategies must still replace the selected run with the fresh one.
   useEffect(() => {
+    // A pinned run whose name reappears in the new experiment has been superseded
+    // (in practice only the benchmark, which is rebuilt every run): drop the pin
+    // rather than show two rows with the same name.
+    const newNames = new Set(experimentRuns.map(r => r.strategy_name))
+    setPinnedRuns(prev => prev.filter(r =>
+      experimentRunIds.has(r.run_id) || !newNames.has(r.strategy_name)))
+
     if (runs.length > 0) {
       setLabOpen(false)
       setPage("results")
@@ -37,12 +54,10 @@ export default function App() {
     }
   }, [experiment])   // eslint-disable-line react-hooks/exhaustive-deps
 
-  const togglePin = (run: any) => {
-    setPinnedIds(prev => {
-      const next = new Set(prev)
-      next.has(run.run_id) ? next.delete(run.run_id) : next.add(run.run_id)
-      return next
-    })
+  const togglePin = (run: Run) => {
+    setPinnedRuns(prev => prev.some(r => r.run_id === run.run_id)
+      ? prev.filter(r => r.run_id !== run.run_id)
+      : [...prev, run])
   }
 
   return (
@@ -59,8 +74,7 @@ export default function App() {
         onClose={() => setLabOpen(false)}
         experiment={experiment}
         setExperiment={setExperiment}
-        pinnedRuns={pinnedRuns}
-        onClearPinned={() => setPinnedIds(new Set())}
+        pinnedNames={pinnedNames}
       />
 
       <main style={main}>

@@ -15,6 +15,7 @@ export default function RunProgress({ progress }: { progress: Progress }) {
   const headline =
     progress.status === "failed" ? "Run failed"
     : progress.status === "done" ? "Complete"
+    : progress.status === "saving" ? "Saving to database…"
     : allStrategiesDone ? "Building benchmark and results…"
     : `Running ${progress.strategies.length} ${progress.strategies.length === 1 ? "strategy" : "strategies"}`
 

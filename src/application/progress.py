@@ -23,8 +23,10 @@ class ProgressTracker:
         self._lock = threading.Lock()
         self.started_at = time.time()
         self.finished_at: Optional[float] = None
-        self.status = "running"          # running | finalizing | done | failed
+        self.status = "running"          # running | finalizing | saving | done | failed
         self.error: Optional[str] = None
+        # None when saving wasn't requested; else {"database", "saved", "error"}
+        self.save: Optional[dict] = None
         self._strategies: Dict[str, dict] = {
             name: {"name": name, "phase": "queued", "pct": 0.0, "as_of": None,
                    "started_at": None, "finished_at": None, "error": None}
@@ -54,6 +56,10 @@ class ProgressTracker:
             if status in ("done", "failed"):
                 self.finished_at = time.time()
 
+    def set_save(self, database: str, saved: bool = False, error: Optional[str] = None) -> None:
+        with self._lock:
+            self.save = {"database": database, "saved": saved, "error": error}
+
     def snapshot(self) -> dict:
         now = time.time()
         with self._lock:
@@ -68,6 +74,7 @@ class ProgressTracker:
             return {
                 "status": self.status,
                 "error": self.error,
+                "save": dict(self.save) if self.save else None,
                 "elapsed_s": round((self.finished_at or now) - self.started_at, 1),
                 "pct": round(sum(s["pct"] for s in strategies) / total, 1),
                 "strategies": strategies,

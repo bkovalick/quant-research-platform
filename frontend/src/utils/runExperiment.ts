@@ -15,29 +15,45 @@ export interface StrategyProgress {
   error: string | null
 }
 
+export interface SaveStatus {
+  database: string
+  saved: boolean
+  error: string | null
+}
+
 export interface RunProgress {
   job_id: string
-  status: "running" | "finalizing" | "done" | "failed"
+  status: "running" | "finalizing" | "saving" | "done" | "failed"
   error: string | null
+  save: SaveStatus | null
   elapsed_s: number
   pct: number
   strategies: StrategyProgress[]
 }
 
+export interface RunOutcome {
+  experiment: unknown
+  /** null when saving wasn't requested */
+  save: SaveStatus | null
+}
+
 /**
  * Start a background experiment run, report progress on every poll, and resolve
- * with the finished experiment. Rejects with a readable message on failure.
+ * with the finished experiment (and the save outcome when persist is on).
+ * Rejects with a readable message if the run fails. A failed save does not
+ * reject: the results are still returned, with save.error set.
  */
 export async function runExperimentWithProgress(
   config: unknown,
   onProgress: (p: RunProgress) => void,
-  { parallel = false }: { parallel?: boolean } = {},
-): Promise<unknown> {
-  const { data } = await axios.post(`${API}/experiments`, config, { params: { parallel } })
+  { parallel = false, persist = false }: { parallel?: boolean; persist?: boolean } = {},
+): Promise<RunOutcome> {
+  const { data } = await axios.post(`${API}/experiments`, config, { params: { parallel, persist } })
   const jobId: string = data.job_id
 
+  let progress: RunProgress
   for (;;) {
-    const { data: progress } = await axios.get<RunProgress>(`${API}/experiments/${jobId}`)
+    progress = (await axios.get<RunProgress>(`${API}/experiments/${jobId}`)).data
     onProgress(progress)
     if (progress.status === "done") break
     if (progress.status === "failed") {
@@ -48,5 +64,5 @@ export async function runExperimentWithProgress(
   }
 
   const { data: experiment } = await axios.get(`${API}/experiments/${jobId}/result`)
-  return experiment
+  return { experiment, save: progress.save }
 }

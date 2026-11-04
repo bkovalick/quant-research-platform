@@ -1,11 +1,9 @@
 from typing import Optional
-
 import numpy as np
 import pandas as pd
 
 from models.vix_basis_config import VixBasisConfig
 from simulation.market_state import MarketState
-
 
 class VixBasisSignal:
     """
