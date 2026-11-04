@@ -19,12 +19,13 @@ class PairsSpreadDiagnostics(BaseDiagnostic):
     def __init__(self, 
                  run: BacktestRun):
         self._run = run
-        self._pairs_cache = pd.DataFrame(run.pairs_cache) if run.pairs_cache is not None else None
-        if self._pairs_cache is None or self._pairs_cache.empty:
-            raise ValueError("Pairs cache is empty or None. Cannot compute diagnostics.")
-        self._pairs_cache["FwdReturn"] = self._pairs_cache.groupby("Pair")["RealizedReturn"].shift(-1)
+        self._pairs_cache = pd.DataFrame(run.pairs_cache) if run.pairs_cache else pd.DataFrame()
+        if not self._pairs_cache.empty:
+            self._pairs_cache["FwdReturn"] = self._pairs_cache.groupby("Pair")["RealizedReturn"].shift(-1)
 
     def analyze(self) -> MonitoringStats:
+        if self._pairs_cache.empty:
+            return MonitoringStats()
         ic_sp_series = self._compute_ic_statistics()
         return MonitoringStats(
             ic_statistics={"spearman": ic_sp_series.to_dict()},

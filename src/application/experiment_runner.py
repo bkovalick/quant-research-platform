@@ -5,10 +5,12 @@ import logging
 import multiprocessing 
 import json
 import os
+import threading
 from datetime import datetime
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Optional
 
+from application.progress import ProgressCallback, QueueReporter
 from domain.portfolio.portfolio import Portfolio
 from domain.portfolio.tax_lot_ledger import TaxLotLedger
 from reporting.performance_analyzer import PerformanceAnalyzer
@@ -32,6 +34,20 @@ from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataG
 logger = logging.getLogger(__name__)
 
 _MARKET_STORE_CACHE = {}
+_DRAIN_STOP = ("__stop__", {})
+
+
+def _drain_progress(queue, progress: ProgressCallback) -> None:
+    """Forward progress events from worker processes to the in-process callback."""
+    while True:
+        try:
+            item = queue.get()
+        except (EOFError, OSError):
+            return
+        if item == _DRAIN_STOP:
+            return
+        name, fields = item
+        progress(name, **fields)
 
 def _market_store_cache_key(market_store_config: MarketStoreConfig) -> str:
     """Build a stable, hashable cache key from config contents."""
@@ -103,9 +119,23 @@ def build_tax_lot_ledger(rebalance_problem) -> Optional[TaxLotLedger]:
         return TaxLotLedger()
     return None
 
-def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConfig) -> StrategyRun:
+def run_strategy_worker(strategy_cfg: dict,
+                        market_store_config: MarketStoreConfig,
+                        progress: Optional[ProgressCallback] = None) -> StrategyRun:
+    name = strategy_cfg.get("name", "Unnamed Strategy")
+    report = (lambda **fields: progress(name, **fields)) if progress is not None else (lambda **fields: None)
+    try:
+        run = _run_strategy(strategy_cfg, market_store_config, report)
+    except Exception as exc:
+        report(phase="failed", error=f"{type(exc).__name__}: {exc}")
+        raise
+    report(phase="done")
+    return run
+
+def _run_strategy(strategy_cfg: dict, market_store_config: MarketStoreConfig, report) -> StrategyRun:
     logger.info(f"Running strategy: {strategy_cfg.get('name', 'Unnamed Strategy')}")
     print(f"Running strategy: {strategy_cfg.get('name', 'Unnamed Strategy')}")
+    report(phase="loading_data")
     market_store = get_market_store(market_store_config)
     market_state_config = build_market_state_config(strategy_cfg)
     market_state = MarketState(market_store, market_state_config)
@@ -127,10 +157,15 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
         portfolio, 
         strategy, 
         market_state, 
-        signals_factory, 
-        tax_lot_ledger
+        signals_factory,
+        tax_lot_ledger,
+        progress_callback=lambda pct, as_of: report(
+            phase="running", pct=pct, as_of=as_of.strftime("%Y-%m-%d")
+        ),
     ).run_backtest(rebalance_problem)
-    
+
+    report(phase="analyzing", pct=100.0)
+
     portfolio_results = PerformanceAnalyzer().compute(
         run.portfolio,
         market_store_config,
@@ -170,28 +205,43 @@ class ExperimentRunner:
     def _create_experiment(self, m_cfg: MarketStoreConfig) -> Experiment:
         return Experiment(experiment_id=str(uuid.uuid4()), created_at=datetime.now(), market_config=m_cfg)
 
-    def run(self) -> Experiment:
+    def run(self, progress: Optional[ProgressCallback] = None) -> Experiment:
         m_cfg = self._get_market_config()
         experiment = self._create_experiment(m_cfg)
         logger.info("Starting sequential experiment run")
         for strategy_cfg in self.config["strategies"]:
-            experiment.add_run(run_strategy_worker(strategy_cfg, m_cfg))
+            experiment.add_run(run_strategy_worker(strategy_cfg, m_cfg, progress))
         experiment.add_run(self._build_benchmark_run(m_cfg, experiment))
         # self._save_results(experiment)
         logger.info("Sequential experiment run complete with %s strategy runs", len(experiment.strategy_runs))
         print("Sequential experiment run complete with %s strategy runs" % len(experiment.strategy_runs))
         return experiment
 
-    def run_parallel(self) -> Experiment:
+    def run_parallel(self, progress: Optional[ProgressCallback] = None) -> Experiment:
         m_cfg = self._get_market_config()
         experiment = self._create_experiment(m_cfg)
         strategies = self.config["strategies"]
-        
+
         logger.info(f"Running {len(strategies)} strategies in parallel with max_workers={self.max_workers}")
-        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = [executor.submit(run_strategy_worker, s_cfg, m_cfg) for s_cfg in strategies]
-            for future in as_completed(futures):
-                experiment.add_run(future.result())
+        manager = multiprocessing.Manager() if progress is not None else None
+        drainer = None
+        try:
+            worker_progress = None
+            if manager is not None:
+                queue = manager.Queue()
+                worker_progress = QueueReporter(queue)
+                drainer = threading.Thread(target=_drain_progress, args=(queue, progress), daemon=True)
+                drainer.start()
+            with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+                futures = [executor.submit(run_strategy_worker, s_cfg, m_cfg, worker_progress) for s_cfg in strategies]
+                for future in as_completed(futures):
+                    experiment.add_run(future.result())
+        finally:
+            if drainer is not None:
+                queue.put(_DRAIN_STOP)
+                drainer.join(timeout=5)
+            if manager is not None:
+                manager.shutdown()
         experiment.add_run(self._build_benchmark_run(m_cfg, experiment))
         # self._save_results(experiment)
         logger.info("Parallel experiment run complete with %s strategy runs", len(experiment.strategy_runs))

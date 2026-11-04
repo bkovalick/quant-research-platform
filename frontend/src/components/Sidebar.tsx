@@ -1,6 +1,8 @@
-import axios from "axios"
 import { useState } from "react"
 import type { CSSProperties } from "react"
+import RunProgressPanel from "./RunProgress"
+import { runExperimentWithProgress } from "../utils/runExperiment"
+import type { RunProgress } from "../utils/runExperiment"
 
 type Tab = "experiment" | "lab"
 
@@ -8,6 +10,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const [tab, setTab] = useState<Tab>("experiment")
   const [loading, setLoading] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
+  const [runProgress, setRunProgress] = useState<RunProgress | null>(null)
   const [startDate, setStartDate] = useState("2000-01-01")
   const [endDate, setEndDate] = useState(() => {
     const d = getPreviousBusinessDay()
@@ -99,9 +102,11 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
 
     setLoading(true)
     setRunError(null)
+    setRunProgress(null)
     try {
-      const res = await axios.post("http://localhost:8000/run-experiment", config)
-      setExperiment(res.data)
+      const result = await runExperimentWithProgress(config, setRunProgress)
+      setRunProgress(null)
+      setExperiment(result)
     } catch (err: any) {
       const detail = err?.response?.data?.detail ?? err?.message ?? "Unknown error"
       setRunError(detail)
@@ -330,6 +335,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
           >
             {loading ? `Running ${editedStrategies.length || strategySet?.strategies?.length || 0} strategies…` : strategySet ? "Run Experiment" : "Load a Strategy Set"}
           </button>
+          {runProgress && <RunProgressPanel progress={runProgress} />}
           {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}
 
           {quickStats && (
@@ -980,6 +986,8 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
           <button style={loading ? loadButton : runButton} disabled={loading} onClick={runExperiment}>
             {loading ? "Running…" : currentExperimentLabel ? `Run ${currentExperimentLabel}` : "Run Experiment"}
           </button>
+          {runProgress && <RunProgressPanel progress={runProgress} />}
+          {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}
         </>
       )}
     </div>
