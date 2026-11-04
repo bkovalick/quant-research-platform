@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, Any, Optional
 from models.machine_learning_config import MachineLearningConfig
 from models.pairs_trading_config import PairsTradingConfig
+from models.vix_basis_config import VixBasisConfig
 
 @dataclass(frozen=True)
 class SignalsConfig:
@@ -16,7 +17,8 @@ class SignalsConfig:
     bollinger_window: int = 20
     bollinger_num_std: float = 2.0
     bollinger_scale: float = 0.01
-    
+    vix_basis: Optional[VixBasisConfig] = None
+
     @classmethod
     def from_dict(cls, d: dict, market_frequency: str = "d"):
         ml_config = d.get("ml_signals_config", None)
@@ -34,5 +36,6 @@ class SignalsConfig:
             mean_reversion_method = d.get("mean_reversion_method", "rank_reversal"),
             bollinger_window = d.get("bollinger_window", 20),
             bollinger_num_std = d.get("bollinger_num_std", 2.0),
-            bollinger_scale = d.get("bollinger_scale", 0.01)
+            bollinger_scale = d.get("bollinger_scale", 0.01),
+            vix_basis = VixBasisConfig.from_dict(d["vix_basis"]) if d.get("vix_basis") is not None else None
         )

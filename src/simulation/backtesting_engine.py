@@ -35,7 +35,7 @@ class BacktestingEngine(BacktestingEngineInterface):
         self.signals_factory = signal_factory
         self.tax_lot_ledger = tax_lot_ledger
 
-    def run_backtest(self, rebalance_problem: RebalanceProblem):
+    def run_backtest(self, rebalance_problem: RebalanceProblem) -> BacktestRun:
         """Run backtest on the given rebalance problem."""
         start_time = time.time()
         logger.info(
@@ -127,10 +127,10 @@ class BacktestingEngine(BacktestingEngineInterface):
         print("Backtest completed in %.2f seconds" % (time.time() - start_time))
         return self._build_backtest_run()
 
-    def _is_rebalance_step(self, step):
+    def _is_rebalance_step(self, step: int) -> bool:
         return step % self.rebalance_every == 0
     
-    def _get_steps(self, freq_param):
+    def _get_steps(self, freq_param: str) -> int:
         key = (self.market_state.market_frequency, freq_param)
         return FREQ_TO_STEPS.get(key, 1)
     
@@ -145,7 +145,10 @@ class BacktestingEngine(BacktestingEngineInterface):
             **diagnostics
         )    
 
-    def _build_rebalance_context(self, cursor: int, signals: dict, rebalance_problem: RebalanceProblem) -> RebalanceContext:
+    def _build_rebalance_context(self, 
+                                 cursor: int, 
+                                 signals: dict, 
+                                 rebalance_problem: RebalanceProblem) -> RebalanceContext:
         current_weights = self.portfolio.weights.iloc[cursor]
         initial_weights = rebalance_problem.initial_weights
         return RebalanceContext(

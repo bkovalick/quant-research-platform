@@ -1,4 +1,3 @@
-from duckdb import cursor
 import pandas as pd
 import numpy as np
 
@@ -12,7 +11,7 @@ class Portfolio:
         self.financing_rate = financing_rate
         self.periods_per_year = periods_per_year
 
-    def initialize(self, dates, tickers: np.ndarray, initial_weights: np.ndarray):
+    def initialize(self, dates: pd.DatetimeIndex, tickers: np.ndarray, initial_weights: np.ndarray):
         """Initialize portfolio with rebalance problem and price data."""
         if len(initial_weights) == 0:
             raise ValueError("price_data is empty—cannot initialize portfolio weights.")

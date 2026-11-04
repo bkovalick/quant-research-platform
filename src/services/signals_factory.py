@@ -8,6 +8,7 @@ from domain.signals.mean_reversion_signals import MeanReversionSignals
 from domain.signals.momentum_signals import MomentumSignals
 from domain.signals.black_litterman_signal import BlackLittermanSignal
 from domain.signals.pairs_trading_signal import PairsTradingSignal
+from domain.signals.vix_basis_signal import VixBasisSignal
 from domain.machine_learning.cross_sectional_model import CrossSectionalModel 
 from domain.machine_learning.feature_builder import FeatureBuilder
 from domain.signals.machine_learning_signals import MLPredictorSignal, MLPredictorSignalsState
@@ -60,6 +61,11 @@ class SignalFactory:
         if signals_config.pairs_trading is not None:
             self._signals["pairs_trading"] = PairsTradingSignal(
                 market_state, signals_config.pairs_trading
+            )
+
+        if signals_config.vix_basis is not None:
+            self._signals["vix_basis"] = VixBasisSignal(
+                market_state, signals_config.vix_basis
             )
 
     def update(self, 

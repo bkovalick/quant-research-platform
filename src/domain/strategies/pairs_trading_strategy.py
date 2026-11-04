@@ -1,4 +1,4 @@
-import numpy as np
+import pandas as pd
 
 from domain.strategies.base_strategy import BaseStrategy
 from domain.signals.pairs_trading_signal import PairsTradingSignal
@@ -7,68 +7,83 @@ from models.rebalance_problem import RebalanceProblem
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
 
-import pandas as pd
-
 class PairsTradingStrategy(BaseStrategy):
-    def __init__(self, 
-                 rebalance_problem: RebalanceProblem, 
+    """
+    Market-neutral pairs strategy. The strategy owns a position book
+    ({(asset_a, asset_b): +1 long spread / -1 short spread}) so position state
+    never depends on drifted portfolio weights. Pairs not in the book carry zero weight.
+    """
+    def __init__(self,
+                 rebalance_problem: RebalanceProblem,
                  optimizer: TargetWeightOptimizer = None):
         super().__init__(rebalance_problem, optimizer)
         self.pairs_cache = []
-        self.existing_pairs = None
+        self.position_book = {}
 
     def get_diagnostics(self) -> dict:
         return {"pairs_cache": self.pairs_cache}
 
     def rebalance(self, rebalance_context: RebalanceContext) -> RebalanceSolution:
-        """Calculate rebalance weights"""
         signal_key = self.rebalance_problem.signal_source
         active_signal = rebalance_context.signals.get(signal_key)
 
         if active_signal is None:
-            return RebalanceSolution(
-                target_weights=pd.Series(
-                    rebalance_context.current_weights,
-                    index=rebalance_context.investment_universe,
-                ),
-                sell_allocations={},
-                realized_tax_cost=0.0,
-                tracking_error=0.0
+            target_weights = pd.Series(
+                rebalance_context.current_weights,
+                index=rebalance_context.investment_universe,
             )
-        
-        pair_weights = self._run_pairs_strategy(
-            rebalance_context.current_weights, active_signal
-        )
+        else:
+            target_weights = self._run_pairs_strategy(
+                rebalance_context.investment_universe, active_signal
+            )
         return RebalanceSolution(
-            target_weights=pair_weights,
+            target_weights=target_weights,
             sell_allocations={},
             realized_tax_cost=0.0,
             tracking_error=0.0
         )
 
     def _run_pairs_strategy(self,
-                            current_weights: pd.Series,
+                            tickers: list,
                             active_signal: PairsTradingSignal) -> pd.Series:
         if not isinstance(active_signal, PairsTradingSignal):
             raise ValueError("Active signal must be of type PairsTradingSignal")
 
-        tickers = list(self.rebalance_problem.initial_weights.keys())
-        active_pairs = active_signal.compute_trading_pairs(current_weights.to_dict(), self.existing_pairs)
-        if active_pairs.empty:
-            return current_weights
+        pairs = active_signal.compute_trading_pairs(self.position_book)
+        weights = pd.Series(0.0, index=tickers)
+        if pairs.empty:
+            self.position_book.clear()
+            return weights
 
-        active = active_pairs[active_pairs["State"].isin({"EnterShort", "HoldShort", "EnterLong", "HoldLong"})].copy()
-        sign = np.where(active["State"].isin({"EnterShort", "HoldShort"}), -1.0, 1.0)
-        denom = 1.0 + active["HedgeRatio"].abs()
-        active["WeightA"] = (sign * active["FinalWeight"]) / denom
-        active["WeightB"] = (-sign * active["FinalWeight"] * active["HedgeRatio"]) / denom
+        self._update_position_book(pairs)
+        self.pairs_cache.extend(pairs.to_dict("records"))
+        keys = list(zip(pairs["AssetA"], pairs["AssetB"]))
+        held = pairs[[k in self.position_book for k in keys]].copy()
+        if held.empty:
+            return weights
 
-        combined = active.groupby("AssetA")["WeightA"].sum().add(
-            active.groupby("AssetB")["WeightB"].sum(), fill_value=0
+        sides = pd.Series([self.position_book[k] for k in zip(held["AssetA"], held["AssetB"])], index=held.index)
+        denom = 1.0 + held["HedgeRatio"].abs()
+        held["WeightA"] = sides * held["FinalWeight"] / denom
+        held["WeightB"] = -sides * held["FinalWeight"] * held["HedgeRatio"] / denom
+
+        combined = held.groupby("AssetA")["WeightA"].sum().add(
+            held.groupby("AssetB")["WeightB"].sum(), fill_value=0
         )
-        new_weights = {t: combined.get(t, 0.0) for t in tickers}
+        weights.update(combined.reindex(tickers).dropna())
 
-        self.pairs_cache.extend(active.itertuples())
-        self.existing_pairs = list(zip(active_pairs["AssetA"], active_pairs["AssetB"]))
-        updated_weights = current_weights if sum(new_weights.values()) == 0 else pd.Series(new_weights, index=tickers, dtype=float)
-        return updated_weights
+        gross = weights.abs().sum()
+        if active_signal.max_gross and gross > active_signal.max_gross:
+            weights = weights * (active_signal.max_gross / gross)
+
+        return weights
+
+    def _update_position_book(self, pairs: pd.DataFrame) -> None:
+        for row in pairs.itertuples():
+            key = (row.AssetA, row.AssetB)
+            if row.State == "EnterLong":
+                self.position_book[key] = 1.0
+            elif row.State == "EnterShort":
+                self.position_book[key] = -1.0
+            elif row.State == "Exit":
+                self.position_book.pop(key, None)
