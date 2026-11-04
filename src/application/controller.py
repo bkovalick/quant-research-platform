@@ -19,7 +19,7 @@ from models.experiment import Experiment
 from models.backtest_result import BacktestResult
 from models.strategy_run import StrategyRun
 from models.experiment_model import ExperimentModel
-from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway, StrategyResultsDataGateway
+from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway, save_experiment
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -51,25 +51,21 @@ def run_experiment_parallel(config: dict = Body(...)):
     experiment_results = runner.run_parallel()
     return experiment_results.to_dict()
 
+DEFAULT_RESULTS_DB = "research.duckdb"
+
+
+def _resolve_db(config: Optional[dict] = None) -> str:
+    """One place that decides which DuckDB file results go to (and are read from)."""
+    config = config or {}
+    db = config.get("results_database") or config.get("database_name") or DEFAULT_RESULTS_DB
+    return os.path.abspath(db)
+
+
 @app.post("/save-experiment")
-def save_experiment(experiment: Experiment, config: dict = Body(...)):
-    db = config.get("results_database") or config.get("database_name") or "research.duckdb"
-    resolved_db = os.path.abspath(db)
-    logger.info("Saving %s strategy runs to %s", len(experiment.strategy_runs), resolved_db)
-    print("Saving %s strategy runs to %s" % (len(experiment.strategy_runs), resolved_db))
-    with ExperimentMetaDataDataGateway(resolved_db) as exp_gateway:
-        exp_gateway.save_experiment_instance(experiment)
-    with StrategyResultsDataGateway(resolved_db) as strategy_gateway:
-        strategy_gateway.conn.execute("BEGIN TRANSACTION")
-        try:
-            for run in experiment.strategy_runs:
-                strategy_gateway.save_strategy_run(experiment.experiment_id, run)
-            strategy_gateway.conn.execute("COMMIT")
-        except Exception:
-            strategy_gateway.conn.execute("ROLLBACK")
-            raise
-    logger.info("Saved experiment %s results to %s", experiment.experiment_id, resolved_db)
-    print("Saved experiment %s results to %s" % (experiment.experiment_id, resolved_db))    
+def save_experiment_endpoint(experiment: Experiment, config: dict = Body(...)):
+    resolved_db = _resolve_db(config)
+    save_experiment(experiment, resolved_db)
+    return {"experiment_id": experiment.experiment_id, "database": resolved_db}
 
 @dataclass
 class _Job:
@@ -81,16 +77,30 @@ _JOBS_LOCK = threading.Lock()
 _MAX_JOBS = 20
 
 
-def _run_job(job: _Job, config: dict, parallel: bool) -> None:
+def _run_job(job: _Job, config: dict, parallel: bool, persist: bool) -> None:
     try:
         runner = ExperimentRunner(config)
         experiment = runner.run_parallel(job.tracker) if parallel else runner.run(job.tracker)
         job.tracker.set_status("finalizing")
         job.result = experiment.to_dict()
-        job.tracker.set_status("done")
     except Exception as exc:
         logger.exception("Experiment job failed")
         job.tracker.set_status("failed", error=f"{type(exc).__name__}: {exc}")
+        return
+
+    if persist:
+        # A failed save must not cost the user their results: the run still
+        # completes and the save error is reported alongside it.
+        database = _resolve_db(config)
+        job.tracker.set_save(database)
+        job.tracker.set_status("saving")
+        try:
+            save_experiment(experiment, database)
+            job.tracker.set_save(database, saved=True)
+        except Exception as exc:
+            logger.exception("Saving experiment %s failed", experiment.experiment_id)
+            job.tracker.set_save(database, error=f"{type(exc).__name__}: {exc}")
+    job.tracker.set_status("done")
 
 
 def _get_job(job_id: str) -> _Job:
@@ -102,7 +112,7 @@ def _get_job(job_id: str) -> _Job:
 
 
 @app.post("/experiments")
-def start_experiment(config: dict = Body(...), parallel: bool = False):
+def start_experiment(config: dict = Body(...), parallel: bool = False, persist: bool = False):
     names = [s.get("name", f"strategy_{i}") for i, s in enumerate(config.get("strategies", []))]
     job_id = str(uuid.uuid4())
     job = _Job(tracker=ProgressTracker(names))
@@ -111,10 +121,10 @@ def start_experiment(config: dict = Body(...), parallel: bool = False):
         finished = [k for k, j in _JOBS.items() if j.tracker.status in ("done", "failed")]
         for k in finished[: max(0, len(_JOBS) - _MAX_JOBS)]:
             del _JOBS[k]
-    threading.Thread(target=_run_job, args=(job, config, parallel), daemon=True).start()
-    logger.info("Started experiment job %s with %s strategies (parallel=%s)", job_id, len(names), parallel)
+    threading.Thread(target=_run_job, args=(job, config, parallel, persist), daemon=True).start()
+    logger.info("Started experiment job %s with %s strategies (parallel=%s, persist=%s)",
+                job_id, len(names), parallel, persist)
     return {"job_id": job_id}
-
 
 @app.get("/experiments/{job_id}")
 def experiment_progress(job_id: str):
@@ -161,16 +171,12 @@ def download(body: ExperimentModel = Body(...)):
 @app.post("/load-experiment")
 def load_experiment(config: dict) -> Experiment | None:
     logger.info(f"Loading experiment with configuration: {config}")
-    gateway = ExperimentMetaDataDataGateway("research.db")
-    experiment = gateway.get_experiment_instance(config["experiment_id"])
-    return experiment
+    with ExperimentMetaDataDataGateway(_resolve_db(config)) as gateway:
+        return gateway.get_experiment_instance(config["experiment_id"])
 
 @app.post("/list-experiments")
 def list_experiments() -> list[Experiment]:
     """List all available experiments."""
     logger.info(f"Listing available experiments")
-    gateway = ExperimentMetaDataDataGateway("research.db")
-    load_experiments = gateway.list_of_experiments()
-    if load_experiments is None:
-        load_experiments = []
-    return load_experiments
+    with ExperimentMetaDataDataGateway(_resolve_db()) as gateway:
+        return gateway.list_of_experiments() or []

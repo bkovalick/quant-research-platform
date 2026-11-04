@@ -1,8 +1,25 @@
 import { useState } from "react"
 import type { CSSProperties } from "react"
 import RunProgressPanel from "./RunProgress"
+import Switch from "./Switch"
 import { runExperimentWithProgress } from "../utils/runExperiment"
-import type { RunProgress } from "../utils/runExperiment"
+import type { RunProgress, SaveStatus } from "../utils/runExperiment"
+import { mergeStrategySets } from "../utils/mergeStrategySets"
+import type { MergeResult } from "../utils/mergeStrategySets"
+
+const PERSIST_PREF_KEY = "qrp.persistRuns"
+
+function readPersistPref(): boolean {
+  try { return localStorage.getItem(PERSIST_PREF_KEY) === "1" } catch { return false }
+}
+
+function writePersistPref(value: boolean) {
+  try { localStorage.setItem(PERSIST_PREF_KEY, value ? "1" : "0") } catch { /* storage unavailable */ }
+}
+
+function baseName(path: string) {
+  return path.split(/[\\/]/).pop() ?? path
+}
 
 type Tab = "experiment" | "lab"
 
@@ -11,6 +28,10 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const [loading, setLoading] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
   const [runProgress, setRunProgress] = useState<RunProgress | null>(null)
+  const [persistRun, setPersistRun] = useState<boolean>(readPersistPref)
+  const [lastSave, setLastSave] = useState<SaveStatus | null>(null)
+  const [loadInfo, setLoadInfo] = useState<MergeResult | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [startDate, setStartDate] = useState("2000-01-01")
   const [endDate, setEndDate] = useState(() => {
     const d = getPreviousBusinessDay()
@@ -41,21 +62,64 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     return result;
   }
 
-  const handleUpload = async (e: any) => {
-    const file = e.target.files[0]
-    if (!file) return
+  /**
+   * Load one or more experiment JSONs. `append` merges them into the current set
+   * (keeping any edits made in the Lab); otherwise they replace it.
+   */
+  const handleUpload = async (e: any, append = false) => {
+    const files: File[] = Array.from(e.target.files ?? [])
     e.target.value = ""
-    const text = await file.text()
-    const json = JSON.parse(text)
-    setStrategySet(json)
-    setEditedStrategies(JSON.parse(JSON.stringify(json.strategies)))
-    setSelectedIdx(0)
-    if (json.market_store_config) {
-      if (json.market_store_config?.benchmark) setBenchmark(json.market_store_config.benchmark)
-      if (json.market_store_config?.transaction_cost) setTransactionCost(json.market_store_config.transaction_cost)
-      if (json.market_store_config?.risk_free_rate) setRiskFreeRate(json.market_store_config.risk_free_rate)
+    if (!files.length) return
+    setLoadError(null)
+
+    let parsed
+    try {
+      parsed = await Promise.all(files.map(async f => {
+        try { return { fileName: f.name, json: JSON.parse(await f.text()) } }
+        catch { throw new Error(`${f.name} is not valid JSON`) }
+      }))
+    } catch (err: any) {
+      setLoadError(err.message)
+      return
     }
+
+    const existing = append && strategySet
+      ? {
+          merged: { ...strategySet, strategies: editedStrategies },
+          sources: loadInfo?.sources ?? [],
+          warnings: loadInfo?.warnings ?? [],
+        }
+      : null
+
+    let result: MergeResult
+    try {
+      result = mergeStrategySets(parsed, existing)
+    } catch (err: any) {
+      setLoadError(err.message)
+      return
+    }
+
+    const { merged } = result
+    setLoadInfo(result)
+    setStrategySet(merged)
+    setEditedStrategies(structuredClone(merged.strategies))
+    if (!append) setSelectedIdx(0)
+
+    const msc = merged.market_store_config
+    if (typeof msc.start_date === "string") setStartDate(msc.start_date)
+    if (typeof msc.end_date === "string") setEndDate(msc.end_date)
+    if (typeof msc.benchmark === "string") setBenchmark(msc.benchmark)
+    if (typeof msc.transaction_cost === "number") setTransactionCost(msc.transaction_cost)
+    if (typeof msc.risk_free_rate === "number") setRiskFreeRate(msc.risk_free_rate)
   }
+
+  const togglePersist = (value: boolean) => {
+    setPersistRun(value)
+    writePersistPref(value)
+  }
+
+  const resultsDatabase: string =
+    strategySet?.results_database ?? strategySet?.database_name ?? "research.duckdb"
 
 
   const runExperiment = async () => {
@@ -95,6 +159,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
         start_date: startDate,
         end_date: endDate,
         transaction_cost: transactionCost,
+        risk_free_rate: riskFreeRate,
         benchmark: benchmark
       },
       strategies: strategiesToRun
@@ -103,9 +168,13 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     setLoading(true)
     setRunError(null)
     setRunProgress(null)
+    setLastSave(null)
     try {
-      const result = await runExperimentWithProgress(config, setRunProgress)
+      const { experiment: result, save } = await runExperimentWithProgress(
+        config, setRunProgress, { persist: persistRun },
+      )
       setRunProgress(null)
+      setLastSave(save)
       setExperiment(result)
     } catch (err: any) {
       const detail = err?.response?.data?.detail ?? err?.message ?? "Unknown error"
@@ -299,13 +368,38 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
       {tab === "experiment" && (
         <>
         <Section title="Strategy Set">
-          <input id="strategy-file-input" type="file" accept=".json" onChange={handleUpload} onClick={(e: any) => e.target.value = null} style={{ display: "none" }} />
-          {strategySet 
-            ? <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={pill}>{editedStrategies.length} strategies loaded</div>
-                <button style={changeLinkBtn} onClick={() => document.getElementById("strategy-file-input")?.click()}>change</button>
-              </div>
+          <input id="strategy-file-input" type="file" accept=".json" multiple onChange={(e) => handleUpload(e, false)} onClick={(e: any) => e.target.value = null} style={{ display: "none" }} />
+          <input id="strategy-file-append" type="file" accept=".json" multiple onChange={(e) => handleUpload(e, true)} onClick={(e: any) => e.target.value = null} style={{ display: "none" }} />
+          {strategySet
+            ? <>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={pill}>{editedStrategies.length} strategies loaded</div>
+                  <button style={changeLinkBtn} onClick={() => document.getElementById("strategy-file-append")?.click()}>add files</button>
+                  <button style={changeLinkBtn} onClick={() => document.getElementById("strategy-file-input")?.click()}>replace</button>
+                </div>
+                {loadInfo && loadInfo.sources.length > 0 && (
+                  <ul style={sourceList}>
+                    {loadInfo.sources.map((s, i) => (
+                      <li key={`${s.fileName}-${i}`} style={sourceItem}>
+                        <span style={sourceName} title={s.fileName}>{s.fileName}</span>
+                        <span style={sourceCount}>{s.strategies}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {loadInfo && loadInfo.warnings.length > 0 && (
+                  <details style={warnBox}>
+                    <summary style={warnSummary}>
+                      {loadInfo.warnings.length} merge {loadInfo.warnings.length === 1 ? "note" : "notes"}
+                    </summary>
+                    <ul style={warnList}>
+                      {loadInfo.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                    </ul>
+                  </details>
+                )}
+              </>
             : null}
+          {loadError && <div style={inlineError}>{loadError}</div>}
         </Section>
 
           <Section title="Market Configuration">
@@ -328,6 +422,18 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
             </Row>            
           </Section>
 
+          {strategySet && (
+            <Switch
+              checked={persistRun}
+              onChange={togglePersist}
+              disabled={loading}
+              label="Save results to database"
+              description={persistRun
+                ? `Run will be written to ${baseName(resultsDatabase)}`
+                : "Results stay in this session only"}
+            />
+          )}
+
           <button
             style={strategySet && !loading ? runButton : loadButton}
             disabled={loading}
@@ -337,6 +443,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
           </button>
           {runProgress && <RunProgressPanel progress={runProgress} />}
           {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}
+          <SaveNotice save={lastSave} />
 
           {quickStats && (
             <>
@@ -988,8 +1095,29 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
           </button>
           {runProgress && <RunProgressPanel progress={runProgress} />}
           {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}
+          {persistRun && !loading && !lastSave && (
+            <div style={savedNotice}>Results will be saved to {baseName(resultsDatabase)}</div>
+          )}
+          <SaveNotice save={lastSave} />
         </>
       )}
+    </div>
+  )
+}
+
+function SaveNotice({ save }: { save: SaveStatus | null }) {
+  if (!save) return null
+  if (save.error) {
+    return (
+      <div style={inlineError} role="alert">
+        <strong>Results not saved.</strong> The run finished and is shown, but writing
+        to {baseName(save.database)} failed: {save.error}
+      </div>
+    )
+  }
+  return (
+    <div style={savedNotice} title={save.database}>
+      <span style={savedDot} aria-hidden /> Saved to {baseName(save.database)}
     </div>
   )
 }
@@ -1073,7 +1201,17 @@ const tickerChipActive: CSSProperties = { ...tickerChip, background: "#0f2b14", 
 const smallBtn: CSSProperties = { background: "none", border: "1px solid #30363d", borderRadius: 3, color: "#8b949e", fontSize: 10, cursor: "pointer", padding: "2px 6px" }
 const loadButton: CSSProperties = { padding: "8px 12px", background: "#1f6feb", border: "none", color: "white", cursor: "pointer", borderRadius: 6, fontWeight: 600, fontSize: 12, width: "100%" }
 const exportButton: CSSProperties = { padding: "8px 12px", background: "none", border: "1px solid #238636", color: "#3fb950", cursor: "pointer", borderRadius: 6, fontWeight: 600, fontSize: 12, width: "100%" }
-const changeLinkBtn: CSSProperties = { background: "none", border: "none", color: "#8b949e", fontSize: 10, cursor: "pointer", padding: 0, textDecoration: "underline" }
+const sourceList: CSSProperties = { listStyle: "none", margin: "6px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 2 }
+const sourceItem: CSSProperties = { display: "flex", justifyContent: "space-between", gap: 8, fontSize: 10.5, color: "#8b949e" }
+const sourceName: CSSProperties = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }
+const sourceCount: CSSProperties = { fontVariantNumeric: "tabular-nums", color: "#6e7681", flexShrink: 0 }
+const warnBox: CSSProperties = { marginTop: 6, fontSize: 10.5, color: "#d29922" }
+const warnSummary: CSSProperties = { cursor: "pointer", userSelect: "none" }
+const warnList: CSSProperties = { margin: "4px 0 0", paddingLeft: 16, color: "#8b949e", lineHeight: 1.5 }
+const inlineError: CSSProperties = { marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11, lineHeight: 1.45 }
+const savedNotice: CSSProperties = { display: "flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 11, color: "#8b949e" }
+const savedDot: CSSProperties = { width: 6, height: 6, borderRadius: "50%", background: "#3fb950", flexShrink: 0 }
+const changeLinkBtn: CSSProperties ={ background: "none", border: "none", color: "#8b949e", fontSize: 10, cursor: "pointer", padding: 0, textDecoration: "underline" }
 const addStrategyBtn: CSSProperties = {
   background: "none", border: "1px dashed #30363d", borderRadius: 4,
   color: "#8b949e", padding: "4px 8px", fontSize: 11, cursor: "pointer",
