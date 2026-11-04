@@ -6,8 +6,15 @@ from models.strategy_run import StrategyRun
 from models.experiment_model import ExperimentModel
 from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway
 
+from application.progress import ProgressTracker
+
+import threading
+import uuid
+from collections import OrderedDict
+from dataclasses import dataclass
+from typing import Optional
 from datetime import datetime
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Response
 from io import BytesIO
@@ -43,6 +50,69 @@ def run_experiment_parallel(config: dict = Body(...)):
     runner = ExperimentRunner(config)
     experiment_results = runner.run_parallel()
     return experiment_results.to_dict()
+
+# ---- Background runs with progress -------------------------------------------
+# POST /experiments starts a run and returns a job id; GET /experiments/{id}
+# returns progress (cheap, poll it); GET /experiments/{id}/result returns the
+# experiment once status == "done". Jobs live in memory for this process only.
+
+@dataclass
+class _Job:
+    tracker: ProgressTracker
+    result: Optional[dict] = None
+
+_JOBS: "OrderedDict[str, _Job]" = OrderedDict()
+_JOBS_LOCK = threading.Lock()
+_MAX_JOBS = 20
+
+
+def _run_job(job: _Job, config: dict, parallel: bool) -> None:
+    try:
+        runner = ExperimentRunner(config)
+        experiment = runner.run_parallel(job.tracker) if parallel else runner.run(job.tracker)
+        job.tracker.set_status("finalizing")
+        job.result = experiment.to_dict()
+        job.tracker.set_status("done")
+    except Exception as exc:
+        logger.exception("Experiment job failed")
+        job.tracker.set_status("failed", error=f"{type(exc).__name__}: {exc}")
+
+
+def _get_job(job_id: str) -> _Job:
+    with _JOBS_LOCK:
+        job = _JOBS.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail=f"Unknown job {job_id}")
+    return job
+
+
+@app.post("/experiments")
+def start_experiment(config: dict = Body(...), parallel: bool = False):
+    names = [s.get("name", f"strategy_{i}") for i, s in enumerate(config.get("strategies", []))]
+    job_id = str(uuid.uuid4())
+    job = _Job(tracker=ProgressTracker(names))
+    with _JOBS_LOCK:
+        _JOBS[job_id] = job
+        finished = [k for k, j in _JOBS.items() if j.tracker.status in ("done", "failed")]
+        for k in finished[: max(0, len(_JOBS) - _MAX_JOBS)]:
+            del _JOBS[k]
+    threading.Thread(target=_run_job, args=(job, config, parallel), daemon=True).start()
+    logger.info("Started experiment job %s with %s strategies (parallel=%s)", job_id, len(names), parallel)
+    return {"job_id": job_id}
+
+
+@app.get("/experiments/{job_id}")
+def experiment_progress(job_id: str):
+    return {"job_id": job_id, **_get_job(job_id).tracker.snapshot()}
+
+
+@app.get("/experiments/{job_id}/result")
+def experiment_result(job_id: str):
+    job = _get_job(job_id)
+    if job.tracker.status != "done" or job.result is None:
+        raise HTTPException(status_code=409, detail=f"Job {job_id} is {job.tracker.status}")
+    return job.result
+
 
 @app.post("/download")
 def download(body: ExperimentModel = Body(...)):
