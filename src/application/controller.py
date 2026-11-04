@@ -1,13 +1,3 @@
-from application.experiment_runner import ExperimentRunner
-from reporting.report_generation import ExcelGenerator
-from models.experiment import Experiment
-from models.backtest_result import BacktestResult
-from models.strategy_run import StrategyRun
-from models.experiment_model import ExperimentModel
-from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway
-
-from application.progress import ProgressTracker
-
 import threading
 import uuid
 from collections import OrderedDict
@@ -19,7 +9,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Response
 from io import BytesIO
 import logging
+import os
 from utils.logging_config import setup_logging
+
+from application.experiment_runner import ExperimentRunner
+from application.progress import ProgressTracker
+from reporting.report_generation import ExcelGenerator
+from models.experiment import Experiment
+from models.backtest_result import BacktestResult
+from models.strategy_run import StrategyRun
+from models.experiment_model import ExperimentModel
+from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway, StrategyResultsDataGateway
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -51,10 +51,25 @@ def run_experiment_parallel(config: dict = Body(...)):
     experiment_results = runner.run_parallel()
     return experiment_results.to_dict()
 
-# ---- Background runs with progress -------------------------------------------
-# POST /experiments starts a run and returns a job id; GET /experiments/{id}
-# returns progress (cheap, poll it); GET /experiments/{id}/result returns the
-# experiment once status == "done". Jobs live in memory for this process only.
+@app.post("/save-experiment")
+def save_experiment(experiment: Experiment, config: dict = Body(...)):
+    db = config.get("results_database") or config.get("database_name") or "research.duckdb"
+    resolved_db = os.path.abspath(db)
+    logger.info("Saving %s strategy runs to %s", len(experiment.strategy_runs), resolved_db)
+    print("Saving %s strategy runs to %s" % (len(experiment.strategy_runs), resolved_db))
+    with ExperimentMetaDataDataGateway(resolved_db) as exp_gateway:
+        exp_gateway.save_experiment_instance(experiment)
+    with StrategyResultsDataGateway(resolved_db) as strategy_gateway:
+        strategy_gateway.conn.execute("BEGIN TRANSACTION")
+        try:
+            for run in experiment.strategy_runs:
+                strategy_gateway.save_strategy_run(experiment.experiment_id, run)
+            strategy_gateway.conn.execute("COMMIT")
+        except Exception:
+            strategy_gateway.conn.execute("ROLLBACK")
+            raise
+    logger.info("Saved experiment %s results to %s", experiment.experiment_id, resolved_db)
+    print("Saved experiment %s results to %s" % (experiment.experiment_id, resolved_db))    
 
 @dataclass
 class _Job:
@@ -159,6 +174,3 @@ def list_experiments() -> list[Experiment]:
     if load_experiments is None:
         load_experiments = []
     return load_experiments
-    
-if __name__ == '__main__':
-    pass

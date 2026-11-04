@@ -4,7 +4,6 @@ import uuid
 import logging
 import multiprocessing 
 import json
-import os
 import threading
 from datetime import datetime
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -29,7 +28,6 @@ from models.experiment import Experiment
 from models.backtest_result import BacktestResult
 from models.monitoring_stats import MonitoringStats
 from infrastructure.market_data_gateway import MarketDataStore
-from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway, StrategyResultsDataGateway
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +210,6 @@ class ExperimentRunner:
         for strategy_cfg in self.config["strategies"]:
             experiment.add_run(run_strategy_worker(strategy_cfg, m_cfg, progress))
         experiment.add_run(self._build_benchmark_run(m_cfg, experiment))
-        # self._save_results(experiment)
         logger.info("Sequential experiment run complete with %s strategy runs", len(experiment.strategy_runs))
         print("Sequential experiment run complete with %s strategy runs" % len(experiment.strategy_runs))
         return experiment
@@ -243,29 +240,9 @@ class ExperimentRunner:
             if manager is not None:
                 manager.shutdown()
         experiment.add_run(self._build_benchmark_run(m_cfg, experiment))
-        # self._save_results(experiment)
         logger.info("Parallel experiment run complete with %s strategy runs", len(experiment.strategy_runs))
         print("Parallel experiment run complete with %s strategy runs" % len(experiment.strategy_runs))
         return experiment
-
-    def _save_results(self, experiment: Experiment):
-        db = self.config.get("results_database") or self.config.get("database_name") or "research.duckdb"
-        resolved_db = os.path.abspath(db)
-        logger.info("Saving %s strategy runs to %s", len(experiment.strategy_runs), resolved_db)
-        print("Saving %s strategy runs to %s" % (len(experiment.strategy_runs), resolved_db))
-        with ExperimentMetaDataDataGateway(resolved_db) as exp_gateway:
-            exp_gateway.save_experiment_instance(experiment)
-        with StrategyResultsDataGateway(resolved_db) as strategy_gateway:
-            strategy_gateway.conn.execute("BEGIN TRANSACTION")
-            try:
-                for run in experiment.strategy_runs:
-                    strategy_gateway.save_strategy_run(experiment.experiment_id, run)
-                strategy_gateway.conn.execute("COMMIT")
-            except Exception:
-                strategy_gateway.conn.execute("ROLLBACK")
-                raise
-        logger.info("Saved experiment %s results to %s", experiment.experiment_id, resolved_db)
-        print("Saved experiment %s results to %s" % (experiment.experiment_id, resolved_db))
 
     def _build_benchmark_run(self, m_cfg: MarketStoreConfig, experiment: Experiment) -> StrategyRun:
         first = experiment.strategy_runs[0]
