@@ -99,7 +99,7 @@ def run_parameter_sweep():
 
 if __name__ == '__main__':
     # run_full_suite()
-    # run_pairs_strategy()
+    run_pairs_strategy()
     # run_ml_momentum_strategy()
     # run_ml_mean_reversion_strategy()
     # run_parameter_sweep()
@@ -108,4 +108,4 @@ if __name__ == '__main__':
     # run_fixed_weight_strategy()
     # run_long_short_strategy()
     # run_ls_market_neutral_ml()
-    run_mean_reversion_strategy()
+    # run_mean_reversion_strategy()

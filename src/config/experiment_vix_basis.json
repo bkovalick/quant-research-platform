@@ -1,0 +1,81 @@
+{
+  "_description": "VIX term-structure strategy: short vol (SVXY) in contango, long vol (VIXM) in backwardation, cash otherwise. Signal is ^VIX / ^VIX3M. Starts after SVXY's Feb 2018 deleverage to -0.5x.",
+  "database_name": "research.duckdb",
+  "market_store_config": {
+    "start_date": "2018-03-01",
+    "end_date": "2026-08-19",
+    "data_source": {
+      "yfinance": null
+    },
+    "benchmark": "SPY",
+    "risk_free_rate": 0.03,
+    "transaction_cost": 0.001,
+    "tickers": [
+      "^VIX",
+      "^VIX3M",
+      "SPY",
+      "SVXY",
+      "VIXM"
+    ]
+  },
+  "strategies": [
+    {
+      "name": "vix_basis_long_short_vol",
+      "market_state_config": {
+        "lookback_window_key": "1m",
+        "market_frequency": "d",
+        "cash_allocation": 1.0,
+        "exogenous_tickers": ["^VIX", "^VIX3M"],
+        "investment_universe": ["SVXY", "VIXM"]
+      },
+      "signals_config": {
+        "vix_basis": {
+          "front_index": "^VIX",
+          "back_index": "^VIX3M",
+          "short_vol_ticker": "SVXY",
+          "long_vol_ticker": "VIXM",
+          "short_entry": 0.90,
+          "short_exit": 0.95,
+          "long_entry": 1.05,
+          "long_exit": 1.00,
+          "enable_long": true,
+          "use_prior_close": true
+        }
+      },
+      "rebalance_problem": {
+        "optimizer_type": "None",
+        "rebalance_frequency": "daily",
+        "apply_market_caps": false,
+        "strategy_type": "vix_basis_strategy",
+        "signal_source": "vix_basis",
+        "monitoring_type": "none"
+      }
+    },
+    {
+      "name": "vix_basis_short_vol_only",
+      "market_state_config": {
+        "lookback_window_key": "1m",
+        "market_frequency": "d",
+        "cash_allocation": 1.0,
+        "exogenous_tickers": ["^VIX", "^VIX3M"],
+        "investment_universe": ["SVXY"]
+      },
+      "signals_config": {
+        "vix_basis": {
+          "short_vol_ticker": "SVXY",
+          "short_entry": 0.90,
+          "short_exit": 0.95,
+          "enable_long": false
+        }
+      },
+      "rebalance_problem": {
+        "optimizer_type": "None",
+        "rebalance_frequency": "daily",
+        "apply_market_caps": false,
+        "strategy_type": "vix_basis_strategy",
+        "signal_source": "vix_basis",
+        "monitoring_type": "none"
+      }
+    }
+  ]
+}

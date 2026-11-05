@@ -14,7 +14,7 @@ class MeanReversionSignals(RiskReturnSignals):
         super().__init__(market_state, signals_cfg)
 
     def mean_returns(self) -> np.ndarray:
-        method = getattr(self.signals_config, "mean_reversion_method", "rank_reversal")
+        method = self.signals_config.mean_reversion_method
         if method == "bollinger":
             return self._bollinger_signal()
         if method == "rank_reversal":
@@ -22,7 +22,7 @@ class MeanReversionSignals(RiskReturnSignals):
         raise ValueError(f"Unknown mean_reversion_method: {method}")
 
     def _rank_reversal_signal(self) -> np.ndarray:
-        mean_reversion_window = getattr(self.signals_config, "mean_reversion_window", None)
+        mean_reversion_window = self.signals_config.mean_reversion_window
         if mean_reversion_window is None:
             return super().mean_returns()        
         
@@ -43,10 +43,10 @@ class MeanReversionSignals(RiskReturnSignals):
     def _bollinger_signal(self) -> np.ndarray:
         """Expected return view: negative z-score, so stretched-up assets are expected to fall."""
         moving_average_signal = MovingAverageSignals(self.market_state, self.signals_config)
-        window = getattr(self.signals_config, "bollinger_window", 20)
-        num_std = getattr(self.signals_config, "bollinger_num_std", 2.0)
+        window = self.signals_config.bollinger_window
+        num_std = self.signals_config.bollinger_num_std
         z_score = moving_average_signal.bollinger_weighted_moving_average(window, num_std)["z_score"].iloc[-1]
-        scale = getattr(self.signals_config, "bollinger_scale", 1.0)
+        scale = self.signals_config.bollinger_scale
         values = z_score.values.astype(float)
         return np.where(np.isfinite(values), -values, 0.0) * scale
     

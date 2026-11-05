@@ -25,14 +25,13 @@ def _signals(prices: pd.DataFrame = PRICES, **config) -> MeanReversionSignals:
     signals = object.__new__(MeanReversionSignals)
     market_state = SimpleNamespace(lookback_prices=lambda: prices, annual_trading_days=52)
     signals.market_state = market_state
-    signals.signals_config = SimpleNamespace(
-        mean_reversion_window=2,
-        bollinger_window=5,
-        bollinger_num_std=2.0,
-        apply_winsorizing=False,
-        windsor_percentiles={"lower": 0.05, "upper": 0.95},
+    signals.signals_config = SignalsConfig.from_dict({
+        "mean_reversion_window": 2,
+        "bollinger_window": 5,
+        "bollinger_num_std": 2.0,
+        "apply_winsorizing": False,
         **config,
-    )
+    })
     signals.apply_winsorizing = False
     signals.windsor_percentiles = {"lower": 0.05, "upper": 0.95}
     return signals
@@ -82,8 +81,9 @@ def test_bollinger_method_uses_bollinger_signal():
 
 
 def test_unknown_method_raises():
-    with pytest.raises(ValueError, match="Unknown mean_reversion_method"):
-        _signals(mean_reversion_method="momentum").mean_returns()
+    # Rejected when the config is loaded, before any market data is fetched.
+    with pytest.raises(ValueError, match="mean_reversion_method must be one of"):
+        _signals(mean_reversion_method="momentum")
 
 
 def test_bollinger_signal_is_negative_z_score_so_stretched_assets_revert():

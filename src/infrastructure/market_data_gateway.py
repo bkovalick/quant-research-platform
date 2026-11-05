@@ -9,10 +9,11 @@ logger = logging.getLogger(__name__)
 class MarketDataGateway:
     """ Data gateway for fetching market data using yfinance """
     @staticmethod
-    def get_price_data(market_store_config: MarketStoreConfig):
-        use_sp500_constituents = False
-        tickers = MarketDataGateway.get_sp500_tickers() if \
-            use_sp500_constituents else market_store_config.tickers
+    def get_price_data(
+        market_store_config: MarketStoreConfig,
+        tickers: list = None):
+
+        tickers = tickers if tickers is not None else market_store_config.tickers
         benchmark_ticker = market_store_config.benchmark
         if benchmark_ticker not in tickers:
             tickers.append(benchmark_ticker)

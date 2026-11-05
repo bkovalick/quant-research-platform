@@ -4,11 +4,12 @@ import uuid
 import logging
 import multiprocessing 
 import json
-import os
+import threading
 from datetime import datetime
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from typing import Optional
 
+from application.progress import ProgressCallback, QueueReporter
 from domain.portfolio.portfolio import Portfolio
 from domain.portfolio.tax_lot_ledger import TaxLotLedger
 from reporting.performance_analyzer import PerformanceAnalyzer
@@ -27,11 +28,24 @@ from models.experiment import Experiment
 from models.backtest_result import BacktestResult
 from models.monitoring_stats import MonitoringStats
 from infrastructure.market_data_gateway import MarketDataStore
-from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway, StrategyResultsDataGateway
 
 logger = logging.getLogger(__name__)
 
 _MARKET_STORE_CACHE = {}
+_DRAIN_STOP = ("__stop__", {})
+
+
+def _drain_progress(queue, progress: ProgressCallback) -> None:
+    """Forward progress events from worker processes to the in-process callback."""
+    while True:
+        try:
+            item = queue.get()
+        except (EOFError, OSError):
+            return
+        if item == _DRAIN_STOP:
+            return
+        name, fields = item
+        progress(name, **fields)
 
 def _market_store_cache_key(market_store_config: MarketStoreConfig) -> str:
     """Build a stable, hashable cache key from config contents."""
@@ -44,7 +58,7 @@ def get_market_store(market_store_config: MarketStoreConfig) -> MarketDataStore:
         _MARKET_STORE_CACHE[cache_key] = MarketDataStore(market_store_config)
     return _MARKET_STORE_CACHE[cache_key]
 
-def build_monitors(run, monitoring_type):
+def build_monitors(run, monitoring_type, periods_per_year: Optional[int] = None):
     monitors = []
 
     strategy_monitor = {
@@ -55,7 +69,7 @@ def build_monitors(run, monitoring_type):
     if strategy_monitor is not None:
         monitors.append(strategy_monitor(run))
 
-    monitors.append(FactorRegressionDiagnostics(run))
+    monitors.append(FactorRegressionDiagnostics(run, periods_per_year=periods_per_year))
 
     return monitors
 
@@ -103,9 +117,23 @@ def build_tax_lot_ledger(rebalance_problem) -> Optional[TaxLotLedger]:
         return TaxLotLedger()
     return None
 
-def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConfig) -> StrategyRun:
+def run_strategy_worker(strategy_cfg: dict,
+                        market_store_config: MarketStoreConfig,
+                        progress: Optional[ProgressCallback] = None) -> StrategyRun:
+    name = strategy_cfg.get("name", "Unnamed Strategy")
+    report = (lambda **fields: progress(name, **fields)) if progress is not None else (lambda **fields: None)
+    try:
+        run = _run_strategy(strategy_cfg, market_store_config, report)
+    except Exception as exc:
+        report(phase="failed", error=f"{type(exc).__name__}: {exc}")
+        raise
+    report(phase="done")
+    return run
+
+def _run_strategy(strategy_cfg: dict, market_store_config: MarketStoreConfig, report) -> StrategyRun:
     logger.info(f"Running strategy: {strategy_cfg.get('name', 'Unnamed Strategy')}")
     print(f"Running strategy: {strategy_cfg.get('name', 'Unnamed Strategy')}")
+    report(phase="loading_data")
     market_store = get_market_store(market_store_config)
     market_state_config = build_market_state_config(strategy_cfg)
     market_state = MarketState(market_store, market_state_config)
@@ -127,10 +155,15 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
         portfolio, 
         strategy, 
         market_state, 
-        signals_factory, 
-        tax_lot_ledger
+        signals_factory,
+        tax_lot_ledger,
+        progress_callback=lambda pct, as_of: report(
+            phase="running", pct=pct, as_of=as_of.strftime("%Y-%m-%d")
+        ),
     ).run_backtest(rebalance_problem)
-    
+
+    report(phase="analyzing", pct=100.0)
+
     portfolio_results = PerformanceAnalyzer().compute(
         run.portfolio,
         market_store_config,
@@ -140,7 +173,8 @@ def run_strategy_worker(strategy_cfg: dict, market_store_config: MarketStoreConf
 
     stats = [
         monitor.analyze()
-        for monitor in build_monitors(run, rebalance_problem.monitoring_type)
+        for monitor in build_monitors(run, rebalance_problem.monitoring_type,
+                                      market_state_config.annual_trading_days)
     ]
 
     monitoring_stats = merge_monitoring_stats(*stats)
@@ -170,52 +204,46 @@ class ExperimentRunner:
     def _create_experiment(self, m_cfg: MarketStoreConfig) -> Experiment:
         return Experiment(experiment_id=str(uuid.uuid4()), created_at=datetime.now(), market_config=m_cfg)
 
-    def run(self) -> Experiment:
+    def run(self, progress: Optional[ProgressCallback] = None) -> Experiment:
         m_cfg = self._get_market_config()
         experiment = self._create_experiment(m_cfg)
         logger.info("Starting sequential experiment run")
         for strategy_cfg in self.config["strategies"]:
-            experiment.add_run(run_strategy_worker(strategy_cfg, m_cfg))
+            experiment.add_run(run_strategy_worker(strategy_cfg, m_cfg, progress))
         experiment.add_run(self._build_benchmark_run(m_cfg, experiment))
-        # self._save_results(experiment)
         logger.info("Sequential experiment run complete with %s strategy runs", len(experiment.strategy_runs))
         print("Sequential experiment run complete with %s strategy runs" % len(experiment.strategy_runs))
         return experiment
 
-    def run_parallel(self) -> Experiment:
+    def run_parallel(self, progress: Optional[ProgressCallback] = None) -> Experiment:
         m_cfg = self._get_market_config()
         experiment = self._create_experiment(m_cfg)
         strategies = self.config["strategies"]
-        
+
         logger.info(f"Running {len(strategies)} strategies in parallel with max_workers={self.max_workers}")
-        with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-            futures = [executor.submit(run_strategy_worker, s_cfg, m_cfg) for s_cfg in strategies]
-            for future in as_completed(futures):
-                experiment.add_run(future.result())
+        manager = multiprocessing.Manager() if progress is not None else None
+        drainer = None
+        try:
+            worker_progress = None
+            if manager is not None:
+                queue = manager.Queue()
+                worker_progress = QueueReporter(queue)
+                drainer = threading.Thread(target=_drain_progress, args=(queue, progress), daemon=True)
+                drainer.start()
+            with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+                futures = [executor.submit(run_strategy_worker, s_cfg, m_cfg, worker_progress) for s_cfg in strategies]
+                for future in as_completed(futures):
+                    experiment.add_run(future.result())
+        finally:
+            if drainer is not None:
+                queue.put(_DRAIN_STOP)
+                drainer.join(timeout=5)
+            if manager is not None:
+                manager.shutdown()
         experiment.add_run(self._build_benchmark_run(m_cfg, experiment))
-        # self._save_results(experiment)
         logger.info("Parallel experiment run complete with %s strategy runs", len(experiment.strategy_runs))
         print("Parallel experiment run complete with %s strategy runs" % len(experiment.strategy_runs))
         return experiment
-
-    def _save_results(self, experiment: Experiment):
-        db = self.config.get("results_database") or self.config.get("database_name") or "research.duckdb"
-        resolved_db = os.path.abspath(db)
-        logger.info("Saving %s strategy runs to %s", len(experiment.strategy_runs), resolved_db)
-        print("Saving %s strategy runs to %s" % (len(experiment.strategy_runs), resolved_db))
-        with ExperimentMetaDataDataGateway(resolved_db) as exp_gateway:
-            exp_gateway.save_experiment_instance(experiment)
-        with StrategyResultsDataGateway(resolved_db) as strategy_gateway:
-            strategy_gateway.conn.execute("BEGIN TRANSACTION")
-            try:
-                for run in experiment.strategy_runs:
-                    strategy_gateway.save_strategy_run(experiment.experiment_id, run)
-                strategy_gateway.conn.execute("COMMIT")
-            except Exception:
-                strategy_gateway.conn.execute("ROLLBACK")
-                raise
-        logger.info("Saved experiment %s results to %s", experiment.experiment_id, resolved_db)
-        print("Saved experiment %s results to %s" % (experiment.experiment_id, resolved_db))
 
     def _build_benchmark_run(self, m_cfg: MarketStoreConfig, experiment: Experiment) -> StrategyRun:
         first = experiment.strategy_runs[0]

@@ -24,7 +24,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         #     and self.ml_state is not None
         #     and self.ml_state.scores is not None
         # )         
-        bl = getattr(self.signals_config, "black_litterman", None) or {}
+        bl = self.signals_config.black_litterman or {}
         self.black_litterman = bl if bl else None
         self.tau = bl.get("tau", 0.05)
         self.delta = bl.get("delta", 2.5)
@@ -117,7 +117,7 @@ class BlackLittermanSignal(RiskReturnSignals):
             
             return scores.rank(), self.black_litterman.get("ml_view_spread", 0.03)
 
-        window = getattr(self.signals_config, "mean_reversion_window", 4)
+        window = self.signals_config.mean_reversion_window
         short_returns = self.market_state.lookback_prices().pct_change(window, fill_method=None).iloc[-1]
         return short_returns.rank(), self.black_litterman.get("reversion_view", 0.03)
     
