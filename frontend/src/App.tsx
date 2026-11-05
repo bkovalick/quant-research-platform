@@ -8,6 +8,7 @@ import StrategyGrid from "./components/StrategyGrid"
 import StrategyDetails from "./components/StrategyDetails"
 import AnalysisPanel from "./components/AnalysisPanel"
 import StatisticalEvidence from "./components/StatisticalEvidence"
+import CalendarReturns from "./components/CalendarReturns"
 import DownloadReport from "./components/DownloadReport"
 import AttributionPage from "./components/AttributionPage"
 import type { DateWindow } from "./utils/metricsUtils"
@@ -120,6 +121,7 @@ export default function App() {
                   onWindowChange={setDateWindow}
                   dateWindow={dateWindow}
                 />
+                <CalendarReturns run={selectedRun} />
                 <AnalysisPanel
                   runs={runs}
                   selectedRun={selectedRun}

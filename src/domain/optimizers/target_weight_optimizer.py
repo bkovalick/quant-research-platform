@@ -467,6 +467,18 @@ class TargetWeightOptimizer(BaseOptimizer):
 		objective = cp.Maximize(mean_vector @ risky_weights - risk_aversion * \
 						  portfolio_risk - concentration_objective - transaction_cost_penalty - tax_cost_objective)
 		return objective
+
+	def _setup_minimum_variance_objective(self,
+										  decision_variables: dict,
+										  rebalance_problem: RebalanceProblem,
+										  signals: Signals = None,) -> callable:
+		"""Set minimum variance objective for the optimization problem"""
+		portfolio_weights = decision_variables.get('portfolio_weights')
+		cov_matrix = signals.covariance_matrix()
+		risky_weights = portfolio_weights[self._risky_indices]
+		cov_matrix = cov_matrix[np.ix_(self._risky_indices, self._risky_indices)]
+		portfolio_risk = cp.quad_form(risky_weights, cp.psd_wrap(cov_matrix))
+		return cp.Minimize(portfolio_risk)
 	
 	def _get_concentration_objective(self, 
 									 risky_weights,

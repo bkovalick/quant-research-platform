@@ -259,7 +259,11 @@ class PerformanceAnalyzer:
             "rolling_sharpe_ratio": performance_metrics["rolling_sharpe_ratio"],
             "rolling_alpha": performance_metrics["rolling_alpha"],
             "rolling_drawdown": performance_metrics["rolling_drawdown"],
-            "rolling_turnover": performance_metrics["rolling_turnover"]
+            "rolling_turnover": performance_metrics["rolling_turnover"],
+            "monthly_returns": compound_by_period(performance_metrics["portfolio_returns"], "ME"),
+            "yearly_returns": compound_by_period(performance_metrics["portfolio_returns"], "YE"),
+            "benchmark_monthly_returns": compound_by_period(self.benchmark_returns, "ME"),
+            "benchmark_yearly_returns": compound_by_period(self.benchmark_returns, "YE"),
         }
 
     def _build_summary(self, performance_metrics: dict) -> dict:
@@ -299,3 +303,17 @@ def align_series_to_dataframe(df: pd.DataFrame, series: pd.Series) -> pd.Series:
     aligned = pd.concat([nan_part, series])
     aligned = aligned.reindex(df.index)
     return aligned
+
+
+def compound_by_period(returns: pd.Series | None, rule: str) -> pd.Series:
+    """
+    Compound periodic returns into calendar periods ("ME" month-end, "YE" year-end).
+    Works for daily, weekly or monthly input. Indexed by period end; a period with
+    no observations is dropped rather than reported as 0%. The first and last
+    periods are partial when the backtest starts or ends mid-period.
+    """
+    if returns is None or len(returns) == 0:
+        return pd.Series(dtype=float)
+    r = pd.Series(returns, dtype=float).replace([np.inf, -np.inf], np.nan).dropna()
+    r.index = pd.to_datetime(r.index)
+    return ((1.0 + r).resample(rule).prod(min_count=1) - 1.0).dropna()
