@@ -1,5 +1,4 @@
 from typing import Optional
-
 import pandas as pd
 import numpy as np
 
@@ -65,6 +64,8 @@ class PerformanceAnalyzer:
             (arithmetic_annualized_return - risk_free_rate) / annualized_volatility
             if annualized_volatility != 0 else 0.0
         )
+        standardized_returns = ((portfolio_returns - portfolio_returns.mean()) / portfolio_returns.std()
+                                if portfolio_returns.std() != 0 else 0.0)
 
         drawdown_returns = cumulative_returns.iloc[self._annual_trading_days:] if self._annual_trading_days > 0 else cumulative_returns
         rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self._annual_trading_days)
@@ -96,6 +97,7 @@ class PerformanceAnalyzer:
             "return": annualized_return,
             "volatility": annualized_volatility,
             "sharpe_ratio": sharpe_ratio,
+            "standardized_returns": standardized_returns,
             "sortino_ratio": self._calculate_sortino_ratio(arithmetic_annualized_return, portfolio_returns, risk_free_rate),
             "max_drawdown": max_drawdown,
             "max_drawdown_duration": max_drawdown_duration,
@@ -264,6 +266,7 @@ class PerformanceAnalyzer:
             "yearly_returns": compound_by_period(performance_metrics["portfolio_returns"], "YE"),
             "benchmark_monthly_returns": compound_by_period(self.benchmark_returns, "ME"),
             "benchmark_yearly_returns": compound_by_period(self.benchmark_returns, "YE"),
+            "standardized_returns": performance_metrics["standardized_returns"],
         }
 
     def _build_summary(self, performance_metrics: dict) -> dict:

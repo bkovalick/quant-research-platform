@@ -9,6 +9,7 @@ import StrategyDetails from "./components/StrategyDetails"
 import AnalysisPanel from "./components/AnalysisPanel"
 import StatisticalEvidence from "./components/StatisticalEvidence"
 import CalendarReturns from "./components/CalendarReturns"
+import { colorForRun } from "./utils/strategyColors"
 import DownloadReport from "./components/DownloadReport"
 import AttributionPage from "./components/AttributionPage"
 import type { DateWindow } from "./utils/metricsUtils"
@@ -121,7 +122,11 @@ export default function App() {
                   onWindowChange={setDateWindow}
                   dateWindow={dateWindow}
                 />
-                <CalendarReturns run={selectedRun} />
+                <CalendarReturns
+                  run={selectedRun}
+                  color={colorForRun(runs, selectedRun)}
+                  benchmarkColor={colorForRun(runs, runs.find(r => r.strategy_name === experiment?.market_config?.benchmark))}
+                />
                 <AnalysisPanel
                   runs={runs}
                   selectedRun={selectedRun}

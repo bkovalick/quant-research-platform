@@ -38,7 +38,12 @@ const MONO: CSSProperties = {
 
 const pct = (v: number, digits = 1) => `${v >= 0 ? "" : "−"}${Math.abs(v * 100).toFixed(digits)}%`
 
-export default function CalendarReturns({ run }: { run: RunWithSeries | null }) {
+export default function CalendarReturns({ run, color, benchmarkColor }: {
+  run: RunWithSeries | null
+  /** The selected strategy's series color elsewhere on the page, so identity stays consistent. */
+  color?: string | null
+  benchmarkColor?: string | null
+}) {
   const monthly = useMemo(() => periodReturns(run, "monthly"), [run])
   const yearly = useMemo(() => periodReturns(run, "yearly"), [run])
   const benchMonthly = useMemo(() => periodReturns(run, "monthly", true), [run])
@@ -57,7 +62,8 @@ export default function CalendarReturns({ run }: { run: RunWithSeries | null }) 
       </div>
       <div style={body}>
         <MonthlyHeatmap monthly={monthly} yearly={yearly} benchMonthly={benchMonthly} partial={partial} />
-        <YearlyBars yearly={yearly} benchYearly={benchYearly} partial={partial} />
+        <YearlyBars yearly={yearly} benchYearly={benchYearly} partial={partial}
+                    colors={{ strategy: color ?? COLOR.strategy, benchmark: benchmarkColor ?? COLOR.benchmark }} />
       </div>
     </section>
   )
@@ -163,8 +169,9 @@ function ScaleLegend({ cap }: { cap: number }) {
 
 /* ---------------- yearly bars ---------------- */
 
-function YearlyBars({ yearly, benchYearly, partial }: {
+function YearlyBars({ yearly, benchYearly, partial, colors }: {
   yearly: PeriodReturn[]; benchYearly: PeriodReturn[]; partial: Set<number>
+  colors: { strategy: string; benchmark: string }
 }) {
   const data = useMemo(() => {
     const bench = new Map(benchYearly.map(p => [p.year, p.value]))
@@ -179,8 +186,8 @@ function YearlyBars({ yearly, benchYearly, partial }: {
       <div style={cardHead}>
         <div style={cardTitle}>Calendar-year returns</div>
         <div style={legendWrap}>
-          <LegendKey color={COLOR.strategy} label="Strategy" />
-          {hasBenchmark && <LegendKey color={COLOR.benchmark} label="Benchmark" />}
+          <LegendKey color={colors.strategy} label="Strategy" />
+          {hasBenchmark && <LegendKey color={colors.benchmark} label="Benchmark" />}
         </div>
       </div>
       <ResponsiveContainer width="100%" height={260}>
@@ -191,10 +198,10 @@ function YearlyBars({ yearly, benchYearly, partial }: {
           <YAxis tickFormatter={v => `${Math.round(v * 100)}%`} tick={{ fill: COLOR.inkSecondary, fontSize: 10 }}
                  tickLine={false} axisLine={false} width={40} />
           <ReferenceLine y={0} stroke={COLOR.baseline} />
-          <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} content={<YearTooltip />} />
-          <Bar dataKey="strategy" name="Strategy" fill={COLOR.strategy} shape={<RoundedEndBar />} isAnimationActive={false} />
+          <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} content={<YearTooltip colors={colors} />} />
+          <Bar dataKey="strategy" name="Strategy" fill={colors.strategy} shape={<RoundedEndBar />} isAnimationActive={false} />
           {hasBenchmark && (
-            <Bar dataKey="benchmark" name="Benchmark" fill={COLOR.benchmark} shape={<RoundedEndBar />} isAnimationActive={false} />
+            <Bar dataKey="benchmark" name="Benchmark" fill={colors.benchmark} shape={<RoundedEndBar />} isAnimationActive={false} />
           )}
         </BarChart>
       </ResponsiveContainer>
@@ -212,16 +219,18 @@ function LegendKey({ color, label }: { color: string; label: string }) {
   )
 }
 
-function YearTooltip({ active, payload, label }: { active?: boolean; payload?: { payload: YearRow }[]; label?: string }) {
+function YearTooltip({ active, payload, label, colors }: {
+  active?: boolean; payload?: { payload: YearRow }[]; label?: string; colors: { strategy: string; benchmark: string }
+}) {
   if (!active || !payload?.length) return null
   const row = payload[0].payload
   return (
     <div style={{ ...tooltip, position: "static", transform: "none" }}>
       <div style={tooltipTitle}>{label}</div>
-      <div style={tooltipRow}><span><LegendKey color={COLOR.strategy} label="Strategy" /></span><span style={MONO}>{pct(row.strategy, 2)}</span></div>
+      <div style={tooltipRow}><span><LegendKey color={colors.strategy} label="Strategy" /></span><span style={MONO}>{pct(row.strategy, 2)}</span></div>
       {row.benchmark !== null && (
         <>
-          <div style={tooltipRow}><span><LegendKey color={COLOR.benchmark} label="Benchmark" /></span><span style={MONO}>{pct(row.benchmark, 2)}</span></div>
+          <div style={tooltipRow}><span><LegendKey color={colors.benchmark} label="Benchmark" /></span><span style={MONO}>{pct(row.benchmark, 2)}</span></div>
           <div style={tooltipRow}><span>Difference</span><span style={MONO}>{pct(row.strategy - row.benchmark, 2)}</span></div>
         </>
       )}

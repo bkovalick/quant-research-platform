@@ -474,7 +474,7 @@ function formatDate(d: string): string {
 /* ── Styles ── */
 const panel: CSSProperties = {
   background: "#161b22", border: "1px solid #2a2f3a",
-  borderRadius: 8, overflow: "visible", height: "100%"
+  borderRadius: 8, overflow: "visible", marginTop: 16,
 }
 const tabStrip: CSSProperties = {
   display: "flex", borderBottom: "1px solid #2a2f3a", background: "#0d1117"
