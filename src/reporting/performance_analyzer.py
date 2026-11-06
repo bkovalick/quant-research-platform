@@ -65,7 +65,7 @@ class PerformanceAnalyzer:
             if annualized_volatility != 0 else 0.0
         )
         standardized_returns = ((portfolio_returns - portfolio_returns.mean()) / portfolio_returns.std()
-                                if portfolio_returns.std() != 0 else 0.0)
+                                if portfolio_returns.std() != 0 else pd.Series(0, index=portfolio_returns.index))
 
         drawdown_returns = cumulative_returns.iloc[self._annual_trading_days:] if self._annual_trading_days > 0 else cumulative_returns
         rolling_dd = self._calculate_rolling_drawdown(drawdown_returns, self._annual_trading_days)

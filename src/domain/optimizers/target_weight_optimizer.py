@@ -470,7 +470,6 @@ class TargetWeightOptimizer(BaseOptimizer):
 
 	def _setup_minimum_variance_objective(self,
 										  decision_variables: dict,
-										  rebalance_problem: RebalanceProblem,
 										  signals: Signals = None,) -> callable:
 		"""Set minimum variance objective for the optimization problem"""
 		portfolio_weights = decision_variables.get('portfolio_weights')

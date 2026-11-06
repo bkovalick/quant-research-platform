@@ -9,6 +9,7 @@ import StrategyDetails from "./components/StrategyDetails"
 import AnalysisPanel from "./components/AnalysisPanel"
 import StatisticalEvidence from "./components/StatisticalEvidence"
 import CalendarReturns from "./components/CalendarReturns"
+import ReturnDistribution from "./components/ReturnDistribution"
 import { colorForRun } from "./utils/strategyColors"
 import DownloadReport from "./components/DownloadReport"
 import AttributionPage from "./components/AttributionPage"
@@ -127,6 +128,10 @@ export default function App() {
                   color={colorForRun(runs, selectedRun)}
                   benchmarkColor={colorForRun(runs, runs.find(r => r.strategy_name === experiment?.market_config?.benchmark))}
                 />
+                <ReturnDistribution 
+                  run={selectedRun} 
+                  color={colorForRun(runs, selectedRun)} 
+                />           
                 <AnalysisPanel
                   runs={runs}
                   selectedRun={selectedRun}
