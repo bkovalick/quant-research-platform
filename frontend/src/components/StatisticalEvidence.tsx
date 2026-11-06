@@ -172,11 +172,19 @@ function stars(p: number): string {
   return ""
 }
 
+const PERIOD_LABELS: Record<number, string> = { 252: "day", 52: "week", 12: "month", 4: "quarter" }
+
 function FactorRegression({ reg }: { reg: any }) {
   const alpha = reg.alpha ?? {}
   const factors: any[] = reg.factors ?? []
 
-  const annualizedAlphaBp = alpha.coef != null ? alpha.coef * 252 * 10000 : null
+  // The backend reports the run's own frequency; 252 is only a fallback for
+  // results produced before periods_per_year was added (those weekly alphas are wrong).
+  const periodsPerYear: number = reg.periods_per_year ?? 252
+  const periodLabel = PERIOD_LABELS[periodsPerYear] ?? "period"
+  const annualizedAlpha: number | null =
+    alpha.annualized ?? (alpha.coef != null ? alpha.coef * periodsPerYear : null)
+  const annualizedAlphaBp = annualizedAlpha != null ? annualizedAlpha * 10000 : null
   const perPeriodBp = alpha.coef != null ? alpha.coef * 10000 : null
 
   const verdict = useMemo(() => {
@@ -196,6 +204,7 @@ function FactorRegression({ reg }: { reg: any }) {
             <span>{reg.model ?? "Factor model"}</span>
             <span>{reg.cov_type ?? ""}</span>
             <span style={MONO}>R² {reg.r_squared != null ? reg.r_squared.toFixed(3) : "—"}</span>
+            {reg.n_obs != null && <span style={MONO}>n = {reg.n_obs} {periodLabel}s</span>}
           </div>
           <table style={regTable}>
             <thead>
@@ -250,7 +259,7 @@ function FactorRegression({ reg }: { reg: any }) {
       {verdict && (
         <div style={{ ...verdictBox, borderLeftColor: verdict.tone }}>
           <span style={{ ...MONO, color: verdict.tone }}>
-            α = {perPeriodBp?.toFixed(1)} bp/period
+            α = {perPeriodBp?.toFixed(1)} bp/{periodLabel}
             {annualizedAlphaBp != null ? ` (≈ ${(annualizedAlphaBp / 100).toFixed(1)}%/yr)` : ""},
             t = {alpha.t_stat?.toFixed(2)}
           </span>

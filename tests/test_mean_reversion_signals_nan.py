@@ -12,12 +12,13 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from domain.signals.mean_reversion_signals import MeanReversionSignals
+from models.signals_config import SignalsConfig
 
 
 def _signals(prices: pd.DataFrame) -> MeanReversionSignals:
     signals = object.__new__(MeanReversionSignals)
     signals.market_state = SimpleNamespace(lookback_prices=lambda: prices)
-    signals.signals_config = SimpleNamespace(mean_reversion_window=2)
+    signals.signals_config = SignalsConfig.from_dict({"mean_reversion_window": 2, "apply_winsorizing": False})
     signals.apply_winsorizing = False
     signals.windsor_percentiles = {"lower": 0.05, "upper": 0.95}
     return signals

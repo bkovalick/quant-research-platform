@@ -11,7 +11,6 @@ class ConstraintsConfig:
     max_number_of_positions: Optional[int] = None
     asset_class_constraints: Optional[Dict[str, List[float]]] = None
     sector_constraints: Optional[Dict[str, List[float]]] = None
-    max_return: float = 0.05
     concentration_strength: float = 1.0
     optimizer_vol_constraint: Optional[float] = None
     max_long: Optional[float] = None
@@ -28,7 +27,6 @@ class ConstraintsConfig:
             max_number_of_positions=d.get("max_number_of_positions", None),
             asset_class_constraints=d.get("asset_class_constraints", None),
             sector_constraints=d.get("sector_constraints", None),
-            max_return=d.get("max_return", 0.05),
             concentration_strength=d.get("concentration_strength", 1.0),
             optimizer_vol_constraint=d.get("optimizer_vol_constraint", None),
             max_long=d.get("max_long", None),
@@ -57,7 +55,6 @@ class RebalanceProblemConfig:
     signal_source: str
     monitoring_type: str
     rebalance_frequency: Optional[str]
-    apply_max_return_objective: bool
     apply_sharpe_objective: bool
     apply_tax_objective: bool
     initial_weights: Optional[Any]
@@ -76,7 +73,6 @@ class RebalanceProblemConfig:
             signal_source=d.get("signal_source", "risk_return"),
             monitoring_type=d.get("monitoring_type", "long_only"),
             rebalance_frequency=d.get("rebalance_frequency", None),
-            apply_max_return_objective=d.get("apply_max_return_objective", False),
             apply_sharpe_objective=d.get("apply_sharpe_objective", False),
             apply_tax_objective=d.get("apply_tax_objective", False),
             initial_weights=d.get("initial_weights", None),

@@ -83,7 +83,6 @@ def test_ls_market_neutral_ml_one_off_date_is_feasible_after_warmup():
             "n_assets": len(TICKERS),
             "optimizer_type": "portfolio_optimizer",
             "strategy_type": "systematic_strategy",
-            "apply_max_return_objective": True,
             "initial_weights": {ticker: 0.25 for ticker in TICKERS},
             "cash_allocation": 0.0,
             "rebalance_frequency": "weekly",

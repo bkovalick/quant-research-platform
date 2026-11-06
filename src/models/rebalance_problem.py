@@ -26,10 +26,6 @@ class RebalanceProblem:
         return self._data.get("strategy_type", "fwp_strategy")
     
     @property
-    def apply_max_return_objective(self) -> bool:
-        return self._data.get("apply_max_return_objective", False)
-    
-    @property
     def apply_sharpe_objective(self) -> bool:
         return self._data.get("apply_sharpe_objective", False)
 
@@ -95,10 +91,6 @@ class RebalanceProblem:
     @property
     def sector_constraints(self) -> int:
         return self._data.get("sector_constraints", None)
-    
-    @property
-    def max_return(self) -> float:
-        return self._data.get("max_return", 0.05)
     
     @property
     def concentration_strength(self) -> int:

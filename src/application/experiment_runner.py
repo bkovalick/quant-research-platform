@@ -58,7 +58,7 @@ def get_market_store(market_store_config: MarketStoreConfig) -> MarketDataStore:
         _MARKET_STORE_CACHE[cache_key] = MarketDataStore(market_store_config)
     return _MARKET_STORE_CACHE[cache_key]
 
-def build_monitors(run, monitoring_type):
+def build_monitors(run, monitoring_type, periods_per_year: Optional[int] = None):
     monitors = []
 
     strategy_monitor = {
@@ -69,7 +69,7 @@ def build_monitors(run, monitoring_type):
     if strategy_monitor is not None:
         monitors.append(strategy_monitor(run))
 
-    monitors.append(FactorRegressionDiagnostics(run))
+    monitors.append(FactorRegressionDiagnostics(run, periods_per_year=periods_per_year))
 
     return monitors
 
@@ -173,7 +173,8 @@ def _run_strategy(strategy_cfg: dict, market_store_config: MarketStoreConfig, re
 
     stats = [
         monitor.analyze()
-        for monitor in build_monitors(run, rebalance_problem.monitoring_type)
+        for monitor in build_monitors(run, rebalance_problem.monitoring_type,
+                                      market_state_config.annual_trading_days)
     ]
 
     monitoring_stats = merge_monitoring_stats(*stats)

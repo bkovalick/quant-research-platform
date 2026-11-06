@@ -5,6 +5,7 @@ from domain.strategies.systematic_strategy import SystematicStrategy
 from domain.strategies.pairs_trading_strategy import PairsTradingStrategy
 from domain.strategies.mean_reversion_strategy import MeanReversionStrategy
 from domain.strategies.vix_basis_strategy import VixBasisStrategy
+from domain.strategies.inverse_vol_strategy import InverseVolStrategy
 from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.rebalance_problem import RebalanceProblem
 
@@ -22,7 +23,8 @@ class StrategyFactory(BaseStrategyFactory):
         "systematic_strategy": SystematicStrategy,
         "pairs_trading_strategy": PairsTradingStrategy,
         "mean_reversion_strategy": MeanReversionStrategy,
-        "vix_basis_strategy": VixBasisStrategy
+        "vix_basis_strategy": VixBasisStrategy,
+        "inverse_vol_strategy": InverseVolStrategy
     }
 
     """Concrete implementation of a strategy factory."""

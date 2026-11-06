@@ -126,18 +126,29 @@ class LongOnlyICDiagnostics(BaseDiagnostic):
 
 class FactorRegressionDiagnostics(BaseDiagnostic):
     """
-    Performs OLS regression of portfolio excess returns against Fama-French five factors plus momentum (FF5 + MOM).
+    OLS regression of portfolio excess returns on Fama-French five factors plus momentum (FF5 + MOM).
+
+    The Ken French factors are daily. Portfolio returns may be daily, weekly or
+    monthly, so the daily factors are compounded over each portfolio period
+    (previous return date, this return date] before regressing. Regressing a
+    weekly return on a single day's factor return understates R^2 and the betas
+    and misstates alpha.
     """
-    def __init__(self, 
+    FACTORS = ["Mkt-RF", "SMB", "HML", "RMW", "CMA", "Mom"]
+
+    def __init__(self,
                  run: BacktestRun,
-                 risk_free_rate: float = 0.03):
+                 risk_free_rate: float = 0.03,
+                 periods_per_year: int | None = None):
         self._run = run
+        # Fallback only: the regression uses the Ken French RF series when it is available.
         self._risk_free_rate = risk_free_rate
         self._portfolio_returns = pd.Series(run.portfolio.returns) if run.portfolio is not None else None
 
         if self._portfolio_returns is None or self._portfolio_returns.empty:
             self._portfolio_returns = None
-        
+        self._periods_per_year = periods_per_year or self._infer_periods_per_year()
+
     def analyze(self) -> MonitoringStats:
         has_port_data = self._portfolio_returns is not None
         if not has_port_data:
@@ -150,94 +161,134 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
         )
 
     def _ols_fama_french_factor_regression(self):
-        """Runs a simple FF5 + MOM regression on aligned, frequency-safe data."""
+        """Runs FF5 + MOM on portfolio returns and factors compounded to the same periods."""
         returns = self._portfolio_returns.copy().replace([np.inf, -np.inf], np.nan).dropna()
-        ff_factors = self._get_fama_french_five_factors.copy().replace([np.inf, -np.inf], np.nan).dropna()
-
         if isinstance(returns.index, pd.PeriodIndex):
             returns.index = returns.index.to_timestamp()
-        if isinstance(ff_factors.index, pd.PeriodIndex):
-            ff_factors.index = ff_factors.index.to_timestamp()
+        returns.index = pd.to_datetime(returns.index)
+        returns = returns.sort_index()
 
-        ff_factors = self.add_momentum_factors(ff_factors)
+        daily_factors = self.add_momentum_factors(self._get_fama_french_five_factors)
+        daily_factors = daily_factors.replace([np.inf, -np.inf], np.nan).dropna()
+        factors = self.aggregate_factors_to_periods(daily_factors, returns.index)
 
-        returns = returns[returns.index.isin(ff_factors.index)]
-        ff_factors = ff_factors.loc[returns.index]
+        returns = returns.loc[factors.index]
+        excess_returns = returns - factors["RF"]
 
-        rf_per_period = self._risk_free_rate / self._periods_per_year
-        regression_data = pd.concat({
-            "Returns": returns,
-            "RiskFree": pd.Series(rf_per_period, index=returns.index),
-            **{col: ff_factors[col] for col in ff_factors.columns},
-        }, axis=1)
-        regression_data["Asset_Excess_Return"] = regression_data["Returns"] - regression_data["RiskFree"]
+        X = sm.add_constant(factors[self.FACTORS])
+        self._n_obs = len(excess_returns)
+        self._hac_lags = self._newey_west_lags(self._n_obs)
+        return sm.OLS(excess_returns, X, missing="drop").fit(
+            cov_type="HAC", cov_kwds={"maxlags": self._hac_lags}
+        )
 
-        X = regression_data[["Mkt-RF", "SMB", "HML", "RMW", "CMA", "Mom"]]
-        X = sm.add_constant(X)
-        y = regression_data["Asset_Excess_Return"]
+    def aggregate_factors_to_periods(self,
+                                     daily_factors: pd.DataFrame,
+                                     period_ends: pd.DatetimeIndex) -> pd.DataFrame:
+        """
+        Compound daily factor returns (Ken French percent units) over each portfolio
+        period (previous period end, this period end]. Returns decimal returns indexed
+        by period end. The first period (no known start) and any period not fully
+        covered by the factor data are dropped.
 
-        model = sm.OLS(y, X, missing="drop").fit(cov_type="HAC", cov_kwds={"maxlags": 7})
-        return model
+        Mkt-RF is rebuilt as compounded market minus compounded RF, rather than
+        compounding the daily excess return. For daily portfolios each period holds
+        one factor day, so this reduces to the plain daily regression.
+        """
+        daily = daily_factors.sort_index() / 100.0
+        rf_daily = daily["RF"] if "RF" in daily else pd.Series(
+            self._risk_free_rate / 252, index=daily.index)
+        daily = daily.assign(Mkt=daily["Mkt-RF"] + rf_daily, RF=rf_daily)
+
+        period_ends = pd.DatetimeIndex(period_ends).sort_values()
+        period_ends = period_ends[period_ends <= daily.index.max()]
+        if len(period_ends) < 2:
+            raise ValueError("Not enough overlap between portfolio returns and Fama-French factor data")
+
+        # Label each factor day with the first period end on or after it. Position 0
+        # means the day falls in the first period, whose start is unknown, so drop it.
+        position = period_ends.searchsorted(daily.index, side="left")
+        in_range = (position > 0) & (position < len(period_ends))
+        daily = daily[in_range]
+        labels = period_ends[position[in_range]]
+
+        cols = ["Mkt", "RF", "SMB", "HML", "RMW", "CMA", "Mom"]
+        compounded = (1.0 + daily[cols]).groupby(labels).prod() - 1.0
+        compounded["Mkt-RF"] = compounded["Mkt"] - compounded["RF"]
+        return compounded.drop(columns="Mkt")
 
     def add_momentum_factors(self, ff_factors: pd.DataFrame) -> pd.DataFrame:
         mom_factor = self._get_momentum_factor.copy().replace([np.inf, -np.inf], np.nan).dropna()
         if isinstance(mom_factor.index, pd.PeriodIndex):
             mom_factor.index = mom_factor.index.to_timestamp()
+        mom_factor.columns = [str(c).strip() for c in mom_factor.columns]
         ff_factors = ff_factors.copy()
         ff_factors.index = pd.to_datetime(ff_factors.index)
-        factors = ff_factors.join(mom_factor, how='inner')
-        return factors
+        return ff_factors.join(mom_factor, how='inner')
 
     @property
     def _get_fama_french_five_factors(self) -> pd.DataFrame:
-        start_date = self._portfolio_returns.index[0]
+        # Start a month early so the first portfolio periods have factor days behind them.
+        start_date = pd.Timestamp(self._portfolio_returns.index[0]) - pd.DateOffset(months=1)
         end_date = self._portfolio_returns.index[-1]
         ff_dataset = FamaFrenchReader('F-F_Research_Data_5_Factors_2x3_daily', start=start_date, end=end_date)
         if ff_dataset is None:
-            raise ValueError("Fama-French dataset could not be retrieved. \
-                             Please check your internet connection or the availability of the dataset.")
+            raise ValueError("Fama-French dataset could not be retrieved. "
+                             "Please check your internet connection or the availability of the dataset.")
 
         ff_factors = ff_dataset.read()[0]
-        ff_factors.index = ff_factors.index.to_timestamp()
+        if isinstance(ff_factors.index, pd.PeriodIndex):
+            ff_factors.index = ff_factors.index.to_timestamp()
         return ff_factors
-    
+
     @property
     def _get_momentum_factor(self) -> pd.DataFrame:
-        start_date = self._portfolio_returns.index[0]
+        start_date = pd.Timestamp(self._portfolio_returns.index[0]) - pd.DateOffset(months=1)
         end_date = self._portfolio_returns.index[-1]
         df_daily = web.DataReader('F-F_Momentum_Factor_daily', 'famafrench', start=start_date, end=end_date)
         return df_daily[0]
 
-    @property
-    def _periods_per_year(self) -> int:
-        freq = getattr(self._portfolio_returns.index, "inferred_freq", None)
-        if freq is None:
+    def _infer_periods_per_year(self) -> int:
+        """Fallback when the caller doesn't pass periods_per_year: median spacing of the return dates."""
+        if self._portfolio_returns is None or len(self._portfolio_returns) < 3:
             return 252
-        if freq.startswith("M") or freq.startswith("Q"):
-            return 12
-        if freq.startswith("W"):
+        spacing_days = pd.Series(pd.to_datetime(self._portfolio_returns.index)).diff().dt.days.median()
+        if spacing_days <= 3:
+            return 252
+        if spacing_days <= 10:
             return 52
-        return 252
+        if spacing_days <= 45:
+            return 12
+        return 4
+
+    @staticmethod
+    def _newey_west_lags(n_obs: int) -> int:
+        """Newey-West (1994) rule of thumb: floor(4 * (n/100)^(2/9))."""
+        return max(1, int(np.floor(4 * (n_obs / 100.0) ** (2.0 / 9.0))))
 
     def _format_factor_regression(self, result) -> dict:
         parameter_names = result.model.exog_names
         parameters = dict(zip(parameter_names, result.params))
         t_statistics = dict(zip(parameter_names, result.tvalues))
         p_values = dict(zip(parameter_names, result.pvalues))
+        alpha = float(parameters["const"])
 
         return {
             "model": "FF5 + MOM",
-            "cov_type": "HAC (Newey-West, 7 lags)",
+            "cov_type": f"HAC (Newey-West, {self._hac_lags} lags)",
+            "periods_per_year": self._periods_per_year,
+            "n_obs": self._n_obs,
             "r_squared": float(result.rsquared),
             "alpha": {
-                "coef": float(parameters["const"]),
+                "coef": alpha,                                   # per portfolio period, decimal
+                "annualized": alpha * self._periods_per_year,
                 "t_stat": float(t_statistics["const"]),
                 "p_value": float(p_values["const"]),
             },
             "factors": [
                 {
                     "name": factor_name,
-                    "beta": float(parameters[factor_name]) * 100,
+                    "beta": float(parameters[factor_name]),
                     "t_stat": float(t_statistics[factor_name]),
                     "p_value": float(p_values[factor_name]),
                 }

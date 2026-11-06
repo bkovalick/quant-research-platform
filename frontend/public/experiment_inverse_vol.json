@@ -1,0 +1,167 @@
+{
+  "_description": "Inverse-volatility allocation on an 11-ETF multi-asset universe, rebalanced monthly. Compares three volatility forecasts (EWMA, rolling, GARCH) against an equal-weight baseline on the same universe. All ETFs listed by 2004, so 2007 onward has full data.",
+  "database_name": "research.duckdb",
+  "market_store_config": {
+    "start_date": "2007-01-01",
+    "end_date": "2026-10-30",
+    "data_source": {
+      "yfinance": null
+    },
+    "benchmark": "SPY",
+    "risk_free_rate": 0.03,
+    "transaction_cost": 0.001,
+    "tickers": [
+      "SPY",
+      "EFA",
+      "EEM",
+      "IWM",
+      "AGG",
+      "IEF",
+      "TLT",
+      "TIP",
+      "LQD",
+      "GLD",
+      "VNQ"
+    ]
+  },
+  "strategies": [
+    {
+      "name": "inverse_vol_ewma_20d",
+      "_description": "1/sigma with a 20-day EWMA vol forecast (span 20).",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.0,
+        "investment_universe": [
+          "SPY",
+          "EFA",
+          "EEM",
+          "IWM",
+          "AGG",
+          "IEF",
+          "TLT",
+          "TIP",
+          "LQD",
+          "GLD",
+          "VNQ"
+        ]
+      },
+      "signals_config": {
+        "inverse_vol": {
+          "forecast_type": "ewma",
+          "window": 20
+        }
+      },
+      "rebalance_problem": {
+        "strategy_type": "inverse_vol_strategy",
+        "signal_source": "volatility_forecast",
+        "optimizer_type": "None",
+        "rebalance_frequency": "monthly",
+        "apply_market_caps": false,
+        "monitoring_type": "none"
+      }
+    },
+    {
+      "name": "inverse_vol_rolling_63d",
+      "_description": "1/sigma with a 3-month rolling realized vol.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.0,
+        "investment_universe": [
+          "SPY",
+          "EFA",
+          "EEM",
+          "IWM",
+          "AGG",
+          "IEF",
+          "TLT",
+          "TIP",
+          "LQD",
+          "GLD",
+          "VNQ"
+        ]
+      },
+      "signals_config": {
+        "inverse_vol": {
+          "forecast_type": "rolling",
+          "window": 63
+        }
+      },
+      "rebalance_problem": {
+        "strategy_type": "inverse_vol_strategy",
+        "signal_source": "volatility_forecast",
+        "optimizer_type": "None",
+        "rebalance_frequency": "monthly",
+        "apply_market_caps": false,
+        "monitoring_type": "none"
+      }
+    },
+    {
+      "name": "inverse_vol_garch",
+      "_description": "1/sigma with a GARCH(1,1) forecast fitted on the 1y lookback.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.0,
+        "investment_universe": [
+          "SPY",
+          "EFA",
+          "EEM",
+          "IWM",
+          "AGG",
+          "IEF",
+          "TLT",
+          "TIP",
+          "LQD",
+          "GLD",
+          "VNQ"
+        ]
+      },
+      "signals_config": {
+        "inverse_vol": {
+          "forecast_type": "garch",
+          "window": 20
+        }
+      },
+      "rebalance_problem": {
+        "strategy_type": "inverse_vol_strategy",
+        "signal_source": "volatility_forecast",
+        "optimizer_type": "None",
+        "rebalance_frequency": "monthly",
+        "apply_market_caps": false,
+        "monitoring_type": "none"
+      }
+    },
+    {
+      "name": "equal_weight_baseline",
+      "_description": "Equal weight across the same 11 ETFs, rebalanced monthly. The bar inverse vol has to beat.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.0,
+        "investment_universe": [
+          "SPY",
+          "EFA",
+          "EEM",
+          "IWM",
+          "AGG",
+          "IEF",
+          "TLT",
+          "TIP",
+          "LQD",
+          "GLD",
+          "VNQ"
+        ]
+      },
+      "signals_config": {},
+      "rebalance_problem": {
+        "strategy_type": "ewp_strategy",
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": "monthly",
+        "apply_market_caps": false,
+        "monitoring_type": "none"
+      }
+    }
+  ]
+}

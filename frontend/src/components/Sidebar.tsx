@@ -44,6 +44,7 @@ const STRATEGY_SIGNALS: Record<string, readonly string[]> = {
   mean_reversion_strategy: ["moving_average"],
   pairs_trading_strategy: ["pairs_trading"],
   vix_basis_strategy: ["vix_basis"],
+  inverse_vol_strategy: ["volatility_forecast"],
   fwp_strategy: [],
   ewp_strategy: [],
 }
@@ -54,6 +55,7 @@ const STRATEGY_TYPE_LABELS: Record<string, string> = {
   mean_reversion_strategy: "Mean reversion",
   pairs_trading_strategy: "Pairs trading",
   vix_basis_strategy: "VIX basis",
+  inverse_vol_strategy: "Inverse volatility",
   fwp_strategy: "Fixed weight",
   ewp_strategy: "Equal weight",
 }
@@ -411,6 +413,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const signalLocked = !!allowedSignals && allowedSignals.length === 1
   // Pairs and VIX signals don't go through the Signals base class, so winsorizing has no effect on them.
   const usesWinsorizing = !["pairs_trading", "vix_basis"].includes(inferredSignalSource)
+    && currentStrategyType !== "inverse_vol_strategy"
   const showMeanReversion = signalAllowed("mean_reversion") && (inferredSignalSource === "mean_reversion" || hasMeanReversionSignals)
   const showMomentum = signalAllowed("momentum") && (inferredSignalSource === "momentum" || hasMomentumSignals)
   const showPairs = signalAllowed("pairs_trading") && (inferredSignalSource === "pairs_trading" || hasPairsTrading)
@@ -745,6 +748,12 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                       )}
                     </Row>
 
+                    {currentStrategyType === "inverse_vol_strategy" && (
+                      <div style={signalNote}>
+                        Forecast type and window live in <code>signals_config.inverse_vol</code>; edit them with Raw JSON.
+                      </div>
+                    )}
+
                     {inferredSignalSource === "vix_basis" && (
                       <div style={signalNote}>
                         Thresholds and tickers live in <code>signals_config.vix_basis</code>; edit them with Raw JSON.
@@ -816,14 +825,6 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                             style={inputStyle}
                             value={currentStrategy.signals_config?.bollinger_window ?? 0}
                             onChange={(e) => updateField(["signals_config", "bollinger_window"], Number(e.target.value))}
-                          />
-                        </Row>
-                        <Row label="Bollinger Num Std" tooltip="Number of standard deviations for Bollinger bands">
-                          <input
-                            type="number"
-                            style={inputStyle}
-                            value={currentStrategy.signals_config?.bollinger_num_std ?? 0}
-                            onChange={(e) => updateField(["signals_config", "bollinger_num_std"], Number(e.target.value))}
                           />
                         </Row>
                         <Row label="Bollinger Scale" tooltip="Scale factor for Bollinger bands">

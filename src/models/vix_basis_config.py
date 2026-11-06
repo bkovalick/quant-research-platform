@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from models.config_parsing import check_keys
+
 
 @dataclass(frozen=True)
 class VixBasisConfig:
@@ -32,5 +34,4 @@ class VixBasisConfig:
 
     @classmethod
     def from_dict(cls, d: dict):
-        defaults = cls()
-        return cls(**{k: d.get(k, getattr(defaults, k)) for k in cls.__dataclass_fields__})
+        return cls(**check_keys(cls, d, "signals_config.vix_basis"))
