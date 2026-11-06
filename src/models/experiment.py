@@ -23,10 +23,12 @@ class Experiment:
             for run in self.strategy_runs
         ]
     
-    def to_dict(self):
+    def to_dict(self, exclude_series=()):
+        """Plain-dict form; ``exclude_series`` names result series to leave out (e.g. the
+        weight matrices, which dominate the size and aren't shown in the UI)."""
         return {
             "experiment_id": self.experiment_id,
             "created_at": self.created_at.isoformat(),
             "market_config": self.market_config,
-            "strategy_runs": [ run.to_dict() for run in self.strategy_runs ]
+            "strategy_runs": [run.to_dict(exclude_series=exclude_series) for run in self.strategy_runs]
         }

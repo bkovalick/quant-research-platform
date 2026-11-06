@@ -75,6 +75,26 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const [lastSave, setLastSave] = useState<SaveStatus | null>(null)
   const [loadInfo, setLoadInfo] = useState<MergeResult | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [resultsFile, setResultsFile] = useState<string | null>(null)
+  const [resultsError, setResultsError] = useState<string | null>(null)
+
+  /** Open an experiment_*.json saved by a run (run_local.py writes one to backtest_results/<date>/). */
+  const handleOpenResults = async (e: any) => {
+    const file: File | undefined = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+    setResultsError(null)
+    try {
+      const json = JSON.parse(await file.text())
+      if (!Array.isArray(json?.strategy_runs) || json.strategy_runs.length === 0) {
+        throw new Error(`${file.name} has no strategy results. Pick an experiment_*.json saved by a run.`)
+      }
+      setExperiment(json)
+      setResultsFile(`${file.name} · ${json.strategy_runs.length} runs`)
+    } catch (err: any) {
+      setResultsError(err instanceof SyntaxError ? `${file.name} is not valid JSON` : err.message)
+    }
+  }
   const [startDate, setStartDate] = useState("2000-01-01")
   const [endDate, setEndDate] = useState(() => {
     const d = getPreviousBusinessDay()
@@ -471,6 +491,17 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
               </>
             : null}
           {loadError && <div style={inlineError}>{loadError}</div>}
+        </Section>
+
+        <Section title="Saved Results">
+          <input id="results-file-input" type="file" accept=".json" onChange={handleOpenResults} style={{ display: "none" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button style={changeLinkBtn} onClick={() => document.getElementById("results-file-input")?.click()}>
+              open results file…
+            </button>
+            {resultsFile && <span style={{ fontSize: 10, color: "#8b949e" }} title={resultsFile}>{resultsFile}</span>}
+          </div>
+          {resultsError && <div style={inlineError}>{resultsError}</div>}
         </Section>
 
           <Section title="Market Configuration">

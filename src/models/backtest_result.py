@@ -21,12 +21,13 @@ class BacktestResult:
     summary: Dict[str, float]
     series: Dict[str, Any]
 
-    def to_dict(self):
+    def to_dict(self, exclude_series=()):
         return {
             "summary": _sanitize_dict(self.summary),
-            "series": { 
-                k: self._serialize(v) 
-                for k,v in self.series.items()
+            "series": {
+                k: self._serialize(v)
+                for k, v in self.series.items()
+                if k not in exclude_series
             }
         }
     

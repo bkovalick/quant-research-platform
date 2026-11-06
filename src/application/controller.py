@@ -14,6 +14,7 @@ from utils.logging_config import setup_logging
 
 from application.experiment_runner import ExperimentRunner
 from application.progress import ProgressTracker
+from application.result_export import experiment_ui_payload
 from reporting.report_generation import ExcelGenerator
 from models.experiment import Experiment
 from models.backtest_result import BacktestResult
@@ -82,7 +83,7 @@ def _run_job(job: _Job, config: dict, parallel: bool, persist: bool) -> None:
         runner = ExperimentRunner(config)
         experiment = runner.run_parallel(job.tracker) if parallel else runner.run(job.tracker)
         job.tracker.set_status("finalizing")
-        job.result = experiment.to_dict()
+        job.result = experiment_ui_payload(experiment)   # weight matrices left out: ~95% of the size, unused by the UI
     except Exception as exc:
         logger.exception("Experiment job failed")
         job.tracker.set_status("failed", error=f"{type(exc).__name__}: {exc}")

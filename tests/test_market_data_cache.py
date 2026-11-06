@@ -100,6 +100,19 @@ def test_empty_downloads_are_not_cached(cache):
     assert frame["ZZZ"].notna().all()
 
 
+def test_range_before_listing_is_recorded_not_retried(cache):
+    source = FakeSource()
+    cache.get_close(["AAA"], "2020-06-01", "2021-01-01", source)      # "lists" mid-2020 for this test
+    real = source.__call__
+    def no_history_before_listing(tickers, start, end):
+        frame = real(tickers, start, end)
+        return frame.loc[frame.index >= "2020-06-01"].reindex(frame.index) if not frame.empty else frame
+    cache.get_close(["AAA"], "2019-01-01", "2021-01-01", no_history_before_listing)
+    source.calls.clear()
+    cache.get_close(["AAA"], "2019-01-01", "2021-01-01", source)
+    assert source.calls == []                                          # pre-listing range not re-requested
+
+
 def test_today_is_never_cached(cache, monkeypatch):
     source = FakeSource()
     cache.get_close(["AAA"], "2019-01-01", "2030-01-01", source)

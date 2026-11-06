@@ -81,6 +81,12 @@ class MarketDataCache:
             fresh = self._download(fetch, group, piece_start, piece_end)
             for ticker in group:
                 series = fresh.get(ticker)
+                if (series is None or series.dropna().empty) and self._before_listing(cached[ticker], piece_end):
+                    # Nothing before the first cached price just means the ticker wasn't listed yet:
+                    # record the range as fetched so it isn't re-requested every run.
+                    self._write_prices(ticker, cached[ticker],
+                                       self._extend(self._read_coverage(ticker), piece_start, piece_end))
+                    continue
                 if series is None or series.dropna().empty:
                     logger.warning("Market cache: no data returned for %s %s..%s; not cached, will retry next run",
                                    ticker, piece_start.date(), piece_end.date())
@@ -132,6 +138,11 @@ class MarketDataCache:
             data = data.to_frame(tickers[0])
         data.index = pd.DatetimeIndex(data.index).tz_localize(None).normalize()
         return data
+
+    @staticmethod
+    def _before_listing(cached: pd.Series | None, piece_end: pd.Timestamp) -> bool:
+        """True when an empty download covers only dates before the ticker's first cached price."""
+        return cached is not None and not cached.empty and piece_end <= cached.index.min()
 
     @staticmethod
     def _overlap_matches(old: pd.Series | None, new: pd.Series) -> bool:

@@ -12,12 +12,12 @@ class StrategyRun:
     strategy_config: Dict[str, Any] | None = None
     metadata: Dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self, exclude_series=()) -> Dict[str, Any]:
         return {
             "run_id": self.run_id,
             "strategy_name": self.strategy_name,
             "strategy_config": self.strategy_config,
-            "result": self.result.to_dict(),
+            "result": self.result.to_dict(exclude_series=exclude_series),
             "monitoring_stats": self.monitoring_stats.to_dict() if self.monitoring_stats is not None else None,
             "metadata": self.metadata,
         }
