@@ -1366,7 +1366,6 @@
           "LQD":  0.010,
           "TLT":  0.010
         },
-        "apply_max_return_objective": true,
         "constraints": {
           "concentration_strength": 0,
           "risk_aversion": 1.0,

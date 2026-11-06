@@ -321,7 +321,6 @@
       "rebalance_problem": {
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
-        "apply_max_return_objective": true,
         "constraints": {
           "max_long": 1.0,
           "max_short": 1.0,

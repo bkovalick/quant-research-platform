@@ -333,7 +333,6 @@
       "rebalance_problem": {
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
-        "apply_max_return_objective": true,
         "apply_market_caps": false,
         "strategy_rules": {
           "vol_target": 0.15,
@@ -342,7 +341,6 @@
         },
         "constraints": {
           "concentration_strength": 1,
-          "max_return": 0.25,
           "risk_aversion": 1.0,
           "turnover_limit": 1.0,
           "min_position_size": 0.0,

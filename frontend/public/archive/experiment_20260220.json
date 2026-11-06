@@ -80,7 +80,6 @@
         "optimizer_type": "portfolio_optimizer",
         "benchmark_universe": "SPY",
         "rebalance_frequency": "weekly",
-        "apply_max_return_objective": true,
         "apply_sharpe_objective": false,
         "strategy_rules": {
             "vol_target": 0.15,
@@ -89,7 +88,6 @@
         },        
         "constraints": {
             "concentration_strength": 1,
-            "max_return": 0.25,
             "risk_aversion": 1.0,
             "turnover_limit": 1.0,
             "min_position_size": 0.0,
@@ -142,7 +140,6 @@
         "optimizer_type": "portfolio_optimizer",
         "benchmark_universe": "SPY",
         "rebalance_frequency": "weekly",
-        "apply_max_return_objective": true,
         "apply_sharpe_objective": false,
         "strategy_rules": {
             "vol_target": 0.15,
@@ -151,7 +148,6 @@
         },        
         "constraints": {
             "concentration_strength": 1,
-            "max_return": 0.25,
             "risk_aversion": 1.0,
             "turnover_limit": 1.0,
             "min_position_size": 0.0,

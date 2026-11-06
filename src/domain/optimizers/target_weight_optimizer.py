@@ -153,7 +153,14 @@ class TargetWeightOptimizer(BaseOptimizer):
 				tracking_error=None,
 			)
 
-		sell_fractions = decision_variables["portfolio_sell_fractions"].value
+		sell_fractions = np.asarray(decision_variables["portfolio_sell_fractions"].value, dtype=float)
+		TOL = 1e-4
+		bad = (sell_fractions < -TOL) | (sell_fractions > 1 + TOL)
+		if bad.any():
+			raise ValueError(f"Solver returned sell fractions outside [0,1] beyond tolerance: "
+							f"{sell_fractions[bad][:5]} (status may be inaccurate)")
+		sell_fractions = np.clip(sell_fractions, 0.0, 1.0)
+		sell_fractions[sell_fractions < 1e-8] = 0.0
 		sell_allocations = {
 			lot_id: float(sell_fraction)
 			for lot_id, sell_fraction in zip(tax_lots.index, sell_fractions)
