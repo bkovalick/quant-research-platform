@@ -115,7 +115,7 @@ class BacktestingEngine:
         signals = self.signals_factory.build_signals()
 
         if self.tax_lot_ledger is not None:
-            self.tax_lot_ledger.mark_to_market(market_state=self.market_state, cursor=cursor)
+            self.tax_lot_ledger.mark_to_market(self.market_state, self.portfolio, cursor)
 
         solution = self.strategy.rebalance(self._build_rebalance_context(cursor, signals, rebalance_problem))
         solution = self._apply_leverage(solution, rebalance_problem)

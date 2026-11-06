@@ -899,228 +899,6 @@
       }
     },
     {
-      "name": "mean_variance_tax_aware",
-      "_note": "Identical to mean_variance except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone.",
-      "market_state_config": {
-        "lookback_window_key": "1y",
-        "market_frequency": "d",
-        "cash_allocation": 0.005,
-        "exogenous_tickers": [
-          "^VIX"
-        ],
-        "investment_universe": [
-          "AAPL",
-          "MSFT",
-          "NVDA",
-          "AVGO",
-          "CSCO",
-          "AMAT",
-          "ADI",
-          "ADSK",
-          "ADP",
-          "APH",
-          "CDNS",
-          "CTSH",
-          "ANET",
-          "ACN",
-          "AKAM",
-          "UNH",
-          "JNJ",
-          "ABT",
-          "TMO",
-          "DHR",
-          "ISRG",
-          "SYK",
-          "BSX",
-          "MDT",
-          "BMY",
-          "AMGN",
-          "BIIB",
-          "IDXX",
-          "UHS",
-          "JPM",
-          "BAC",
-          "WFC",
-          "GS",
-          "MS",
-          "BLK",
-          "AXP",
-          "V",
-          "MA",
-          "CB",
-          "AON",
-          "TFC",
-          "ZION",
-          "AFL",
-          "AMP",
-          "AMZN",
-          "TSLA",
-          "HD",
-          "MCD",
-          "NKE",
-          "BKNG",
-          "CMG",
-          "DHI",
-          "DRI",
-          "SBUX",
-          "KMX",
-          "BBY",
-          "HON",
-          "UNP",
-          "BA",
-          "CAT",
-          "GE",
-          "LMT",
-          "RTX",
-          "DE",
-          "EMR",
-          "ETN",
-          "MMM",
-          "NOC",
-          "AME",
-          "CTAS",
-          "FDX",
-          "PG",
-          "KO",
-          "PEP",
-          "COST",
-          "WMT",
-          "CL",
-          "ADM",
-          "STZ",
-          "CPB",
-          "CAG",
-          "GOOGL",
-          "META",
-          "NFLX",
-          "CMCSA",
-          "T",
-          "VZ",
-          "BIDU",
-          "CHTR",
-          "NWSA",
-          "XOM",
-          "CVX",
-          "COP",
-          "EOG",
-          "SLB",
-          "MPC",
-          "PSX",
-          "DVN",
-          "APA",
-          "BKR",
-          "NEE",
-          "DUK",
-          "SO",
-          "AEP",
-          "EXC",
-          "SRE",
-          "AWK",
-          "AEE",
-          "CMS",
-          "ATO",
-          "LIN",
-          "APD",
-          "SHW",
-          "NEM",
-          "ALB",
-          "NUE",
-          "BALL",
-          "AVY",
-          "AMCR",
-          "CE",
-          "PLD",
-          "AMT",
-          "EQIX",
-          "SPG",
-          "ARE",
-          "BXP",
-          "CBRE",
-          "AGG",
-          "LQD"
-        ]
-      },
-      "signals_config": {
-        "apply_winsorizing": true,
-        "windsor_percentiles": {
-          "lower": 0.05,
-          "upper": 0.95
-        },
-        "mean_reversion_window": 21,
-        "momentum_skip_periods": 21
-      },
-      "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
-        "rebalance_frequency": "weekly",
-        "apply_tax_objective": true,
-        "constraints": {
-          "concentration_strength": 1,
-          "risk_aversion": 1.0,
-          "turnover_limit": 1.0,
-          "min_position_size": 0.0,
-          "max_position_size": 0.1,
-          "asset_class_constraints": {
-            "Equity": [
-              0.75,
-              0.95
-            ],
-            "Fixed Income": [
-              0.03,
-              0.2
-            ]
-          },
-          "sector_constraints": {
-            "Information Technology": [
-              0.06,
-              0.3
-            ],
-            "Health Care": [
-              0.05,
-              0.2
-            ],
-            "Financials": [
-              0.05,
-              0.2
-            ],
-            "Consumer Discretionary": [
-              0.04,
-              0.15
-            ],
-            "Industrials": [
-              0.05,
-              0.18
-            ],
-            "Consumer Staples": [
-              0.03,
-              0.12
-            ],
-            "Communication Services": [
-              0.03,
-              0.14
-            ],
-            "Energy": [
-              0.02,
-              0.1
-            ],
-            "Utilities": [
-              0.02,
-              0.1
-            ],
-            "Materials": [
-              0.02,
-              0.1
-            ],
-            "Real Estate": [
-              0.02,
-              0.08
-            ]
-          }
-        },
-        "strategy_type": "systematic_strategy",
-        "signal_source": "risk_return"
-      }
-    },
-    {
       "name": "momentum",
       "_note": "12-1 price momentum: 1y lookback, skipping the most recent 21 trading days.",
       "market_state_config": {
@@ -1343,228 +1121,6 @@
       }
     },
     {
-      "name": "momentum_tax_aware",
-      "_note": "Identical to momentum except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone.",
-      "market_state_config": {
-        "lookback_window_key": "1y",
-        "market_frequency": "d",
-        "cash_allocation": 0.005,
-        "exogenous_tickers": [
-          "^VIX"
-        ],
-        "investment_universe": [
-          "AAPL",
-          "MSFT",
-          "NVDA",
-          "AVGO",
-          "CSCO",
-          "AMAT",
-          "ADI",
-          "ADSK",
-          "ADP",
-          "APH",
-          "CDNS",
-          "CTSH",
-          "ANET",
-          "ACN",
-          "AKAM",
-          "UNH",
-          "JNJ",
-          "ABT",
-          "TMO",
-          "DHR",
-          "ISRG",
-          "SYK",
-          "BSX",
-          "MDT",
-          "BMY",
-          "AMGN",
-          "BIIB",
-          "IDXX",
-          "UHS",
-          "JPM",
-          "BAC",
-          "WFC",
-          "GS",
-          "MS",
-          "BLK",
-          "AXP",
-          "V",
-          "MA",
-          "CB",
-          "AON",
-          "TFC",
-          "ZION",
-          "AFL",
-          "AMP",
-          "AMZN",
-          "TSLA",
-          "HD",
-          "MCD",
-          "NKE",
-          "BKNG",
-          "CMG",
-          "DHI",
-          "DRI",
-          "SBUX",
-          "KMX",
-          "BBY",
-          "HON",
-          "UNP",
-          "BA",
-          "CAT",
-          "GE",
-          "LMT",
-          "RTX",
-          "DE",
-          "EMR",
-          "ETN",
-          "MMM",
-          "NOC",
-          "AME",
-          "CTAS",
-          "FDX",
-          "PG",
-          "KO",
-          "PEP",
-          "COST",
-          "WMT",
-          "CL",
-          "ADM",
-          "STZ",
-          "CPB",
-          "CAG",
-          "GOOGL",
-          "META",
-          "NFLX",
-          "CMCSA",
-          "T",
-          "VZ",
-          "BIDU",
-          "CHTR",
-          "NWSA",
-          "XOM",
-          "CVX",
-          "COP",
-          "EOG",
-          "SLB",
-          "MPC",
-          "PSX",
-          "DVN",
-          "APA",
-          "BKR",
-          "NEE",
-          "DUK",
-          "SO",
-          "AEP",
-          "EXC",
-          "SRE",
-          "AWK",
-          "AEE",
-          "CMS",
-          "ATO",
-          "LIN",
-          "APD",
-          "SHW",
-          "NEM",
-          "ALB",
-          "NUE",
-          "BALL",
-          "AVY",
-          "AMCR",
-          "CE",
-          "PLD",
-          "AMT",
-          "EQIX",
-          "SPG",
-          "ARE",
-          "BXP",
-          "CBRE",
-          "AGG",
-          "LQD"
-        ]
-      },
-      "signals_config": {
-        "apply_winsorizing": true,
-        "windsor_percentiles": {
-          "lower": 0.05,
-          "upper": 0.95
-        },
-        "mean_reversion_window": 21,
-        "momentum_skip_periods": 21
-      },
-      "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
-        "rebalance_frequency": "weekly",
-        "apply_tax_objective": true,
-        "constraints": {
-          "concentration_strength": 1,
-          "risk_aversion": 1.0,
-          "turnover_limit": 1.0,
-          "min_position_size": 0.0,
-          "max_position_size": 0.1,
-          "asset_class_constraints": {
-            "Equity": [
-              0.75,
-              0.95
-            ],
-            "Fixed Income": [
-              0.03,
-              0.2
-            ]
-          },
-          "sector_constraints": {
-            "Information Technology": [
-              0.06,
-              0.3
-            ],
-            "Health Care": [
-              0.05,
-              0.2
-            ],
-            "Financials": [
-              0.05,
-              0.2
-            ],
-            "Consumer Discretionary": [
-              0.04,
-              0.15
-            ],
-            "Industrials": [
-              0.05,
-              0.18
-            ],
-            "Consumer Staples": [
-              0.03,
-              0.12
-            ],
-            "Communication Services": [
-              0.03,
-              0.14
-            ],
-            "Energy": [
-              0.02,
-              0.1
-            ],
-            "Utilities": [
-              0.02,
-              0.1
-            ],
-            "Materials": [
-              0.02,
-              0.1
-            ],
-            "Real Estate": [
-              0.02,
-              0.08
-            ]
-          }
-        },
-        "strategy_type": "systematic_strategy",
-        "signal_source": "momentum"
-      }
-    },
-    {
       "name": "mean_reversion",
       "_note": "Short-term reversal: ranks the trailing 21-day return, losers favored.",
       "market_state_config": {
@@ -1719,228 +1275,6 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
-        "constraints": {
-          "concentration_strength": 1,
-          "risk_aversion": 1.0,
-          "turnover_limit": 1.0,
-          "min_position_size": 0.0,
-          "max_position_size": 0.1,
-          "asset_class_constraints": {
-            "Equity": [
-              0.75,
-              0.95
-            ],
-            "Fixed Income": [
-              0.03,
-              0.2
-            ]
-          },
-          "sector_constraints": {
-            "Information Technology": [
-              0.06,
-              0.3
-            ],
-            "Health Care": [
-              0.05,
-              0.2
-            ],
-            "Financials": [
-              0.05,
-              0.2
-            ],
-            "Consumer Discretionary": [
-              0.04,
-              0.15
-            ],
-            "Industrials": [
-              0.05,
-              0.18
-            ],
-            "Consumer Staples": [
-              0.03,
-              0.12
-            ],
-            "Communication Services": [
-              0.03,
-              0.14
-            ],
-            "Energy": [
-              0.02,
-              0.1
-            ],
-            "Utilities": [
-              0.02,
-              0.1
-            ],
-            "Materials": [
-              0.02,
-              0.1
-            ],
-            "Real Estate": [
-              0.02,
-              0.08
-            ]
-          }
-        },
-        "strategy_type": "systematic_strategy",
-        "signal_source": "mean_reversion"
-      }
-    },
-    {
-      "name": "mean_reversion_tax_aware",
-      "_note": "Identical to mean_reversion except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone.",
-      "market_state_config": {
-        "lookback_window_key": "1y",
-        "market_frequency": "d",
-        "cash_allocation": 0.005,
-        "exogenous_tickers": [
-          "^VIX"
-        ],
-        "investment_universe": [
-          "AAPL",
-          "MSFT",
-          "NVDA",
-          "AVGO",
-          "CSCO",
-          "AMAT",
-          "ADI",
-          "ADSK",
-          "ADP",
-          "APH",
-          "CDNS",
-          "CTSH",
-          "ANET",
-          "ACN",
-          "AKAM",
-          "UNH",
-          "JNJ",
-          "ABT",
-          "TMO",
-          "DHR",
-          "ISRG",
-          "SYK",
-          "BSX",
-          "MDT",
-          "BMY",
-          "AMGN",
-          "BIIB",
-          "IDXX",
-          "UHS",
-          "JPM",
-          "BAC",
-          "WFC",
-          "GS",
-          "MS",
-          "BLK",
-          "AXP",
-          "V",
-          "MA",
-          "CB",
-          "AON",
-          "TFC",
-          "ZION",
-          "AFL",
-          "AMP",
-          "AMZN",
-          "TSLA",
-          "HD",
-          "MCD",
-          "NKE",
-          "BKNG",
-          "CMG",
-          "DHI",
-          "DRI",
-          "SBUX",
-          "KMX",
-          "BBY",
-          "HON",
-          "UNP",
-          "BA",
-          "CAT",
-          "GE",
-          "LMT",
-          "RTX",
-          "DE",
-          "EMR",
-          "ETN",
-          "MMM",
-          "NOC",
-          "AME",
-          "CTAS",
-          "FDX",
-          "PG",
-          "KO",
-          "PEP",
-          "COST",
-          "WMT",
-          "CL",
-          "ADM",
-          "STZ",
-          "CPB",
-          "CAG",
-          "GOOGL",
-          "META",
-          "NFLX",
-          "CMCSA",
-          "T",
-          "VZ",
-          "BIDU",
-          "CHTR",
-          "NWSA",
-          "XOM",
-          "CVX",
-          "COP",
-          "EOG",
-          "SLB",
-          "MPC",
-          "PSX",
-          "DVN",
-          "APA",
-          "BKR",
-          "NEE",
-          "DUK",
-          "SO",
-          "AEP",
-          "EXC",
-          "SRE",
-          "AWK",
-          "AEE",
-          "CMS",
-          "ATO",
-          "LIN",
-          "APD",
-          "SHW",
-          "NEM",
-          "ALB",
-          "NUE",
-          "BALL",
-          "AVY",
-          "AMCR",
-          "CE",
-          "PLD",
-          "AMT",
-          "EQIX",
-          "SPG",
-          "ARE",
-          "BXP",
-          "CBRE",
-          "AGG",
-          "LQD"
-        ]
-      },
-      "signals_config": {
-        "apply_winsorizing": true,
-        "windsor_percentiles": {
-          "lower": 0.05,
-          "upper": 0.95
-        },
-        "mean_reversion_window": 21,
-        "momentum_skip_periods": 21
-      },
-      "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
-        "rebalance_frequency": "weekly",
-        "apply_tax_objective": true,
         "constraints": {
           "concentration_strength": 1,
           "risk_aversion": 1.0,
@@ -2235,235 +1569,6 @@
         "strategy_type": "systematic_strategy",
         "signal_source": "black_litterman"
       }
-    },
-    {
-      "name": "bl_momentum_view_tax_aware",
-      "market_state_config": {
-        "lookback_window_key": "1y",
-        "market_frequency": "d",
-        "cash_allocation": 0.005,
-        "exogenous_tickers": [
-          "^VIX"
-        ],
-        "investment_universe": [
-          "AAPL",
-          "MSFT",
-          "NVDA",
-          "AVGO",
-          "CSCO",
-          "AMAT",
-          "ADI",
-          "ADSK",
-          "ADP",
-          "APH",
-          "CDNS",
-          "CTSH",
-          "ANET",
-          "ACN",
-          "AKAM",
-          "UNH",
-          "JNJ",
-          "ABT",
-          "TMO",
-          "DHR",
-          "ISRG",
-          "SYK",
-          "BSX",
-          "MDT",
-          "BMY",
-          "AMGN",
-          "BIIB",
-          "IDXX",
-          "UHS",
-          "JPM",
-          "BAC",
-          "WFC",
-          "GS",
-          "MS",
-          "BLK",
-          "AXP",
-          "V",
-          "MA",
-          "CB",
-          "AON",
-          "TFC",
-          "ZION",
-          "AFL",
-          "AMP",
-          "AMZN",
-          "TSLA",
-          "HD",
-          "MCD",
-          "NKE",
-          "BKNG",
-          "CMG",
-          "DHI",
-          "DRI",
-          "SBUX",
-          "KMX",
-          "BBY",
-          "HON",
-          "UNP",
-          "BA",
-          "CAT",
-          "GE",
-          "LMT",
-          "RTX",
-          "DE",
-          "EMR",
-          "ETN",
-          "MMM",
-          "NOC",
-          "AME",
-          "CTAS",
-          "FDX",
-          "PG",
-          "KO",
-          "PEP",
-          "COST",
-          "WMT",
-          "CL",
-          "ADM",
-          "STZ",
-          "CPB",
-          "CAG",
-          "GOOGL",
-          "META",
-          "NFLX",
-          "CMCSA",
-          "T",
-          "VZ",
-          "BIDU",
-          "CHTR",
-          "NWSA",
-          "XOM",
-          "CVX",
-          "COP",
-          "EOG",
-          "SLB",
-          "MPC",
-          "PSX",
-          "DVN",
-          "APA",
-          "BKR",
-          "NEE",
-          "DUK",
-          "SO",
-          "AEP",
-          "EXC",
-          "SRE",
-          "AWK",
-          "AEE",
-          "CMS",
-          "ATO",
-          "LIN",
-          "APD",
-          "SHW",
-          "NEM",
-          "ALB",
-          "NUE",
-          "BALL",
-          "AVY",
-          "AMCR",
-          "CE",
-          "PLD",
-          "AMT",
-          "EQIX",
-          "SPG",
-          "ARE",
-          "BXP",
-          "CBRE",
-          "AGG",
-          "LQD"
-        ]
-      },
-      "signals_config": {
-        "apply_winsorizing": true,
-        "windsor_percentiles": {
-          "lower": 0.05,
-          "upper": 0.95
-        },
-        "mean_reversion_window": 21,
-        "momentum_skip_periods": 21,
-        "black_litterman": {
-          "delta": 2.5,
-          "tau": 0.05,
-          "reversion_view": 0.03,
-          "ml_view_spread": 0.03,
-          "view_direction": "momentum"
-        }
-      },
-      "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
-        "rebalance_frequency": "weekly",
-        "apply_tax_objective": true,
-        "constraints": {
-          "concentration_strength": 1,
-          "risk_aversion": 1.0,
-          "turnover_limit": 1.0,
-          "min_position_size": 0.0,
-          "max_position_size": 0.1,
-          "asset_class_constraints": {
-            "Equity": [
-              0.75,
-              0.95
-            ],
-            "Fixed Income": [
-              0.03,
-              0.2
-            ]
-          },
-          "sector_constraints": {
-            "Information Technology": [
-              0.06,
-              0.3
-            ],
-            "Health Care": [
-              0.05,
-              0.2
-            ],
-            "Financials": [
-              0.05,
-              0.2
-            ],
-            "Consumer Discretionary": [
-              0.04,
-              0.15
-            ],
-            "Industrials": [
-              0.05,
-              0.18
-            ],
-            "Consumer Staples": [
-              0.03,
-              0.12
-            ],
-            "Communication Services": [
-              0.03,
-              0.14
-            ],
-            "Energy": [
-              0.02,
-              0.1
-            ],
-            "Utilities": [
-              0.02,
-              0.1
-            ],
-            "Materials": [
-              0.02,
-              0.1
-            ],
-            "Real Estate": [
-              0.02,
-              0.08
-            ]
-          }
-        },
-        "strategy_type": "systematic_strategy",
-        "signal_source": "black_litterman"
-      },
-      "_note": "Identical to bl_momentum_view except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone."
     },
     {
       "name": "bl_mean_reversion_view",
@@ -3193,259 +2298,6 @@
       }
     },
     {
-      "name": "ml_bl_momentum_tax_aware",
-      "_note": "Identical to ml_bl_momentum except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone.",
-      "market_state_config": {
-        "lookback_window_key": "1y",
-        "market_frequency": "d",
-        "cash_allocation": 0.005,
-        "exogenous_tickers": [
-          "^VIX"
-        ],
-        "investment_universe": [
-          "AAPL",
-          "MSFT",
-          "NVDA",
-          "AVGO",
-          "CSCO",
-          "AMAT",
-          "ADI",
-          "ADSK",
-          "ADP",
-          "APH",
-          "CDNS",
-          "CTSH",
-          "ANET",
-          "ACN",
-          "AKAM",
-          "UNH",
-          "JNJ",
-          "ABT",
-          "TMO",
-          "DHR",
-          "ISRG",
-          "SYK",
-          "BSX",
-          "MDT",
-          "BMY",
-          "AMGN",
-          "BIIB",
-          "IDXX",
-          "UHS",
-          "JPM",
-          "BAC",
-          "WFC",
-          "GS",
-          "MS",
-          "BLK",
-          "AXP",
-          "V",
-          "MA",
-          "CB",
-          "AON",
-          "TFC",
-          "ZION",
-          "AFL",
-          "AMP",
-          "AMZN",
-          "TSLA",
-          "HD",
-          "MCD",
-          "NKE",
-          "BKNG",
-          "CMG",
-          "DHI",
-          "DRI",
-          "SBUX",
-          "KMX",
-          "BBY",
-          "HON",
-          "UNP",
-          "BA",
-          "CAT",
-          "GE",
-          "LMT",
-          "RTX",
-          "DE",
-          "EMR",
-          "ETN",
-          "MMM",
-          "NOC",
-          "AME",
-          "CTAS",
-          "FDX",
-          "PG",
-          "KO",
-          "PEP",
-          "COST",
-          "WMT",
-          "CL",
-          "ADM",
-          "STZ",
-          "CPB",
-          "CAG",
-          "GOOGL",
-          "META",
-          "NFLX",
-          "CMCSA",
-          "T",
-          "VZ",
-          "BIDU",
-          "CHTR",
-          "NWSA",
-          "XOM",
-          "CVX",
-          "COP",
-          "EOG",
-          "SLB",
-          "MPC",
-          "PSX",
-          "DVN",
-          "APA",
-          "BKR",
-          "NEE",
-          "DUK",
-          "SO",
-          "AEP",
-          "EXC",
-          "SRE",
-          "AWK",
-          "AEE",
-          "CMS",
-          "ATO",
-          "LIN",
-          "APD",
-          "SHW",
-          "NEM",
-          "ALB",
-          "NUE",
-          "BALL",
-          "AVY",
-          "AMCR",
-          "CE",
-          "PLD",
-          "AMT",
-          "EQIX",
-          "SPG",
-          "ARE",
-          "BXP",
-          "CBRE",
-          "AGG",
-          "LQD"
-        ]
-      },
-      "signals_config": {
-        "apply_winsorizing": true,
-        "windsor_percentiles": {
-          "lower": 0.05,
-          "upper": 0.95
-        },
-        "mean_reversion_window": 21,
-        "momentum_skip_periods": 21,
-        "black_litterman": {
-          "delta": 2.5,
-          "tau": 0.05,
-          "reversion_view": 0.03,
-          "ml_view_spread": 0.03,
-          "view_direction": "momentum"
-        },
-        "ml_signals_config": {
-          "enabled": true,
-          "features_model": "cross_sectional_model",
-          "features": [
-            "mom_1m",
-            "mom_12m",
-            "vol_1m",
-            "vol_3m",
-            "reversal",
-            "mom_x_vol_regime",
-            "reversal_x_vol_regime",
-            "max_return",
-            "high_52w",
-            "beta_1m",
-            "beta_1y",
-            "idiosyncratic_vol"
-          ],
-          "signals_model": "ridge",
-          "training_window": "2y",
-          "horizon": "1m",
-          "alpha": 1.0,
-          "rebal_cadence": "1m",
-          "sample_stride": "1w"
-        }
-      },
-      "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
-        "rebalance_frequency": "weekly",
-        "apply_tax_objective": true,
-        "constraints": {
-          "concentration_strength": 1,
-          "risk_aversion": 1.0,
-          "turnover_limit": 1.0,
-          "min_position_size": 0.0,
-          "max_position_size": 0.1,
-          "asset_class_constraints": {
-            "Equity": [
-              0.75,
-              0.95
-            ],
-            "Fixed Income": [
-              0.03,
-              0.2
-            ]
-          },
-          "sector_constraints": {
-            "Information Technology": [
-              0.06,
-              0.3
-            ],
-            "Health Care": [
-              0.05,
-              0.2
-            ],
-            "Financials": [
-              0.05,
-              0.2
-            ],
-            "Consumer Discretionary": [
-              0.04,
-              0.15
-            ],
-            "Industrials": [
-              0.05,
-              0.18
-            ],
-            "Consumer Staples": [
-              0.03,
-              0.12
-            ],
-            "Communication Services": [
-              0.03,
-              0.14
-            ],
-            "Energy": [
-              0.02,
-              0.1
-            ],
-            "Utilities": [
-              0.02,
-              0.1
-            ],
-            "Materials": [
-              0.02,
-              0.1
-            ],
-            "Real Estate": [
-              0.02,
-              0.08
-            ]
-          }
-        },
-        "strategy_type": "systematic_strategy",
-        "signal_source": "black_litterman"
-      }
-    },
-    {
       "name": "ml_reversal_features",
       "_note": "ML scores used directly. 7-feature ablation set (momentum features removed).",
       "market_state_config": {
@@ -3867,254 +2719,6 @@
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
-        "constraints": {
-          "concentration_strength": 1,
-          "risk_aversion": 1.0,
-          "turnover_limit": 1.0,
-          "min_position_size": 0.0,
-          "max_position_size": 0.1,
-          "asset_class_constraints": {
-            "Equity": [
-              0.75,
-              0.95
-            ],
-            "Fixed Income": [
-              0.03,
-              0.2
-            ]
-          },
-          "sector_constraints": {
-            "Information Technology": [
-              0.06,
-              0.3
-            ],
-            "Health Care": [
-              0.05,
-              0.2
-            ],
-            "Financials": [
-              0.05,
-              0.2
-            ],
-            "Consumer Discretionary": [
-              0.04,
-              0.15
-            ],
-            "Industrials": [
-              0.05,
-              0.18
-            ],
-            "Consumer Staples": [
-              0.03,
-              0.12
-            ],
-            "Communication Services": [
-              0.03,
-              0.14
-            ],
-            "Energy": [
-              0.02,
-              0.1
-            ],
-            "Utilities": [
-              0.02,
-              0.1
-            ],
-            "Materials": [
-              0.02,
-              0.1
-            ],
-            "Real Estate": [
-              0.02,
-              0.08
-            ]
-          }
-        },
-        "strategy_type": "systematic_strategy",
-        "signal_source": "black_litterman"
-      }
-    },
-    {
-      "name": "ml_bl_mean_reversion_tax_aware",
-      "_note": "Identical to ml_bl_mean_reversion except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone.",
-      "market_state_config": {
-        "lookback_window_key": "1y",
-        "market_frequency": "d",
-        "cash_allocation": 0.005,
-        "exogenous_tickers": [
-          "^VIX"
-        ],
-        "investment_universe": [
-          "AAPL",
-          "MSFT",
-          "NVDA",
-          "AVGO",
-          "CSCO",
-          "AMAT",
-          "ADI",
-          "ADSK",
-          "ADP",
-          "APH",
-          "CDNS",
-          "CTSH",
-          "ANET",
-          "ACN",
-          "AKAM",
-          "UNH",
-          "JNJ",
-          "ABT",
-          "TMO",
-          "DHR",
-          "ISRG",
-          "SYK",
-          "BSX",
-          "MDT",
-          "BMY",
-          "AMGN",
-          "BIIB",
-          "IDXX",
-          "UHS",
-          "JPM",
-          "BAC",
-          "WFC",
-          "GS",
-          "MS",
-          "BLK",
-          "AXP",
-          "V",
-          "MA",
-          "CB",
-          "AON",
-          "TFC",
-          "ZION",
-          "AFL",
-          "AMP",
-          "AMZN",
-          "TSLA",
-          "HD",
-          "MCD",
-          "NKE",
-          "BKNG",
-          "CMG",
-          "DHI",
-          "DRI",
-          "SBUX",
-          "KMX",
-          "BBY",
-          "HON",
-          "UNP",
-          "BA",
-          "CAT",
-          "GE",
-          "LMT",
-          "RTX",
-          "DE",
-          "EMR",
-          "ETN",
-          "MMM",
-          "NOC",
-          "AME",
-          "CTAS",
-          "FDX",
-          "PG",
-          "KO",
-          "PEP",
-          "COST",
-          "WMT",
-          "CL",
-          "ADM",
-          "STZ",
-          "CPB",
-          "CAG",
-          "GOOGL",
-          "META",
-          "NFLX",
-          "CMCSA",
-          "T",
-          "VZ",
-          "BIDU",
-          "CHTR",
-          "NWSA",
-          "XOM",
-          "CVX",
-          "COP",
-          "EOG",
-          "SLB",
-          "MPC",
-          "PSX",
-          "DVN",
-          "APA",
-          "BKR",
-          "NEE",
-          "DUK",
-          "SO",
-          "AEP",
-          "EXC",
-          "SRE",
-          "AWK",
-          "AEE",
-          "CMS",
-          "ATO",
-          "LIN",
-          "APD",
-          "SHW",
-          "NEM",
-          "ALB",
-          "NUE",
-          "BALL",
-          "AVY",
-          "AMCR",
-          "CE",
-          "PLD",
-          "AMT",
-          "EQIX",
-          "SPG",
-          "ARE",
-          "BXP",
-          "CBRE",
-          "AGG",
-          "LQD"
-        ]
-      },
-      "signals_config": {
-        "apply_winsorizing": true,
-        "windsor_percentiles": {
-          "lower": 0.05,
-          "upper": 0.95
-        },
-        "mean_reversion_window": 21,
-        "momentum_skip_periods": 21,
-        "black_litterman": {
-          "delta": 2.5,
-          "tau": 0.05,
-          "reversion_view": 0.03,
-          "ml_view_spread": 0.03,
-          "view_direction": "mean_reversion"
-        },
-        "ml_signals_config": {
-          "enabled": true,
-          "features_model": "cross_sectional_model",
-          "features": [
-            "vol_3m",
-            "reversal",
-            "mom_x_vol_regime",
-            "reversal_x_vol_regime",
-            "max_return",
-            "high_52w",
-            "idiosyncratic_vol"
-          ],
-          "signals_model": "ridge",
-          "training_window": "2y",
-          "horizon": "1m",
-          "alpha": 1.0,
-          "rebal_cadence": "1m",
-          "sample_stride": "1w"
-        }
-      },
-      "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
-        "rebalance_frequency": "weekly",
-        "apply_tax_objective": true,
         "constraints": {
           "concentration_strength": 1,
           "risk_aversion": 1.0,
@@ -8845,6 +7449,1402 @@
         "monitoring_type": "none"
       },
       "_source": "experiment_vix_basis.json"
+    },
+    {
+      "name": "mean_variance_tax_aware",
+      "_note": "Identical to mean_variance except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.005,
+        "exogenous_tickers": [
+          "^VIX"
+        ],
+        "investment_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "AVGO",
+          "CSCO",
+          "AMAT",
+          "ADI",
+          "ADSK",
+          "ADP",
+          "APH",
+          "CDNS",
+          "CTSH",
+          "ANET",
+          "ACN",
+          "AKAM",
+          "UNH",
+          "JNJ",
+          "ABT",
+          "TMO",
+          "DHR",
+          "ISRG",
+          "SYK",
+          "BSX",
+          "MDT",
+          "BMY",
+          "AMGN",
+          "BIIB",
+          "IDXX",
+          "UHS",
+          "JPM",
+          "BAC",
+          "WFC",
+          "GS",
+          "MS",
+          "BLK",
+          "AXP",
+          "V",
+          "MA",
+          "CB",
+          "AON",
+          "TFC",
+          "ZION",
+          "AFL",
+          "AMP",
+          "AMZN",
+          "TSLA",
+          "HD",
+          "MCD",
+          "NKE",
+          "BKNG",
+          "CMG",
+          "DHI",
+          "DRI",
+          "SBUX",
+          "KMX",
+          "BBY",
+          "HON",
+          "UNP",
+          "BA",
+          "CAT",
+          "GE",
+          "LMT",
+          "RTX",
+          "DE",
+          "EMR",
+          "ETN",
+          "MMM",
+          "NOC",
+          "AME",
+          "CTAS",
+          "FDX",
+          "PG",
+          "KO",
+          "PEP",
+          "COST",
+          "WMT",
+          "CL",
+          "ADM",
+          "STZ",
+          "CPB",
+          "CAG",
+          "GOOGL",
+          "META",
+          "NFLX",
+          "CMCSA",
+          "T",
+          "VZ",
+          "BIDU",
+          "CHTR",
+          "NWSA",
+          "XOM",
+          "CVX",
+          "COP",
+          "EOG",
+          "SLB",
+          "MPC",
+          "PSX",
+          "DVN",
+          "APA",
+          "BKR",
+          "NEE",
+          "DUK",
+          "SO",
+          "AEP",
+          "EXC",
+          "SRE",
+          "AWK",
+          "AEE",
+          "CMS",
+          "ATO",
+          "LIN",
+          "APD",
+          "SHW",
+          "NEM",
+          "ALB",
+          "NUE",
+          "BALL",
+          "AVY",
+          "AMCR",
+          "CE",
+          "PLD",
+          "AMT",
+          "EQIX",
+          "SPG",
+          "ARE",
+          "BXP",
+          "CBRE",
+          "AGG",
+          "LQD"
+        ]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {
+          "lower": 0.05,
+          "upper": 0.95
+        },
+        "mean_reversion_window": 21,
+        "momentum_skip_periods": 21
+      },
+      "rebalance_problem": {
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": "weekly",
+        "apply_tax_objective": true,
+        "constraints": {
+          "concentration_strength": 1,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
+          "min_position_size": 0.0,
+          "max_position_size": 0.1,
+          "asset_class_constraints": {
+            "Equity": [
+              0.75,
+              0.95
+            ],
+            "Fixed Income": [
+              0.03,
+              0.2
+            ]
+          },
+          "sector_constraints": {
+            "Information Technology": [
+              0.06,
+              0.3
+            ],
+            "Health Care": [
+              0.05,
+              0.2
+            ],
+            "Financials": [
+              0.05,
+              0.2
+            ],
+            "Consumer Discretionary": [
+              0.04,
+              0.15
+            ],
+            "Industrials": [
+              0.05,
+              0.18
+            ],
+            "Consumer Staples": [
+              0.03,
+              0.12
+            ],
+            "Communication Services": [
+              0.03,
+              0.14
+            ],
+            "Energy": [
+              0.02,
+              0.1
+            ],
+            "Utilities": [
+              0.02,
+              0.1
+            ],
+            "Materials": [
+              0.02,
+              0.1
+            ],
+            "Real Estate": [
+              0.02,
+              0.08
+            ]
+          }
+        },
+        "strategy_type": "systematic_strategy",
+        "signal_source": "risk_return"
+      }
+    },
+    {
+      "name": "momentum_tax_aware",
+      "_note": "Identical to momentum except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.005,
+        "exogenous_tickers": [
+          "^VIX"
+        ],
+        "investment_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "AVGO",
+          "CSCO",
+          "AMAT",
+          "ADI",
+          "ADSK",
+          "ADP",
+          "APH",
+          "CDNS",
+          "CTSH",
+          "ANET",
+          "ACN",
+          "AKAM",
+          "UNH",
+          "JNJ",
+          "ABT",
+          "TMO",
+          "DHR",
+          "ISRG",
+          "SYK",
+          "BSX",
+          "MDT",
+          "BMY",
+          "AMGN",
+          "BIIB",
+          "IDXX",
+          "UHS",
+          "JPM",
+          "BAC",
+          "WFC",
+          "GS",
+          "MS",
+          "BLK",
+          "AXP",
+          "V",
+          "MA",
+          "CB",
+          "AON",
+          "TFC",
+          "ZION",
+          "AFL",
+          "AMP",
+          "AMZN",
+          "TSLA",
+          "HD",
+          "MCD",
+          "NKE",
+          "BKNG",
+          "CMG",
+          "DHI",
+          "DRI",
+          "SBUX",
+          "KMX",
+          "BBY",
+          "HON",
+          "UNP",
+          "BA",
+          "CAT",
+          "GE",
+          "LMT",
+          "RTX",
+          "DE",
+          "EMR",
+          "ETN",
+          "MMM",
+          "NOC",
+          "AME",
+          "CTAS",
+          "FDX",
+          "PG",
+          "KO",
+          "PEP",
+          "COST",
+          "WMT",
+          "CL",
+          "ADM",
+          "STZ",
+          "CPB",
+          "CAG",
+          "GOOGL",
+          "META",
+          "NFLX",
+          "CMCSA",
+          "T",
+          "VZ",
+          "BIDU",
+          "CHTR",
+          "NWSA",
+          "XOM",
+          "CVX",
+          "COP",
+          "EOG",
+          "SLB",
+          "MPC",
+          "PSX",
+          "DVN",
+          "APA",
+          "BKR",
+          "NEE",
+          "DUK",
+          "SO",
+          "AEP",
+          "EXC",
+          "SRE",
+          "AWK",
+          "AEE",
+          "CMS",
+          "ATO",
+          "LIN",
+          "APD",
+          "SHW",
+          "NEM",
+          "ALB",
+          "NUE",
+          "BALL",
+          "AVY",
+          "AMCR",
+          "CE",
+          "PLD",
+          "AMT",
+          "EQIX",
+          "SPG",
+          "ARE",
+          "BXP",
+          "CBRE",
+          "AGG",
+          "LQD"
+        ]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {
+          "lower": 0.05,
+          "upper": 0.95
+        },
+        "mean_reversion_window": 21,
+        "momentum_skip_periods": 21
+      },
+      "rebalance_problem": {
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": "weekly",
+        "apply_tax_objective": true,
+        "constraints": {
+          "concentration_strength": 1,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
+          "min_position_size": 0.0,
+          "max_position_size": 0.1,
+          "asset_class_constraints": {
+            "Equity": [
+              0.75,
+              0.95
+            ],
+            "Fixed Income": [
+              0.03,
+              0.2
+            ]
+          },
+          "sector_constraints": {
+            "Information Technology": [
+              0.06,
+              0.3
+            ],
+            "Health Care": [
+              0.05,
+              0.2
+            ],
+            "Financials": [
+              0.05,
+              0.2
+            ],
+            "Consumer Discretionary": [
+              0.04,
+              0.15
+            ],
+            "Industrials": [
+              0.05,
+              0.18
+            ],
+            "Consumer Staples": [
+              0.03,
+              0.12
+            ],
+            "Communication Services": [
+              0.03,
+              0.14
+            ],
+            "Energy": [
+              0.02,
+              0.1
+            ],
+            "Utilities": [
+              0.02,
+              0.1
+            ],
+            "Materials": [
+              0.02,
+              0.1
+            ],
+            "Real Estate": [
+              0.02,
+              0.08
+            ]
+          }
+        },
+        "strategy_type": "systematic_strategy",
+        "signal_source": "momentum"
+      }
+    },
+    {
+      "name": "mean_reversion_tax_aware",
+      "_note": "Identical to mean_reversion except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.005,
+        "exogenous_tickers": [
+          "^VIX"
+        ],
+        "investment_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "AVGO",
+          "CSCO",
+          "AMAT",
+          "ADI",
+          "ADSK",
+          "ADP",
+          "APH",
+          "CDNS",
+          "CTSH",
+          "ANET",
+          "ACN",
+          "AKAM",
+          "UNH",
+          "JNJ",
+          "ABT",
+          "TMO",
+          "DHR",
+          "ISRG",
+          "SYK",
+          "BSX",
+          "MDT",
+          "BMY",
+          "AMGN",
+          "BIIB",
+          "IDXX",
+          "UHS",
+          "JPM",
+          "BAC",
+          "WFC",
+          "GS",
+          "MS",
+          "BLK",
+          "AXP",
+          "V",
+          "MA",
+          "CB",
+          "AON",
+          "TFC",
+          "ZION",
+          "AFL",
+          "AMP",
+          "AMZN",
+          "TSLA",
+          "HD",
+          "MCD",
+          "NKE",
+          "BKNG",
+          "CMG",
+          "DHI",
+          "DRI",
+          "SBUX",
+          "KMX",
+          "BBY",
+          "HON",
+          "UNP",
+          "BA",
+          "CAT",
+          "GE",
+          "LMT",
+          "RTX",
+          "DE",
+          "EMR",
+          "ETN",
+          "MMM",
+          "NOC",
+          "AME",
+          "CTAS",
+          "FDX",
+          "PG",
+          "KO",
+          "PEP",
+          "COST",
+          "WMT",
+          "CL",
+          "ADM",
+          "STZ",
+          "CPB",
+          "CAG",
+          "GOOGL",
+          "META",
+          "NFLX",
+          "CMCSA",
+          "T",
+          "VZ",
+          "BIDU",
+          "CHTR",
+          "NWSA",
+          "XOM",
+          "CVX",
+          "COP",
+          "EOG",
+          "SLB",
+          "MPC",
+          "PSX",
+          "DVN",
+          "APA",
+          "BKR",
+          "NEE",
+          "DUK",
+          "SO",
+          "AEP",
+          "EXC",
+          "SRE",
+          "AWK",
+          "AEE",
+          "CMS",
+          "ATO",
+          "LIN",
+          "APD",
+          "SHW",
+          "NEM",
+          "ALB",
+          "NUE",
+          "BALL",
+          "AVY",
+          "AMCR",
+          "CE",
+          "PLD",
+          "AMT",
+          "EQIX",
+          "SPG",
+          "ARE",
+          "BXP",
+          "CBRE",
+          "AGG",
+          "LQD"
+        ]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {
+          "lower": 0.05,
+          "upper": 0.95
+        },
+        "mean_reversion_window": 21,
+        "momentum_skip_periods": 21
+      },
+      "rebalance_problem": {
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": "weekly",
+        "apply_tax_objective": true,
+        "constraints": {
+          "concentration_strength": 1,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
+          "min_position_size": 0.0,
+          "max_position_size": 0.1,
+          "asset_class_constraints": {
+            "Equity": [
+              0.75,
+              0.95
+            ],
+            "Fixed Income": [
+              0.03,
+              0.2
+            ]
+          },
+          "sector_constraints": {
+            "Information Technology": [
+              0.06,
+              0.3
+            ],
+            "Health Care": [
+              0.05,
+              0.2
+            ],
+            "Financials": [
+              0.05,
+              0.2
+            ],
+            "Consumer Discretionary": [
+              0.04,
+              0.15
+            ],
+            "Industrials": [
+              0.05,
+              0.18
+            ],
+            "Consumer Staples": [
+              0.03,
+              0.12
+            ],
+            "Communication Services": [
+              0.03,
+              0.14
+            ],
+            "Energy": [
+              0.02,
+              0.1
+            ],
+            "Utilities": [
+              0.02,
+              0.1
+            ],
+            "Materials": [
+              0.02,
+              0.1
+            ],
+            "Real Estate": [
+              0.02,
+              0.08
+            ]
+          }
+        },
+        "strategy_type": "systematic_strategy",
+        "signal_source": "mean_reversion"
+      }
+    },
+    {
+      "name": "bl_momentum_view_tax_aware",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.005,
+        "exogenous_tickers": [
+          "^VIX"
+        ],
+        "investment_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "AVGO",
+          "CSCO",
+          "AMAT",
+          "ADI",
+          "ADSK",
+          "ADP",
+          "APH",
+          "CDNS",
+          "CTSH",
+          "ANET",
+          "ACN",
+          "AKAM",
+          "UNH",
+          "JNJ",
+          "ABT",
+          "TMO",
+          "DHR",
+          "ISRG",
+          "SYK",
+          "BSX",
+          "MDT",
+          "BMY",
+          "AMGN",
+          "BIIB",
+          "IDXX",
+          "UHS",
+          "JPM",
+          "BAC",
+          "WFC",
+          "GS",
+          "MS",
+          "BLK",
+          "AXP",
+          "V",
+          "MA",
+          "CB",
+          "AON",
+          "TFC",
+          "ZION",
+          "AFL",
+          "AMP",
+          "AMZN",
+          "TSLA",
+          "HD",
+          "MCD",
+          "NKE",
+          "BKNG",
+          "CMG",
+          "DHI",
+          "DRI",
+          "SBUX",
+          "KMX",
+          "BBY",
+          "HON",
+          "UNP",
+          "BA",
+          "CAT",
+          "GE",
+          "LMT",
+          "RTX",
+          "DE",
+          "EMR",
+          "ETN",
+          "MMM",
+          "NOC",
+          "AME",
+          "CTAS",
+          "FDX",
+          "PG",
+          "KO",
+          "PEP",
+          "COST",
+          "WMT",
+          "CL",
+          "ADM",
+          "STZ",
+          "CPB",
+          "CAG",
+          "GOOGL",
+          "META",
+          "NFLX",
+          "CMCSA",
+          "T",
+          "VZ",
+          "BIDU",
+          "CHTR",
+          "NWSA",
+          "XOM",
+          "CVX",
+          "COP",
+          "EOG",
+          "SLB",
+          "MPC",
+          "PSX",
+          "DVN",
+          "APA",
+          "BKR",
+          "NEE",
+          "DUK",
+          "SO",
+          "AEP",
+          "EXC",
+          "SRE",
+          "AWK",
+          "AEE",
+          "CMS",
+          "ATO",
+          "LIN",
+          "APD",
+          "SHW",
+          "NEM",
+          "ALB",
+          "NUE",
+          "BALL",
+          "AVY",
+          "AMCR",
+          "CE",
+          "PLD",
+          "AMT",
+          "EQIX",
+          "SPG",
+          "ARE",
+          "BXP",
+          "CBRE",
+          "AGG",
+          "LQD"
+        ]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {
+          "lower": 0.05,
+          "upper": 0.95
+        },
+        "mean_reversion_window": 21,
+        "momentum_skip_periods": 21,
+        "black_litterman": {
+          "delta": 2.5,
+          "tau": 0.05,
+          "reversion_view": 0.03,
+          "ml_view_spread": 0.03,
+          "view_direction": "momentum"
+        }
+      },
+      "rebalance_problem": {
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": "weekly",
+        "apply_tax_objective": true,
+        "constraints": {
+          "concentration_strength": 1,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
+          "min_position_size": 0.0,
+          "max_position_size": 0.1,
+          "asset_class_constraints": {
+            "Equity": [
+              0.75,
+              0.95
+            ],
+            "Fixed Income": [
+              0.03,
+              0.2
+            ]
+          },
+          "sector_constraints": {
+            "Information Technology": [
+              0.06,
+              0.3
+            ],
+            "Health Care": [
+              0.05,
+              0.2
+            ],
+            "Financials": [
+              0.05,
+              0.2
+            ],
+            "Consumer Discretionary": [
+              0.04,
+              0.15
+            ],
+            "Industrials": [
+              0.05,
+              0.18
+            ],
+            "Consumer Staples": [
+              0.03,
+              0.12
+            ],
+            "Communication Services": [
+              0.03,
+              0.14
+            ],
+            "Energy": [
+              0.02,
+              0.1
+            ],
+            "Utilities": [
+              0.02,
+              0.1
+            ],
+            "Materials": [
+              0.02,
+              0.1
+            ],
+            "Real Estate": [
+              0.02,
+              0.08
+            ]
+          }
+        },
+        "strategy_type": "systematic_strategy",
+        "signal_source": "black_litterman"
+      },
+      "_note": "Identical to bl_momentum_view except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone."
+    },
+    {
+      "name": "ml_bl_momentum_tax_aware",
+      "_note": "Identical to ml_bl_momentum except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.005,
+        "exogenous_tickers": [
+          "^VIX"
+        ],
+        "investment_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "AVGO",
+          "CSCO",
+          "AMAT",
+          "ADI",
+          "ADSK",
+          "ADP",
+          "APH",
+          "CDNS",
+          "CTSH",
+          "ANET",
+          "ACN",
+          "AKAM",
+          "UNH",
+          "JNJ",
+          "ABT",
+          "TMO",
+          "DHR",
+          "ISRG",
+          "SYK",
+          "BSX",
+          "MDT",
+          "BMY",
+          "AMGN",
+          "BIIB",
+          "IDXX",
+          "UHS",
+          "JPM",
+          "BAC",
+          "WFC",
+          "GS",
+          "MS",
+          "BLK",
+          "AXP",
+          "V",
+          "MA",
+          "CB",
+          "AON",
+          "TFC",
+          "ZION",
+          "AFL",
+          "AMP",
+          "AMZN",
+          "TSLA",
+          "HD",
+          "MCD",
+          "NKE",
+          "BKNG",
+          "CMG",
+          "DHI",
+          "DRI",
+          "SBUX",
+          "KMX",
+          "BBY",
+          "HON",
+          "UNP",
+          "BA",
+          "CAT",
+          "GE",
+          "LMT",
+          "RTX",
+          "DE",
+          "EMR",
+          "ETN",
+          "MMM",
+          "NOC",
+          "AME",
+          "CTAS",
+          "FDX",
+          "PG",
+          "KO",
+          "PEP",
+          "COST",
+          "WMT",
+          "CL",
+          "ADM",
+          "STZ",
+          "CPB",
+          "CAG",
+          "GOOGL",
+          "META",
+          "NFLX",
+          "CMCSA",
+          "T",
+          "VZ",
+          "BIDU",
+          "CHTR",
+          "NWSA",
+          "XOM",
+          "CVX",
+          "COP",
+          "EOG",
+          "SLB",
+          "MPC",
+          "PSX",
+          "DVN",
+          "APA",
+          "BKR",
+          "NEE",
+          "DUK",
+          "SO",
+          "AEP",
+          "EXC",
+          "SRE",
+          "AWK",
+          "AEE",
+          "CMS",
+          "ATO",
+          "LIN",
+          "APD",
+          "SHW",
+          "NEM",
+          "ALB",
+          "NUE",
+          "BALL",
+          "AVY",
+          "AMCR",
+          "CE",
+          "PLD",
+          "AMT",
+          "EQIX",
+          "SPG",
+          "ARE",
+          "BXP",
+          "CBRE",
+          "AGG",
+          "LQD"
+        ]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {
+          "lower": 0.05,
+          "upper": 0.95
+        },
+        "mean_reversion_window": 21,
+        "momentum_skip_periods": 21,
+        "black_litterman": {
+          "delta": 2.5,
+          "tau": 0.05,
+          "reversion_view": 0.03,
+          "ml_view_spread": 0.03,
+          "view_direction": "momentum"
+        },
+        "ml_signals_config": {
+          "enabled": true,
+          "features_model": "cross_sectional_model",
+          "features": [
+            "mom_1m",
+            "mom_12m",
+            "vol_1m",
+            "vol_3m",
+            "reversal",
+            "mom_x_vol_regime",
+            "reversal_x_vol_regime",
+            "max_return",
+            "high_52w",
+            "beta_1m",
+            "beta_1y",
+            "idiosyncratic_vol"
+          ],
+          "signals_model": "ridge",
+          "training_window": "2y",
+          "horizon": "1m",
+          "alpha": 1.0,
+          "rebal_cadence": "1m",
+          "sample_stride": "1w"
+        }
+      },
+      "rebalance_problem": {
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": "weekly",
+        "apply_tax_objective": true,
+        "constraints": {
+          "concentration_strength": 1,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
+          "min_position_size": 0.0,
+          "max_position_size": 0.1,
+          "asset_class_constraints": {
+            "Equity": [
+              0.75,
+              0.95
+            ],
+            "Fixed Income": [
+              0.03,
+              0.2
+            ]
+          },
+          "sector_constraints": {
+            "Information Technology": [
+              0.06,
+              0.3
+            ],
+            "Health Care": [
+              0.05,
+              0.2
+            ],
+            "Financials": [
+              0.05,
+              0.2
+            ],
+            "Consumer Discretionary": [
+              0.04,
+              0.15
+            ],
+            "Industrials": [
+              0.05,
+              0.18
+            ],
+            "Consumer Staples": [
+              0.03,
+              0.12
+            ],
+            "Communication Services": [
+              0.03,
+              0.14
+            ],
+            "Energy": [
+              0.02,
+              0.1
+            ],
+            "Utilities": [
+              0.02,
+              0.1
+            ],
+            "Materials": [
+              0.02,
+              0.1
+            ],
+            "Real Estate": [
+              0.02,
+              0.08
+            ]
+          }
+        },
+        "strategy_type": "systematic_strategy",
+        "signal_source": "black_litterman"
+      }
+    },
+    {
+      "name": "ml_bl_mean_reversion_tax_aware",
+      "_note": "Identical to ml_bl_mean_reversion except apply_tax_objective=true: the optimizer penalises realising gains (37% short-term / 20% long-term). Reported returns are still pre-tax, so compare turnover and holding periods, not returns alone.",
+      "market_state_config": {
+        "lookback_window_key": "1y",
+        "market_frequency": "d",
+        "cash_allocation": 0.005,
+        "exogenous_tickers": [
+          "^VIX"
+        ],
+        "investment_universe": [
+          "AAPL",
+          "MSFT",
+          "NVDA",
+          "AVGO",
+          "CSCO",
+          "AMAT",
+          "ADI",
+          "ADSK",
+          "ADP",
+          "APH",
+          "CDNS",
+          "CTSH",
+          "ANET",
+          "ACN",
+          "AKAM",
+          "UNH",
+          "JNJ",
+          "ABT",
+          "TMO",
+          "DHR",
+          "ISRG",
+          "SYK",
+          "BSX",
+          "MDT",
+          "BMY",
+          "AMGN",
+          "BIIB",
+          "IDXX",
+          "UHS",
+          "JPM",
+          "BAC",
+          "WFC",
+          "GS",
+          "MS",
+          "BLK",
+          "AXP",
+          "V",
+          "MA",
+          "CB",
+          "AON",
+          "TFC",
+          "ZION",
+          "AFL",
+          "AMP",
+          "AMZN",
+          "TSLA",
+          "HD",
+          "MCD",
+          "NKE",
+          "BKNG",
+          "CMG",
+          "DHI",
+          "DRI",
+          "SBUX",
+          "KMX",
+          "BBY",
+          "HON",
+          "UNP",
+          "BA",
+          "CAT",
+          "GE",
+          "LMT",
+          "RTX",
+          "DE",
+          "EMR",
+          "ETN",
+          "MMM",
+          "NOC",
+          "AME",
+          "CTAS",
+          "FDX",
+          "PG",
+          "KO",
+          "PEP",
+          "COST",
+          "WMT",
+          "CL",
+          "ADM",
+          "STZ",
+          "CPB",
+          "CAG",
+          "GOOGL",
+          "META",
+          "NFLX",
+          "CMCSA",
+          "T",
+          "VZ",
+          "BIDU",
+          "CHTR",
+          "NWSA",
+          "XOM",
+          "CVX",
+          "COP",
+          "EOG",
+          "SLB",
+          "MPC",
+          "PSX",
+          "DVN",
+          "APA",
+          "BKR",
+          "NEE",
+          "DUK",
+          "SO",
+          "AEP",
+          "EXC",
+          "SRE",
+          "AWK",
+          "AEE",
+          "CMS",
+          "ATO",
+          "LIN",
+          "APD",
+          "SHW",
+          "NEM",
+          "ALB",
+          "NUE",
+          "BALL",
+          "AVY",
+          "AMCR",
+          "CE",
+          "PLD",
+          "AMT",
+          "EQIX",
+          "SPG",
+          "ARE",
+          "BXP",
+          "CBRE",
+          "AGG",
+          "LQD"
+        ]
+      },
+      "signals_config": {
+        "apply_winsorizing": true,
+        "windsor_percentiles": {
+          "lower": 0.05,
+          "upper": 0.95
+        },
+        "mean_reversion_window": 21,
+        "momentum_skip_periods": 21,
+        "black_litterman": {
+          "delta": 2.5,
+          "tau": 0.05,
+          "reversion_view": 0.03,
+          "ml_view_spread": 0.03,
+          "view_direction": "mean_reversion"
+        },
+        "ml_signals_config": {
+          "enabled": true,
+          "features_model": "cross_sectional_model",
+          "features": [
+            "vol_3m",
+            "reversal",
+            "mom_x_vol_regime",
+            "reversal_x_vol_regime",
+            "max_return",
+            "high_52w",
+            "idiosyncratic_vol"
+          ],
+          "signals_model": "ridge",
+          "training_window": "2y",
+          "horizon": "1m",
+          "alpha": 1.0,
+          "rebal_cadence": "1m",
+          "sample_stride": "1w"
+        }
+      },
+      "rebalance_problem": {
+        "optimizer_type": "portfolio_optimizer",
+        "rebalance_frequency": "weekly",
+        "apply_tax_objective": true,
+        "constraints": {
+          "concentration_strength": 1,
+          "risk_aversion": 1.0,
+          "turnover_limit": 1.0,
+          "min_position_size": 0.0,
+          "max_position_size": 0.1,
+          "asset_class_constraints": {
+            "Equity": [
+              0.75,
+              0.95
+            ],
+            "Fixed Income": [
+              0.03,
+              0.2
+            ]
+          },
+          "sector_constraints": {
+            "Information Technology": [
+              0.06,
+              0.3
+            ],
+            "Health Care": [
+              0.05,
+              0.2
+            ],
+            "Financials": [
+              0.05,
+              0.2
+            ],
+            "Consumer Discretionary": [
+              0.04,
+              0.15
+            ],
+            "Industrials": [
+              0.05,
+              0.18
+            ],
+            "Consumer Staples": [
+              0.03,
+              0.12
+            ],
+            "Communication Services": [
+              0.03,
+              0.14
+            ],
+            "Energy": [
+              0.02,
+              0.1
+            ],
+            "Utilities": [
+              0.02,
+              0.1
+            ],
+            "Materials": [
+              0.02,
+              0.1
+            ],
+            "Real Estate": [
+              0.02,
+              0.08
+            ]
+          }
+        },
+        "strategy_type": "systematic_strategy",
+        "signal_source": "black_litterman"
+      }
     }
   ]
 }
