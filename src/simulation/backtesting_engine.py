@@ -49,15 +49,7 @@ class _ProgressTracker:
             self._last_year = date.year
             _announce("Processing backtest year %s", date.year)
 
-
-class BacktestingEngineInterface(abc.ABC):
-    """Interface for backtesting engines."""
-    @abc.abstractmethod
-    def run_backtest(self, rebalance_problem: RebalanceProblem):
-        raise NotImplementedError("Must implement run_backtest in derived classes.")
-
-
-class BacktestingEngine(BacktestingEngineInterface):
+class BacktestingEngine:
     """Concrete implementation of a backtesting engine."""
     def __init__(self,
                  portfolio: Portfolio,
