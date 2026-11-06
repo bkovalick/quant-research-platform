@@ -102,6 +102,12 @@ def run_inverse_volatility_strategy():
         config = json.load(f)
     local_run(config)
 
+def run_black_litterman_strategy():
+    logger.info("run_black_litterman_strategy:: Starting local run of Black-Litterman strategy")
+    with open(f"src/config/experiment_securities_bl_only_momentum.json", 'r') as f:
+        config = json.load(f)
+    local_run(config)
+
 def run_parameter_sweep():
     with open(f"src/config/experiment_securities_ml_bl_momentum.json", 'r') as f:
         config = json.load(f)
@@ -115,10 +121,11 @@ if __name__ == '__main__':
     # run_ml_momentum_strategy()
     # run_ml_mean_reversion_strategy()
     # run_parameter_sweep()
-    run_standard_mean_variance_strategy()
+    # run_standard_mean_variance_strategy()
     # run_equal_weight_strategy()
     # run_fixed_weight_strategy()
     # run_long_short_strategy()
     # run_ls_market_neutral_ml()
     # run_mean_reversion_strategy()
     # run_inverse_volatility_strategy()
+    run_black_litterman_strategy()

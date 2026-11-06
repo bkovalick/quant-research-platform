@@ -27,7 +27,8 @@ from models.signals_config import SignalsConfig
 from models.experiment import Experiment
 from models.backtest_result import BacktestResult
 from models.monitoring_stats import MonitoringStats
-from infrastructure.market_data_gateway import MarketDataStore
+from infrastructure.market_data_gateway import MarketDataGateway, MarketDataStore
+from infrastructure.market_data_cache import cache_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -119,14 +120,15 @@ def build_tax_lot_ledger(rebalance_problem) -> Optional[TaxLotLedger]:
 
 def run_strategy_worker(strategy_cfg: dict,
                         market_store_config: MarketStoreConfig,
-                        progress: Optional[ProgressCallback] = None) -> StrategyRun:
+                        progress: Optional[ProgressCallback] = None) -> Optional[StrategyRun]:
     name = strategy_cfg.get("name", "Unnamed Strategy")
     report = (lambda **fields: progress(name, **fields)) if progress is not None else (lambda **fields: None)
     try:
         run = _run_strategy(strategy_cfg, market_store_config, report)
     except Exception as exc:
+        logger.exception("Strategy %s failed", name)
         report(phase="failed", error=f"{type(exc).__name__}: {exc}")
-        raise
+        return None
     report(phase="done")
     return run
 
@@ -209,8 +211,11 @@ class ExperimentRunner:
         experiment = self._create_experiment(m_cfg)
         logger.info("Starting sequential experiment run")
         for strategy_cfg in self.config["strategies"]:
-            experiment.add_run(run_strategy_worker(strategy_cfg, m_cfg, progress))
-        experiment.add_run(self._build_benchmark_run(m_cfg, experiment))
+            run = run_strategy_worker(strategy_cfg, m_cfg, progress)
+            if run is not None:
+                experiment.add_run(run)
+        if experiment.strategy_runs:
+            experiment.add_run(self._build_benchmark_run(m_cfg, experiment))
         logger.info("Sequential experiment run complete with %s strategy runs", len(experiment.strategy_runs))
         print("Sequential experiment run complete with %s strategy runs" % len(experiment.strategy_runs))
         return experiment
@@ -221,6 +226,7 @@ class ExperimentRunner:
         strategies = self.config["strategies"]
 
         logger.info(f"Running {len(strategies)} strategies in parallel with max_workers={self.max_workers}")
+        self._warm_market_cache(m_cfg)
         manager = multiprocessing.Manager() if progress is not None else None
         drainer = None
         try:
@@ -231,19 +237,33 @@ class ExperimentRunner:
                 drainer = threading.Thread(target=_drain_progress, args=(queue, progress), daemon=True)
                 drainer.start()
             with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
-                futures = [executor.submit(run_strategy_worker, s_cfg, m_cfg, worker_progress) for s_cfg in strategies]
+                futures = [
+                    executor.submit(run_strategy_worker, s_cfg, m_cfg, worker_progress)
+                    for s_cfg in strategies
+                ]
                 for future in as_completed(futures):
-                    experiment.add_run(future.result())
+                    run = future.result()
+                    if run is not None:
+                        experiment.add_run(run)
         finally:
             if drainer is not None:
                 queue.put(_DRAIN_STOP)
                 drainer.join(timeout=5)
             if manager is not None:
                 manager.shutdown()
-        experiment.add_run(self._build_benchmark_run(m_cfg, experiment))
+        if experiment.strategy_runs:
+            experiment.add_run(self._build_benchmark_run(m_cfg, experiment))
         logger.info("Parallel experiment run complete with %s strategy runs", len(experiment.strategy_runs))
         print("Parallel experiment run complete with %s strategy runs" % len(experiment.strategy_runs))
         return experiment
+
+    @staticmethod
+    def _warm_market_cache(m_cfg: MarketStoreConfig) -> None:
+        """Download anything missing once, here, so workers only read from the on-disk cache
+        instead of all hitting yfinance at the same time."""
+        if "yfinance" not in (m_cfg.data_source or {}) or not cache_enabled():
+            return
+        MarketDataGateway.get_price_data(m_cfg, tickers=list(m_cfg.tickers))
 
     def _build_benchmark_run(self, m_cfg: MarketStoreConfig, experiment: Experiment) -> StrategyRun:
         first = experiment.strategy_runs[0]

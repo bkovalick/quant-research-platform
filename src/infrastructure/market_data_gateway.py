@@ -3,8 +3,12 @@ import yfinance as yf
 import pandas as pd
 
 from models.market_config import MarketStoreConfig
+from infrastructure.market_data_cache import MarketDataCache, cache_enabled
 
 logger = logging.getLogger(__name__)
+
+SECTOR_MAX_AGE_DAYS = 180
+MARKET_CAP_MAX_AGE_DAYS = 7
 
 class MarketDataGateway:
     """ Data gateway for fetching market data using yfinance """
@@ -36,52 +40,46 @@ class MarketDataGateway:
 
     @staticmethod
     def get_sector_data(tickers: list) -> dict:
-        sectors = {}
-        for ticker in tickers:
-            try:
-                ticker_data = yf.Ticker(ticker).info
-                sectors[ticker] = ticker_data.get("sector")
-            except Exception as e:
-                logger.warning("Could not fetch sector data for %s: %s", ticker, e)
-                sectors[ticker] = 0
-                continue
+        return MarketDataGateway._get_info_field(tickers, "sector", SECTOR_MAX_AGE_DAYS)
 
-        return sectors
-    
     @staticmethod
     def get_market_caps(tickers: list) -> dict:
-        market_caps = {}
-        for ticker in tickers:
-            try:
-                ticker_data = yf.Ticker(ticker).info
-                market_caps[ticker] = ticker_data.get("marketCap")
-            except Exception as e:
-                logger.warning("Could not fetch market cap data for %s: %s", ticker, e)
-                market_caps[ticker] = 0
-                continue
+        caps = MarketDataGateway._get_info_field(tickers, "marketCap", MARKET_CAP_MAX_AGE_DAYS)
+        return {ticker: value or 0 for ticker, value in caps.items()}
 
-        return market_caps
-    
     @staticmethod
     def get_etf_market_caps(tickers: list) -> dict:
-        market_caps = {}
+        caps = MarketDataGateway._get_info_field(tickers, "totalAssets", MARKET_CAP_MAX_AGE_DAYS)
+        return {ticker: value or 0 for ticker, value in caps.items()}
+
+    @staticmethod
+    def _get_info_field(tickers: list, field: str, max_age_days: float) -> dict:
+        """One yfinance ``Ticker.info`` field per ticker, via the on-disk cache unless it's turned off."""
+        fetch_info = lambda ticker: yf.Ticker(ticker).info
+        if cache_enabled():
+            return MarketDataCache().get_info(tickers, field, fetch_info, max_age_days)
+        out = {}
         for ticker in tickers:
             try:
-                ticker_data = yf.Ticker(ticker).info
-                market_caps[ticker] = ticker_data.get("totalAssets", None)
+                out[ticker] = fetch_info(ticker).get(field)
             except Exception as e:
-                logger.warning("Could not fetch ETF market cap data for %s: %s", ticker, e)
-                market_caps[ticker] = 0
-                continue
-
-        return market_caps        
+                logger.warning("Could not fetch %s for %s: %s", field, ticker, e)
+                out[ticker] = None
+        return out
 
     @staticmethod
     def get_price_data_y_finance(tickers, start_date, end_date):
-        logger.info("Downloading price data from yfinance for %s tickers", len(tickers))
-        data = yf.download(tickers, start=start_date, end=end_date)
+        """Close prices, served from the on-disk cache; only missing tickers/dates are downloaded."""
+        if not cache_enabled():
+            return MarketDataGateway._download_close(tickers, start_date, end_date)
+        return MarketDataCache().get_close(tickers, start_date, end_date, MarketDataGateway._download_close)
+
+    @staticmethod
+    def _download_close(tickers, start_date, end_date) -> pd.DataFrame:
+        logger.info("Downloading price data from yfinance for %s tickers (%s to %s)", len(tickers), start_date, end_date)
+        data = yf.download(list(tickers), start=start_date, end=end_date, progress=False)
         logger.debug("Downloaded yfinance data with shape %s", getattr(data, "shape", None))
-        return data.xs('Close', axis=1, level=0)        
+        return data.xs('Close', axis=1, level=0)
 
     @staticmethod
     def get_price_data_csv(csv_file):

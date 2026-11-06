@@ -12,8 +12,6 @@ from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
 from models.rebalance_context import RebalanceContext
 
-# SCS is the slow first-order fallback; cap it so a hard problem fails over to OSQP in ~1s
-# instead of grinding through its 100k-iteration default.
 SOLVER_OPTIONS = {cp.SCS: {"max_iters": 5000}}
 
 class TargetWeightOptimizer(BaseOptimizer):
