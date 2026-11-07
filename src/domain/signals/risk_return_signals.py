@@ -11,15 +11,39 @@ class RiskReturnSignals(Signals):
         super().__init__(market_state, signals_config)
 
     def mean_returns(self) -> np.ndarray:
+        """Annualized mean return; NaN for assets without a complete lookback window (they
+        are untradable, and the optimizer fills them before use)."""
         lookback_returns = self.lookback_returns()
-        mu = lookback_returns.mean().values * self.ann_factor
-        return np.nan_to_num(mu, nan=0.0)
+        complete = lookback_returns.notna().all()
+        mu = lookback_returns.mean() * self.ann_factor
+        return mu.where(complete).to_numpy(dtype=float)
 
     def covariance_matrix(self) -> np.ndarray:
-        lookback_returns = self.lookback_returns().dropna()
-        lw = LedoitWolf()
-        lw.fit(lookback_returns.values)
-        cov = lw.covariance_ * self.ann_factor
+        """Ledoit-Wolf covariance over assets with a complete lookback window, embedded in the
+        full universe matrix. Incomplete assets get no covariance and a median variance on the
+        diagonal: it keeps the matrix PSD and invertible (Black-Litterman inverts it), and those
+        assets are held at zero weight anyway.
+
+        Dropping incomplete *columns* rather than rows matters: one late listing would otherwise
+        throw away most of the window for every asset."""
+        lookback_returns = self.lookback_returns()
+        n = lookback_returns.shape[1]
+        complete = lookback_returns.notna().all().to_numpy()
+        cov = np.zeros((n, n))
+        idx = np.flatnonzero(complete)
+
+        if len(idx) >= 2 and len(lookback_returns) >= 2:
+            lw = LedoitWolf()
+            lw.fit(lookback_returns.iloc[:, idx].to_numpy(dtype=float))
+            cov[np.ix_(idx, idx)] = lw.covariance_ * self.ann_factor
+        elif len(idx) == 1 and len(lookback_returns) >= 2:
+            cov[idx[0], idx[0]] = lookback_returns.iloc[:, idx[0]].var() * self.ann_factor
+
+        known_var = np.diag(cov)[idx]
+        known_var = known_var[known_var > 0]
+        fill_var = float(np.median(known_var)) if len(known_var) else 1e-4
+        missing = np.flatnonzero(~complete)
+        cov[missing, missing] = fill_var
         return 0.5 * (cov + cov.T)
     
     def portfolio_vol(self, curr_weights: np.ndarray) -> float:

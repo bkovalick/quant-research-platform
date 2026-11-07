@@ -27,7 +27,8 @@ from models.signals_config import SignalsConfig
 from models.experiment import Experiment
 from models.backtest_result import BacktestResult
 from models.monitoring_stats import MonitoringStats
-from infrastructure.market_data_gateway import MarketDataGateway, MarketDataStore
+from infrastructure.market_data_gateway import MarketDataGateway
+from infrastructure.market_data_store import MarketDataStore
 from infrastructure.market_data_cache import cache_enabled
 
 logger = logging.getLogger(__name__)
@@ -193,18 +194,9 @@ def _run_strategy(strategy_cfg: dict, market_store_config: MarketStoreConfig, re
 class ExperimentRunner:
     def __init__(self, config: dict, max_workers: Optional[int] = None):
         self.config = config
-        # self.max_workers = min(8, multiprocessing.cpu_count())
         self.max_workers = max_workers or 4
         logger.info("ExperimentRunner initialized with %s strategies", len(self.config.get("strategies", [])))
         print(f"ExperimentRunner initialized with {len(self.config.get('strategies', []))} strategies")
-
-    def _get_market_config(self) -> MarketStoreConfig:
-        cfg = self.config.get("market_store_config")
-        if not cfg: raise ValueError("Error: Market store configuration must be present")
-        return MarketStoreConfig.from_dict(cfg)
-
-    def _create_experiment(self, m_cfg: MarketStoreConfig) -> Experiment:
-        return Experiment(experiment_id=str(uuid.uuid4()), created_at=datetime.now(), market_config=m_cfg)
 
     def run(self, progress: Optional[ProgressCallback] = None) -> Experiment:
         m_cfg = self._get_market_config()
@@ -264,6 +256,14 @@ class ExperimentRunner:
         if "yfinance" not in (m_cfg.data_source or {}) or not cache_enabled():
             return
         MarketDataGateway.get_price_data(m_cfg, tickers=list(m_cfg.tickers))
+
+    def _get_market_config(self) -> MarketStoreConfig:
+        cfg = self.config.get("market_store_config")
+        if not cfg: raise ValueError("Error: Market store configuration must be present")
+        return MarketStoreConfig.from_dict(cfg)
+
+    def _create_experiment(self, m_cfg: MarketStoreConfig) -> Experiment:
+        return Experiment(experiment_id=str(uuid.uuid4()), created_at=datetime.now(), market_config=m_cfg)        
 
     def _build_benchmark_run(self, m_cfg: MarketStoreConfig, experiment: Experiment) -> StrategyRun:
         first = experiment.strategy_runs[0]

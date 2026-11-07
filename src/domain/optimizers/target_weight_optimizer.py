@@ -10,7 +10,7 @@ from domain.signals.signals import Signals
 from domain.portfolio.tax_lot_ledger import TaxLotLedger
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
-from models.rebalance_context import RebalanceContext
+from models.rebalance_context import RebalanceContext, tradable_mask
 
 SOLVER_OPTIONS = {cp.SCS: {"max_iters": 5000}}
 
@@ -21,7 +21,8 @@ class TargetWeightOptimizer(BaseOptimizer):
 		self.logger = logging.getLogger(__name__)
 		self._risky_indices = []
 		self._risky_tickers = []
-			
+		self._tradable = None
+
 	def optimize(self, 
 			     rebalance_context: RebalanceContext, 
 				 active_signal: Signals = None) -> RebalanceSolution:
@@ -31,7 +32,8 @@ class TargetWeightOptimizer(BaseOptimizer):
 		active_signal = active_signal
 		tax_lot_ledger = rebalance_context.tax_lot_ledger
 		self._set_risky_universe(rebalance_problem)
-		
+		self._tradable = tradable_mask(rebalance_context).to_numpy()
+
 		if current_weights is None:
 			tickers = rebalance_problem.investment_universe
 			current_weights = pd.Series(
@@ -271,12 +273,27 @@ class TargetWeightOptimizer(BaseOptimizer):
 		risky_current = current_weights.iloc[self._risky_indices]
 		risky_weights = portfolio_weights[self._risky_indices]
 
-		return [
-				cp.sum(portfolio_weights) == net_exposure,
-				risky_weights - risky_current == portfolio_buys - portfolio_sells,
+		constraints = [
+			cp.sum(portfolio_weights) == net_exposure,
+			risky_weights - risky_current == portfolio_buys - portfolio_sells,
+		]
+		if self._tradable is None or self._tradable.all():
+			return constraints + [
 				portfolio_weights >= min_position_size,
-				portfolio_weights <= max_position_size
+				portfolio_weights <= max_position_size,
 			]
+
+		# Untradable assets (no price / incomplete lookback) are pinned to zero; the position
+		# bounds apply only to the rest, so a positive min_position_size can't force a holding.
+		tradable_idx = np.flatnonzero(self._tradable)
+		untradable_idx = np.flatnonzero(~self._tradable)
+		constraints.append(portfolio_weights[untradable_idx] == 0)
+		if len(tradable_idx):
+			constraints += [
+				portfolio_weights[tradable_idx] >= min_position_size,
+				portfolio_weights[tradable_idx] <= max_position_size,
+			]
+		return constraints
 
 	def _allows_shorts(self, rebalance_problem) -> bool:
 		return (getattr(rebalance_problem, "max_short", 0.0) or 0.0) > 0 \
@@ -358,6 +375,8 @@ class TargetWeightOptimizer(BaseOptimizer):
 		beta_vector = np.asarray(beta_vector, dtype=float)
 		if beta_vector.shape[0] != portfolio_weights.shape[0]:
 			return []
+		# Assets without enough history have no beta; they carry zero weight anyway.
+		beta_vector = np.nan_to_num(beta_vector, nan=0.0, posinf=0.0, neginf=0.0)
 		return [
 			cp.abs(beta_vector @ portfolio_weights) <= max_beta_exposure
 		]
@@ -457,10 +476,10 @@ class TargetWeightOptimizer(BaseOptimizer):
 		risk_aversion = getattr(rebalance_problem, 'risk_aversion', 1.0)
 		transaction_cost = getattr(rebalance_problem, 'transaction_cost', 0.003)
 		portfolio_weights = decision_variables.get('portfolio_weights')
-		mean_vector = signals.mean_returns()
-		expected_median_vector = np.nanmedian(mean_vector) if np.isfinite(mean_vector).any() else 0.0
-		np.nan_to_num(mean_vector, copy=False, nan=expected_median_vector)
-		cov_matrix = signals.covariance_matrix()
+		mean_vector = np.array(signals.mean_returns(), dtype=float)
+		finite = np.isfinite(mean_vector)
+		expected_median_vector = float(np.median(mean_vector[finite])) if finite.any() else 0.0
+		mean_vector = np.where(finite, mean_vector, expected_median_vector)
 
 		# Get indices of risky assets and their corresponding weights
 		risky_weights = portfolio_weights[self._risky_indices]

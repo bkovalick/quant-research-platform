@@ -57,14 +57,27 @@ class Signals(ABC):
         if len(aligned_returns) < 2:
             return None
 
-        aligned_values = aligned_returns.to_numpy(dtype=float)
-        covariance = np.cov(aligned_values, rowvar=False, ddof=1)
-        market_variance = covariance[0, 0]
-        if np.isclose(market_variance, 0):
-            return np.zeros(asset_returns.shape[1], dtype=float)
+        # Per asset, over the dates where both it and the market have a return: assets list at
+        # different times, and one NaN must not poison every beta (np.cov would).
+        market = aligned_returns["market"].to_numpy(dtype=float)
+        assets = aligned_returns.drop(columns="market").to_numpy(dtype=float)
+        valid = np.isfinite(assets) & np.isfinite(market)[:, None]
+        counts = valid.sum(axis=0)
 
-        beta = covariance[1:, 0] / market_variance
-        return beta
+        m = np.where(valid, market[:, None], 0.0)
+        a = np.where(valid, assets, 0.0)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            m_mean = m.sum(axis=0) / counts
+            a_mean = a.sum(axis=0) / counts
+            m_dev = np.where(valid, market[:, None] - m_mean, 0.0)
+            a_dev = np.where(valid, assets - a_mean, 0.0)
+            covariance = (m_dev * a_dev).sum(axis=0)
+            market_variance = (m_dev ** 2).sum(axis=0)
+            beta = covariance / market_variance
+
+        enough = (counts >= 2) & (market_variance > 1e-18)
+        # No usable history -> NaN (the optimizer treats it as 0; such assets carry no weight).
+        return np.where(enough, beta, np.nan)
 
     @abstractmethod
     def mean_returns(self) -> np.ndarray: ...

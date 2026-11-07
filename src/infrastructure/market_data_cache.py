@@ -55,13 +55,11 @@ class MarketDataCache:
         self.price_dir.mkdir(parents=True, exist_ok=True)
         self.info_dir.mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------ prices
-
     def get_close(self, tickers: Iterable[str], start: str, end: str, fetch: Fetcher) -> pd.DataFrame:
         """Close prices for ``tickers`` on [start, end), downloading only what the cache lacks."""
         tickers = list(dict.fromkeys(tickers))
         start_ts = pd.Timestamp(start)
-        end_ts = min(pd.Timestamp(end), pd.Timestamp(datetime.now().date()))   # never cache today's bar
+        end_ts = min(pd.Timestamp(end), pd.Timestamp(datetime.now().date()))
 
         cached = {t: self._read_prices(t) for t in tickers}
         plans: dict[tuple[pd.Timestamp, pd.Timestamp], list[str]] = {}
@@ -82,8 +80,6 @@ class MarketDataCache:
             for ticker in group:
                 series = fresh.get(ticker)
                 if (series is None or series.dropna().empty) and self._before_listing(cached[ticker], piece_end):
-                    # Nothing before the first cached price just means the ticker wasn't listed yet:
-                    # record the range as fetched so it isn't re-requested every run.
                     self._write_prices(ticker, cached[ticker],
                                        self._extend(self._read_coverage(ticker), piece_start, piece_end))
                     continue
@@ -110,7 +106,6 @@ class MarketDataCache:
                 cached[ticker] = fresh.dropna()
                 self._write_prices(ticker, cached[ticker], {"start": str(full_start.date()), "end": str(end_ts.date())})
 
-        # Same column order yf.download returns (sorted), so downstream code sees identical frames.
         frame = pd.DataFrame({t: s for t, s in cached.items() if s is not None}).reindex(columns=sorted(tickers))
         frame.index.name, frame.columns.name = "Date", "Ticker"
         return frame.loc[(frame.index >= start_ts) & (frame.index < pd.Timestamp(end))]
@@ -190,8 +185,6 @@ class MarketDataCache:
         _atomic_write(path, lambda tmp: frame.to_parquet(tmp))
         _atomic_write(path.with_suffix(".json"), lambda tmp: Path(tmp).write_text(json.dumps(coverage)))
 
-    # ------------------------------------------------------------------ reference data
-
     def get_info(self, tickers: Iterable[str], field: str, fetch_info: Callable[[str], dict],
                  max_age_days: float) -> dict:
         """One ``Ticker.info`` field per ticker, re-fetched when older than ``max_age_days``.
@@ -208,7 +201,7 @@ class MarketDataCache:
             if not fresh:
                 try:
                     info = fetch_info(ticker) or {}
-                except Exception as exc:                       # same tolerance as before: log and move on
+                except Exception as exc:
                     logger.warning("Could not fetch info for %s: %s", ticker, exc)
                     out[ticker] = None
                     continue

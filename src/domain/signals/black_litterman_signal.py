@@ -73,7 +73,7 @@ class BlackLittermanSignal(RiskReturnSignals):
           Omega — (1 x 1) diagonal uncertainty matrix scaled by tau * P @ Sigma @ P'.
         """        
         ranked, expected_spread = self._get_ranked_scores()
-        n = len(ranked)
+        n = int(ranked.notna().sum())     # quintiles of the names that have a score, not of NaNs
         quintile = n // 5
         losers  = ranked <= quintile
         winners = ranked > n - quintile

@@ -1,9 +1,7 @@
-import abc
 import logging
 import time
 from dataclasses import replace
 from typing import Callable, Optional
-
 import numpy as np
 import pandas as pd
 
@@ -22,12 +20,10 @@ logger = logging.getLogger(__name__)
 
 ProgressCallback = Callable[[float, pd.Timestamp], None]
 
-
 def _announce(message: str, *args) -> None:
     """Log at INFO and echo to the console (local runs watch stdout)."""
     logger.info(message, *args)
     print(message % args)
-
 
 class _ProgressTracker:
     """Reports whole-percent progress to an optional callback and logs each new year."""
@@ -99,6 +95,8 @@ class BacktestingEngine:
             for ticker in rebalance_problem.investment_universe
         ])
         prices = self.market_state.investment_prices
+        priced = prices.iloc[0].reindex(rebalance_problem.investment_universe).notna().to_numpy()
+        initial_weights = self._restrict_to_tradable(initial_weights, priced, rebalance_problem.cash_index)
         self.portfolio.initialize(prices.index, prices.columns, initial_weights)
 
         if self.tax_lot_ledger is not None:
@@ -117,9 +115,16 @@ class BacktestingEngine:
         if self.tax_lot_ledger is not None:
             self.tax_lot_ledger.mark_to_market(self.market_state, self.portfolio, cursor)
 
-        solution = self.strategy.rebalance(self._build_rebalance_context(cursor, signals, rebalance_problem))
+        tradable = self._tradable_mask(cursor, rebalance_problem)
+        context = self._build_rebalance_context(cursor, signals, rebalance_problem, tradable)
+        solution = self.strategy.rebalance(context)
         solution = self._apply_leverage(solution, rebalance_problem)
-        target_weights = np.asarray(solution.target_weights)
+        target_weights = np.asarray(solution.target_weights, dtype=float)
+        target_weights = self._restrict_to_tradable(
+            target_weights, tradable.to_numpy(), rebalance_problem.cash_index)
+        if not np.allclose(target_weights, np.asarray(solution.target_weights, dtype=float), atol=1e-10):
+            solution = replace(solution, target_weights=pd.Series(
+                target_weights, index=rebalance_problem.investment_universe))
 
         reason = "no_trade_change" if np.allclose(target_weights, prev_weights, atol=1e-10) else "trade_executed"
         logger.info("reason_code=%s cursor=%s date=%s", reason, cursor, date)
@@ -129,6 +134,34 @@ class BacktestingEngine:
         if self.tax_lot_ledger is not None:
             self.tax_lot_ledger.apply_rebalance(self.market_state, self.portfolio, solution, cursor)
         return target_weights
+
+    def _tradable_mask(self, cursor: int, rebalance_problem: RebalanceProblem) -> pd.Series:
+        universe = list(rebalance_problem.investment_universe)
+        tradable = getattr(self.market_state, "tradable", None)
+        if tradable is None:
+            return pd.Series(True, index=universe)
+        return tradable(cursor).reindex(universe).fillna(False).astype(bool)
+
+    @staticmethod
+    def _restrict_to_tradable(weights: np.ndarray, tradable: np.ndarray, cash_index: Optional[int]) -> np.ndarray:
+        """Zero the weight of untradable assets. The freed weight goes to CASH when it is in the
+        universe; otherwise the remaining weights are rescaled to keep the same net exposure
+        (skipped for a ~zero-net book, e.g. market neutral, where it just stays unallocated)."""
+        weights = np.nan_to_num(np.asarray(weights, dtype=float), nan=0.0)
+        tradable = np.asarray(tradable, dtype=bool)
+        if tradable.all():
+            return weights
+        restricted = np.where(tradable, weights, 0.0)
+        freed = float(weights[~tradable].sum())
+        if abs(freed) < 1e-12:
+            return restricted
+        if cash_index is not None and tradable[cash_index]:
+            restricted[cash_index] += freed
+            return restricted
+        original_net, kept_net = float(weights.sum()), float(restricted.sum())
+        if abs(original_net) > 1e-12 and abs(kept_net) > 1e-12 and np.sign(original_net) == np.sign(kept_net):
+            restricted *= original_net / kept_net
+        return restricted
 
     @staticmethod
     def _apply_leverage(solution: RebalanceSolution, rebalance_problem: RebalanceProblem) -> RebalanceSolution:
@@ -155,8 +188,10 @@ class BacktestingEngine:
     def _build_rebalance_context(self,
                                  cursor: int,
                                  signals: dict,
-                                 rebalance_problem: RebalanceProblem) -> RebalanceContext:
+                                 rebalance_problem: RebalanceProblem,
+                                 tradable: Optional[pd.Series] = None) -> RebalanceContext:
         return RebalanceContext(
+            tradable=tradable,
             cursor=cursor,
             current_weights=self.portfolio.weights.iloc[cursor],
             signals=signals,

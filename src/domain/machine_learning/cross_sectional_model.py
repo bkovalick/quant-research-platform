@@ -23,8 +23,13 @@ class CrossSectionalModel(ReturnPredictor):
 
     def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
         common = X.index.intersection(y.index)
-        X_arr = self.scaler.fit_transform(X.loc[common])
-        y_arr = y.loc[common].values
+        X, y = X.loc[common], y.loc[common].replace([np.inf, -np.inf], np.nan)
+        # A missing label (no forward price) or feature is not information; drop the row.
+        valid = y.notna() & X.replace([np.inf, -np.inf], np.nan).notna().all(axis=1)
+        if not valid.any():
+            raise ValueError("No training rows with complete features and labels")
+        X_arr = self.scaler.fit_transform(X.loc[valid])
+        y_arr = y.loc[valid].values
 
         if self.model_type == "ridge":
             self.model = Ridge(alpha=self.alpha)

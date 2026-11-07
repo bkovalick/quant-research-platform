@@ -15,3 +15,14 @@ class RebalanceContext:
     rebalance_problem: RebalanceProblem
     portfolio: Portfolio
     tax_lot_ledger: TaxLotLedger = None
+    tradable: pd.Series = None
+
+
+def tradable_mask(rebalance_context) -> pd.Series:
+    """Tradable flags aligned to the context's investment_universe; all True when the context
+    carries none (works for any context-like object, e.g. test stubs)."""
+    universe = list(rebalance_context.investment_universe)
+    tradable = getattr(rebalance_context, "tradable", None)
+    if tradable is None:
+        return pd.Series(True, index=universe)
+    return tradable.reindex(universe).fillna(False).astype(bool)

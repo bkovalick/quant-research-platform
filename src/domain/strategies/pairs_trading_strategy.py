@@ -4,7 +4,7 @@ from domain.strategies.base_strategy import BaseStrategy
 from domain.signals.pairs_trading_signal import PairsTradingSignal
 from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.rebalance_problem import RebalanceProblem
-from models.rebalance_context import RebalanceContext
+from models.rebalance_context import RebalanceContext, tradable_mask
 from models.rebalance_solution import RebalanceSolution
 
 class PairsTradingStrategy(BaseStrategy):
@@ -34,7 +34,7 @@ class PairsTradingStrategy(BaseStrategy):
             )
         else:
             target_weights = self._run_pairs_strategy(
-                rebalance_context.investment_universe, active_signal
+                rebalance_context.investment_universe, active_signal, tradable_mask(rebalance_context)
             )
         return RebalanceSolution(
             target_weights=target_weights,
@@ -45,7 +45,8 @@ class PairsTradingStrategy(BaseStrategy):
 
     def _run_pairs_strategy(self,
                             tickers: list,
-                            active_signal: PairsTradingSignal) -> pd.Series:
+                            active_signal: PairsTradingSignal,
+                            tradable: pd.Series = None) -> pd.Series:
         if not isinstance(active_signal, PairsTradingSignal):
             raise ValueError("Active signal must be of type PairsTradingSignal")
 
@@ -59,6 +60,13 @@ class PairsTradingStrategy(BaseStrategy):
         self.pairs_cache.extend(pairs.to_dict("records"))
         keys = list(zip(pairs["AssetA"], pairs["AssetB"]))
         held = pairs[[k in self.position_book for k in keys]].copy()
+        if tradable is not None and not held.empty:
+            # Both legs or neither: if one leg can't trade (no price), close the whole pair
+            # rather than leave the other leg as an unhedged position.
+            both = held["AssetA"].map(tradable).fillna(False) & held["AssetB"].map(tradable).fillna(False)
+            for key in zip(held.loc[~both, "AssetA"], held.loc[~both, "AssetB"]):
+                self.position_book.pop(key, None)
+            held = held[both.astype(bool)]
         if held.empty:
             return weights
 

@@ -60,14 +60,14 @@ class TaxLotLedger:
         """Seed open lots from the initial portfolio holdings."""
         self._nav, self._nav_cursor = self._base_nav, cursor
         date = portfolio.weights.index[cursor]
-        prices = market_state.investment_prices.iloc[cursor]
+        prices = self._prices_at(market_state, cursor)
         self._reconcile(portfolio.weights.iloc[cursor], date, prices)
         self._last_rebalance_date = date
 
     def mark_to_market(self, market_state: MarketState, portfolio: Portfolio, cursor: int) -> None:
         """Roll NAV forward and reprice lots, so the optimizer sees current values and gains."""
         self._advance_nav(portfolio, cursor)
-        self._refresh(market_state.investment_prices.index[cursor], market_state.investment_prices.iloc[cursor])
+        self._refresh(portfolio.weights.index[cursor], self._prices_at(market_state, cursor))
 
     def apply_rebalance(self,
                         market_state: MarketState,
@@ -80,7 +80,7 @@ class TaxLotLedger:
             raise ValueError(f"Rebalance date {date} must be after the last applied rebalance date "
                              f"{self._last_rebalance_date}.")
 
-        prices = market_state.investment_prices.iloc[cursor]
+        prices = self._prices_at(market_state, cursor)
         self._advance_nav(portfolio, cursor)
         self._refresh(date, prices)
         self._sell_lot_fractions(rebalance_solution.sell_allocations)
@@ -104,6 +104,15 @@ class TaxLotLedger:
     def tax_lots(self) -> pd.DataFrame:
         """Returns the tax lot ledger as a DataFrame."""
         return self._tax_lots.copy()
+
+    @staticmethod
+    def _prices_at(market_state: MarketState, cursor: int) -> pd.Series:
+        """Last known price per ticker, so a lot whose price went missing (e.g. delisted) is
+        still valued, and sold, at its final trade instead of becoming unsellable."""
+        prices = getattr(market_state, "valuation_prices", None)
+        if prices is None:
+            prices = market_state.investment_prices
+        return prices.iloc[cursor]
 
     def _advance_nav(self, portfolio: Portfolio, cursor: int) -> None:
         if cursor > self._nav_cursor:

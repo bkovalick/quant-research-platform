@@ -1,3 +1,4 @@
+import os
 import logging
 import yfinance as yf
 import pandas as pd
@@ -84,70 +85,6 @@ class MarketDataGateway:
     @staticmethod
     def get_price_data_csv(csv_file):
         logger.info("Loading price data from CSV %s", csv_file)
+        if not os.path.exists(csv_file):
+            raise FileNotFoundError(f"CSV file not found: {csv_file}")
         return pd.read_csv(csv_file)
-
-    @staticmethod
-    def get_sp500_tickers() -> list:
-        """Fetches the current S&P 500 ticker list from Wikipedia."""
-        url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-        table = pd.read_html(url)
-        df = table[0]
-
-        tickers = df["Symbol"].str.replace(".", "-", regex=False).tolist()
-        return tickers
-    
-
-class MarketDataStore:
-    """ Environment to interact with market data gateway """
-    def __init__(self, 
-                 market_store_config: MarketStoreConfig):
-        """ Initialize with market data gateway and parameters """
-        self.benchmark = market_store_config.benchmark
-        self.transaction_cost = market_store_config.transaction_cost
-        self.apply_market_caps = market_store_config.apply_market_caps
-        logger.info("Initializing MarketDataStore for %s to %s", market_store_config.start_date, market_store_config.end_date)
-        self._prices = MarketDataGateway.get_price_data(market_store_config)
-        self._prices = self._prices.sort_index()
-        self._prices = self._prices.dropna(how='all')
-        self._market_caps = None
-        self._etf_market_caps = None
-        self._sectors = None
-
-        if len(self._prices) == 0:
-            raise ValueError("Market Data Store not created properly, please check inputs.")
-
-        logger.info("Loaded market prices with shape %s", self._prices.shape)
-        
-        self._prices = self._prices.bfill().ffill()
-        if "CASH" not in self._prices.columns:
-            daily_rate = market_store_config.risk_free_rate / 252
-            n = len(self._prices)
-            self._prices["CASH"] = (1 + daily_rate) ** pd.Series(range(n), index=self._prices.index)
-
-    @property
-    def prices(self) -> pd.DataFrame:
-        return self._prices
-    
-    @property
-    def market_caps(self) -> pd.Series:
-        if not self.apply_market_caps:
-            return pd.Series(dtype=float)
-        if self._market_caps is None:
-            self._market_caps = MarketDataGateway.get_market_caps(self.prices.columns.tolist())
-            if "CASH" not in self._market_caps:
-                self._market_caps["CASH"] = 0
-        return pd.Series(self._market_caps).fillna(0)
-    
-    @property
-    def etf_market_caps(self) -> pd.Series:
-        if not self.apply_market_caps:
-            return pd.Series(dtype=float)
-        if self._etf_market_caps is None:
-            self._etf_market_caps = MarketDataGateway.get_etf_market_caps(self.prices.columns.tolist())
-        return pd.Series(self._etf_market_caps).fillna(0)
-    
-    @property
-    def sectors(self) -> pd.Series:
-        if self._sectors is None:
-            self._sectors = MarketDataGateway.get_sector_data(self.prices.columns.tolist())
-        return pd.Series(self._sectors).fillna("Unknown")
