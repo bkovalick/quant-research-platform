@@ -21,7 +21,7 @@ class MarketStateConfig:
         lookback_window = LOOKBACK_WINDOWS[market_frequency][lookback_window_key]
         annual_trading_days = LOOKBACK_WINDOWS[market_frequency]["1y"]
         cash_allocation = d.get("cash_allocation", 0.0)
-        investment_universe = list(d.get("investment_universe", ["AAPL"]))
+        investment_universe = list(d.get("investment_universe") or [])
         signal_universe = list(d.get("signal_universe", investment_universe))
         security_to_etf_map = d.get("security_to_etf_map", None)
         exogenous_tickers = list(d.get("exogenous_tickers", []))
@@ -45,6 +45,7 @@ class MarketStateConfig:
 class MarketStoreConfig:
     use_sp500_constituents: bool
     tickers: List[Any]
+    historical_sp500_tickers_path: Optional[str]
     start_date: str
     end_date: str
     data_source: Dict
@@ -58,6 +59,7 @@ class MarketStoreConfig:
         return cls(
             use_sp500_constituents = d.get("use_sp500_constituents", False),
             tickers = d.get("tickers", []),
+            historical_sp500_tickers_path = d.get("historical_sp500_tickers_path", None),
             start_date = d.get("start_date", "2005-01-01"),
             end_date = d.get("end_date", "2026-02-19"),
             data_source = d.get("data_source", { "yfinance": None }),
@@ -71,6 +73,7 @@ class MarketStoreConfig:
         return {
             "use_sp500_constituents": self.use_sp500_constituents,
             "tickers": self.tickers,
+            "historical_sp500_tickers_path": self.historical_sp500_tickers_path,
             "start_date": self.start_date,
             "end_date": self.end_date,
             "data_source": self.data_source,

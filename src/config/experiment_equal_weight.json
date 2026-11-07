@@ -21,7 +21,8 @@
       "XLK",
       "XLV",
       "XLE"
-    ]
+    ],
+    "historical_sp500_tickers_path": "data/S&P 500 Historical Components & Changes.csv"
   },
   "strategies": [
     {
@@ -30,18 +31,7 @@
         "lookback_window_key": "1y",
         "market_frequency": "w",
         "cash_allocation": 0.0,
-        "investment_universe": [
-          "SPY",
-          "AGG",
-          "GLD",
-          "EFA",
-          "EEM",
-          "TLT",
-          "VNQ",
-          "XLK",
-          "XLV",
-          "XLE"
-        ]
+        "investment_universe": []
       },
       "signals_config": {},
       "rebalance_problem": {

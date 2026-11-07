@@ -14,14 +14,12 @@ MARKET_CAP_MAX_AGE_DAYS = 7
 class MarketDataGateway:
     """ Data gateway for fetching market data using yfinance """
     @staticmethod
-    def get_price_data(
-        market_store_config: MarketStoreConfig,
-        tickers: list = None):
-
+    def get_price_data(market_store_config: MarketStoreConfig, tickers: list = None):
         tickers = tickers if tickers is not None else market_store_config.tickers
         benchmark_ticker = market_store_config.benchmark
         if benchmark_ticker not in tickers:
             tickers.append(benchmark_ticker)
+            
         data_source = market_store_config.data_source
         start_date = market_store_config.start_date
         end_date = market_store_config.end_date
@@ -83,8 +81,8 @@ class MarketDataGateway:
         return data.xs('Close', axis=1, level=0)
 
     @staticmethod
-    def get_price_data_csv(csv_file):
+    def get_price_data_csv(csv_file: str):
         logger.info("Loading price data from CSV %s", csv_file)
         if not os.path.exists(csv_file):
             raise FileNotFoundError(f"CSV file not found: {csv_file}")
-        return pd.read_csv(csv_file)
+        return pd.read_csv(csv_file, index_col=0, parse_dates=True)
