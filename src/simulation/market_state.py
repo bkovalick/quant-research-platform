@@ -22,8 +22,10 @@ class MarketState:
         self.lookback_window_key = state_config.lookback_window_key
         self.market_frequency = state_config.market_frequency
         self.lookback_window = state_config.lookback_window
-        self.investment_universe = state_config.investment_universe
-        self.signal_universe = state_config.signal_universe
+        self.investment_universe = state_config.investment_universe \
+            if state_config.investment_universe is not None and len(state_config.investment_universe) > 0 else list(store.prices.columns)
+        self.signal_universe = state_config.signal_universe \
+            if state_config.signal_universe is not None and len(state_config.signal_universe) > 0 else list(store.prices.columns)
         self.security_to_etf_map = state_config.security_to_etf_map
         self.exogenous_tickers = state_config.exogenous_tickers
         self.cash_allocation = state_config.cash_allocation
@@ -34,9 +36,7 @@ class MarketState:
         """Initialize the market state by setting up the investment and signal prices, returns, and exogenous universe."""
         self.cursor = 0
         self.investment_prices = self._resample(self.market_frequency, self._parse_universe(self.investment_universe))
-        # NaN means "no price": before listing, after delisting, or a gap longer than the store bridges.
         self.investment_returns = self.investment_prices.pct_change(fill_method=None)
-        # Last known price, used only to value and exit positions already held. Never feed it to signals.
         self.valuation_prices = self.investment_prices.ffill()
         self.signal_prices = self._resample(self.market_frequency, self._parse_universe(self.signal_universe))
         self.signal_returns = self.signal_prices.pct_change(fill_method=None)
@@ -96,11 +96,27 @@ class MarketState:
         fully estimated. Strategies and the optimizer must give every other asset zero weight."""
         cursor = self.cursor if cursor is None else cursor
         has_price = self.investment_prices.iloc[cursor].notna() & (self.investment_prices.iloc[cursor] > 0)
-        start = max(cursor - self.lookback_window, 1)       # row 0 of pct_change is always NaN
+        start = max(cursor - self.lookback_window, 1)
         window = self.investment_returns.iloc[start:cursor]
         full_window = window.notna().all() if len(window) else pd.Series(True, index=window.columns)
-        mask = has_price & full_window
+        eligible = self._index_members(cursor).reindex(has_price.index).fillna(False).astype(bool)
+
+        mask = has_price & full_window & eligible
         return mask.reindex(self.investment_universe).fillna(False).astype(bool)
+
+    def _index_members(self, cursor: int) -> pd.Series:
+        """True for tickers in the latest membership snapshot on or before the cursor date
+        (all True when no membership table is loaded). CASH is never an index member, so it
+        is always eligible."""
+        columns = self.investment_prices.columns
+        universe = getattr(self.store, "_historical_sp500_universe", None)
+        if universe is None:
+            return pd.Series(True, index=columns)
+        snapshots = universe.loc[:self.investment_prices.index[cursor]]
+        members = set()
+        if len(snapshots):
+            members = {t.strip() for t in str(snapshots["tickers"].iloc[-1]).split(",")}
+        return pd.Series([t in members or t == "CASH" for t in columns], index=columns)
 
     def advance(self):
         """Advance the market state cursor by one step."""
