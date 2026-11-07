@@ -18,7 +18,7 @@ class RebalanceContext:
     tradable: pd.Series = None
 
 
-def tradable_mask(rebalance_context) -> pd.Series:
+def tradable_mask(rebalance_context: RebalanceContext) -> pd.Series:
     """Tradable flags aligned to the context's investment_universe; all True when the context
     carries none (works for any context-like object, e.g. test stubs)."""
     universe = list(rebalance_context.investment_universe)

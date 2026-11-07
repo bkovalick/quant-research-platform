@@ -1,6 +1,7 @@
 import pandas as pd
 import logging
 import os
+from pathlib import Path
 
 from infrastructure.market_data_gateway import MarketDataGateway
 from models.market_config import MarketStoreConfig
@@ -8,6 +9,7 @@ from models.market_config import MarketStoreConfig
 logger = logging.getLogger(__name__)
 
 MAX_FILL_DAYS = 5
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 class MarketDataStore:
     """ Environment to interact with market data gateway """
@@ -43,16 +45,23 @@ class MarketDataStore:
         self._historical_sp500_universe = self._get_historical_sp500_universe(
             market_store_config.historical_sp500_tickers_path
         )
-        return MarketDataGateway.get_price_data(
-            market_store_config, 
-            self._get_historical_sp500_tickers(self._historical_sp500_universe)
-        )
+        # Every ever-member, plus the config's own tickers (ETFs, exogenous series like ^VIX,
+        # non-index names) that strategies list explicitly.
+        members = self._get_historical_sp500_tickers(self._historical_sp500_universe)
+        member_set = set(members)
+        extras = [t for t in market_store_config.tickers if t not in member_set]
+        return MarketDataGateway.get_price_data(market_store_config, members + extras)
 
     def _get_historical_sp500_universe(self, ticker_path: str) -> pd.DataFrame:
         """ Load historical S&P 500 universe from CSV file """
+        # Relative paths are relative to the repo root, not the working directory: the API runs
+        # from src/ (uvicorn) while run_local.py runs from the repo root.
+        path = Path(ticker_path)
+        ticker_path = str(path if path.is_absolute() else REPO_ROOT / path)
         if not os.path.exists(ticker_path):
             raise FileNotFoundError(f"Ticker file not found: {ticker_path}")
-        return pd.read_csv(ticker_path, index_col=0, parse_dates=True)
+        # Sorted: membership is looked up as "latest snapshot on or before date".
+        return pd.read_csv(ticker_path, index_col=0, parse_dates=True).sort_index()
 
     def _get_historical_sp500_tickers(self, historical_sp500_universe: pd.DataFrame) -> list[str]:
         """Return distinct historical tickers in order of first appearance."""

@@ -10,19 +10,9 @@
     "benchmark": "SPY",
     "risk_free_rate": 0.03,
     "transaction_cost": 0.003,
-    "tickers": [
-      "SPY",
-      "AGG",
-      "GLD",
-      "EFA",
-      "EEM",
-      "TLT",
-      "VNQ",
-      "XLK",
-      "XLV",
-      "XLE"
-    ],
-    "historical_sp500_tickers_path": "data/S&P 500 Historical Components & Changes.csv"
+    "apply_market_caps": false,
+    "historical_sp500_tickers_path": "data/S&P 500 Historical Components & Changes.csv",
+    "tickers": []
   },
   "strategies": [
     {
@@ -31,7 +21,8 @@
         "lookback_window_key": "1y",
         "market_frequency": "w",
         "cash_allocation": 0.0,
-        "investment_universe": []
+        "investment_universe": [],
+        "include_sp500_members": true
       },
       "signals_config": {},
       "rebalance_problem": {

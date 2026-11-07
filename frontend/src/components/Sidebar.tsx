@@ -643,7 +643,17 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                         value={currentStrategy.market_state_config?.cash_allocation ?? 0}
                         onChange={(e) => updateField(["market_state_config", "cash_allocation"], Number(e.target.value))} />
                     </Row>
-                    <label style={labelStyle}>Universe Tickers</label>
+                    <Switch
+                      checked={!!currentStrategy.market_state_config?.include_sp500_members}
+                      onChange={(value) => updateField(["market_state_config", "include_sp500_members"], value)}
+                      label="Point-in-time S&P 500 members"
+                      description={currentStrategy.market_state_config?.include_sp500_members
+                        ? "Trades whoever was in the index on each date, plus the tickers selected below"
+                        : "Trades only the tickers selected below"}
+                    />
+                    <label style={labelStyle}>
+                      {currentStrategy.market_state_config?.include_sp500_members ? "Additional Tickers" : "Universe Tickers"}
+                    </label>
                       <div style={{ display: "flex", gap: 6, marginBottom: 4, alignItems: "center" }}>
                         <button style={smallBtn} onClick={() => {
                           updateUniverseTickers(availableUniverseTickers)

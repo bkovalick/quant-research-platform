@@ -13,6 +13,7 @@ class MarketStateConfig:
     security_to_etf_map: Optional[Dict[str, str]]
     exogenous_tickers: List[str]
     annual_trading_days: int
+    include_sp500_members: bool = False
 
     @classmethod
     def from_dict(cls, d: dict):
@@ -22,7 +23,7 @@ class MarketStateConfig:
         annual_trading_days = LOOKBACK_WINDOWS[market_frequency]["1y"]
         cash_allocation = d.get("cash_allocation", 0.0)
         investment_universe = list(d.get("investment_universe") or [])
-        signal_universe = list(d.get("signal_universe", investment_universe))
+        signal_universe = list(d.get("signal_universe") or [])
         security_to_etf_map = d.get("security_to_etf_map", None)
         exogenous_tickers = list(d.get("exogenous_tickers", []))
         
@@ -38,7 +39,8 @@ class MarketStateConfig:
             signal_universe = signal_universe,
             security_to_etf_map = security_to_etf_map,
             exogenous_tickers = exogenous_tickers,
-            annual_trading_days = annual_trading_days
+            annual_trading_days = annual_trading_days,
+            include_sp500_members = bool(d.get("include_sp500_members", False)),
         )
 
 @dataclass(frozen=True)

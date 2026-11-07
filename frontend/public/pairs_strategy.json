@@ -10,9 +10,13 @@
     "benchmark": "SPY",
     "risk_free_rate": 0.03,
     "transaction_cost": 0.005,
-    "use_sp500_constituents": true,
-    "tickers": [],
-    "apply_market_caps": false
+    "apply_market_caps": false,
+    "historical_sp500_tickers_path": "data/S&P 500 Historical Components & Changes.csv",
+    "tickers": [
+      "TFC",
+      "ZION",
+      "^VIX"
+    ]
   },
   "strategies": [
     {
@@ -25,14 +29,16 @@
           "^VIX"
         ],
         "investment_universe": [
-          "TFC", "ZION"
-        ]
+          "TFC",
+          "ZION"
+        ],
+        "include_sp500_members": false
       },
       "signals_config": {
         "pairs_trading": {
           "pairs_lookback_horizon": 20,
           "cointegration_threshold": 0.05,
-          "correlation_filter": 0.70,
+          "correlation_filter": 0.7,
           "pairs_entry": 1.25,
           "pairs_exit": 0.5,
           "pairs_stop_loss": 3.5

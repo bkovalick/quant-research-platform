@@ -22,10 +22,10 @@ class MarketState:
         self.lookback_window_key = state_config.lookback_window_key
         self.market_frequency = state_config.market_frequency
         self.lookback_window = state_config.lookback_window
-        self.investment_universe = state_config.investment_universe \
-            if state_config.investment_universe is not None and len(state_config.investment_universe) > 0 else list(store.prices.columns)
-        self.signal_universe = state_config.signal_universe \
-            if state_config.signal_universe is not None and len(state_config.signal_universe) > 0 else list(store.prices.columns)
+        self._pit_members: set = set()
+        self.investment_universe = self._build_investment_universe(store, state_config)
+        self.signal_universe = list(state_config.signal_universe) \
+            or [t for t in self.investment_universe if t != "CASH"]
         self.security_to_etf_map = state_config.security_to_etf_map
         self.exogenous_tickers = state_config.exogenous_tickers
         self.cash_allocation = state_config.cash_allocation
@@ -77,46 +77,29 @@ class MarketState:
     def etf_market_caps(self):
         """Return the market capitalizations of the ETFs in the investment universe."""
         return self.store.etf_market_caps[self.investment_universe]
-        
-    def _parse_universe(self, tickers: list) -> pd.DataFrame:
-        """Parse the given list of tickers and return their corresponding price data from the store."""
-        return self.store.prices[tickers]
-        
-    def _resample(self, market_frequency: str, universe: pd.DataFrame) -> pd.DataFrame:
-        """Resample the given universe of prices to the specified market frequency."""
-        if market_frequency == "d":
-            return universe
-
-        rule = {"w": "W-FRI", "m": "ME"}[market_frequency]
-        return universe.resample(rule).last()
 
     def tradable(self, cursor: Optional[int] = None) -> pd.Series:
-        """Boolean mask over the investment universe: True where the asset has a price at
-        ``cursor`` and a complete (NaN-free) lookback window of returns, so signals for it are
-        fully estimated. Strategies and the optimizer must give every other asset zero weight."""
+        """Return a boolean mask indicating which assets are tradable at the given cursor position."""
         cursor = self.cursor if cursor is None else cursor
         has_price = self.investment_prices.iloc[cursor].notna() & (self.investment_prices.iloc[cursor] > 0)
         start = max(cursor - self.lookback_window, 1)
         window = self.investment_returns.iloc[start:cursor]
         full_window = window.notna().all() if len(window) else pd.Series(True, index=window.columns)
         eligible = self._index_members(cursor).reindex(has_price.index).fillna(False).astype(bool)
-
         mask = has_price & full_window & eligible
         return mask.reindex(self.investment_universe).fillna(False).astype(bool)
 
     def _index_members(self, cursor: int) -> pd.Series:
-        """True for tickers in the latest membership snapshot on or before the cursor date
-        (all True when no membership table is loaded). CASH is never an index member, so it
-        is always eligible."""
+        """Return a boolean mask indicating which tickers are eligible based on S&P 500 membership and explicit listings."""
         columns = self.investment_prices.columns
-        universe = getattr(self.store, "_historical_sp500_universe", None)
-        if universe is None:
+        if not self._pit_members:
             return pd.Series(True, index=columns)
+        universe = self.store.historical_sp500_universe
         snapshots = universe.loc[:self.investment_prices.index[cursor]]
         members = set()
         if len(snapshots):
             members = {t.strip() for t in str(snapshots["tickers"].iloc[-1]).split(",")}
-        return pd.Series([t in members or t == "CASH" for t in columns], index=columns)
+        return pd.Series([t not in self._pit_members or t in members for t in columns], index=columns)
 
     def advance(self):
         """Advance the market state cursor by one step."""
@@ -168,6 +151,26 @@ class MarketState:
         """Return True if there are more steps to advance in the market state."""
         return self.cursor < len(self.investment_prices) - 1
 
+    def _build_investment_universe(self, store, state_config: MarketStateConfig) -> list:
+        """Explicit tickers, or (include_sp500_members) every historical S&P 500 member with
+        prices plus the explicit tickers. CASH stays last: cash-aware weights rely on it."""
+        explicit = list(state_config.investment_universe)
+        has_cash = "CASH" in explicit
+        listed = [t for t in explicit if t != "CASH"]
+        if not getattr(state_config, "include_sp500_members", False):
+            if not listed:
+                raise ValueError("investment_universe is empty: list tickers, or set "
+                                 "include_sp500_members with a historical_sp500_tickers_path")
+            return explicit
+
+        if getattr(store, "_historical_sp500_universe", None) is None:
+            raise ValueError("include_sp500_members needs market_store_config.historical_sp500_tickers_path")
+        priced = set(store.prices.columns)
+        members = sorted(t for t in store.historical_sp500_tickers if t in priced)
+        self._pit_members = set(members)
+        extras = [t for t in listed if t not in self._pit_members]
+        return members + extras + (["CASH"] if has_cash else [])
+    
     def _build_market_returns(self) -> Optional[pd.Series]:
         """Build and return the market returns series based on the benchmark in the store."""
         benchmark = getattr(self.store, "benchmark", None)
@@ -183,3 +186,15 @@ class MarketState:
             else None
         )
         return market_returns
+
+    def _parse_universe(self, tickers: list) -> pd.DataFrame:
+        """Parse the given list of tickers and return their corresponding price data from the store."""
+        return self.store.prices[tickers]
+        
+    def _resample(self, market_frequency: str, universe: pd.DataFrame) -> pd.DataFrame:
+        """Resample the given universe of prices to the specified market frequency."""
+        if market_frequency == "d":
+            return universe
+
+        rule = {"w": "W-FRI", "m": "ME"}[market_frequency]
+        return universe.resample(rule).last()    
