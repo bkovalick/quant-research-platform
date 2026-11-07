@@ -3,13 +3,16 @@ import warnings
 import numpy as np
 import cvxpy as cp
 import pandas as pd
+from scipy import sparse
 
 from domain.optimizers.base_optimizer import BaseOptimizer
 from domain.signals.signals import Signals
 from domain.portfolio.tax_lot_ledger import TaxLotLedger
 from models.rebalance_problem import RebalanceProblem
 from models.rebalance_solution import RebalanceSolution
-from models.rebalance_context import RebalanceContext
+from models.rebalance_context import RebalanceContext, tradable_mask
+
+SOLVER_OPTIONS = {cp.SCS: {"max_iters": 5000}}
 
 class TargetWeightOptimizer(BaseOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
@@ -18,7 +21,8 @@ class TargetWeightOptimizer(BaseOptimizer):
 		self.logger = logging.getLogger(__name__)
 		self._risky_indices = []
 		self._risky_tickers = []
-			
+		self._tradable = None
+
 	def optimize(self, 
 			     rebalance_context: RebalanceContext, 
 				 active_signal: Signals = None) -> RebalanceSolution:
@@ -28,7 +32,8 @@ class TargetWeightOptimizer(BaseOptimizer):
 		active_signal = active_signal
 		tax_lot_ledger = rebalance_context.tax_lot_ledger
 		self._set_risky_universe(rebalance_problem)
-		
+		self._tradable = tradable_mask(rebalance_context).to_numpy()
+
 		if current_weights is None:
 			tickers = rebalance_problem.investment_universe
 			current_weights = pd.Series(
@@ -74,7 +79,7 @@ class TargetWeightOptimizer(BaseOptimizer):
 						message="Solution may be inaccurate.*",
 						category=UserWarning,
 					)
-					prob.solve(solver=solver, verbose=False)
+					prob.solve(solver=solver, verbose=False, **SOLVER_OPTIONS.get(solver, {}))
 
 				if prob.status == cp.OPTIMAL:
 					self.logger.info(
@@ -149,7 +154,7 @@ class TargetWeightOptimizer(BaseOptimizer):
 			return RebalanceSolution(
 				target_weights=pd.Series(target_weights, index=tickers),
 				sell_allocations={},
-				realized_tax_cost=pd.Series(0, index=tickers),
+				realized_tax_cost=0.0,
 				tracking_error=None,
 			)
 
@@ -268,12 +273,27 @@ class TargetWeightOptimizer(BaseOptimizer):
 		risky_current = current_weights.iloc[self._risky_indices]
 		risky_weights = portfolio_weights[self._risky_indices]
 
-		return [
-				cp.sum(portfolio_weights) == net_exposure,
-				risky_weights - risky_current == portfolio_buys - portfolio_sells,
+		constraints = [
+			cp.sum(portfolio_weights) == net_exposure,
+			risky_weights - risky_current == portfolio_buys - portfolio_sells,
+		]
+		if self._tradable is None or self._tradable.all():
+			return constraints + [
 				portfolio_weights >= min_position_size,
-				portfolio_weights <= max_position_size
+				portfolio_weights <= max_position_size,
 			]
+
+		# Untradable assets (no price / incomplete lookback) are pinned to zero; the position
+		# bounds apply only to the rest, so a positive min_position_size can't force a holding.
+		tradable_idx = np.flatnonzero(self._tradable)
+		untradable_idx = np.flatnonzero(~self._tradable)
+		constraints.append(portfolio_weights[untradable_idx] == 0)
+		if len(tradable_idx):
+			constraints += [
+				portfolio_weights[tradable_idx] >= min_position_size,
+				portfolio_weights[tradable_idx] <= max_position_size,
+			]
+		return constraints
 
 	def _allows_shorts(self, rebalance_problem) -> bool:
 		return (getattr(rebalance_problem, "max_short", 0.0) or 0.0) > 0 \
@@ -355,6 +375,8 @@ class TargetWeightOptimizer(BaseOptimizer):
 		beta_vector = np.asarray(beta_vector, dtype=float)
 		if beta_vector.shape[0] != portfolio_weights.shape[0]:
 			return []
+		# Assets without enough history have no beta; they carry zero weight anyway.
+		beta_vector = np.nan_to_num(beta_vector, nan=0.0, posinf=0.0, neginf=0.0)
 		return [
 			cp.abs(beta_vector @ portfolio_weights) <= max_beta_exposure
 		]
@@ -429,16 +451,16 @@ class TargetWeightOptimizer(BaseOptimizer):
 			return []
 		
 		tax_lots = tax_lot_ledger.tax_lots
-		total_portfolio_value = tax_lots["CurrentValue"].sum() if not tax_lots.empty else 0.0
-		if total_portfolio_value <= 0.0:
+		if tax_lots.empty or tax_lot_ledger.nav <= 0.0:
 			return []
 
 		sell_trades = decision_variables.get('portfolio_sells')
 		sell_fractions = decision_variables.get('portfolio_sell_fractions')
-		
+
+		# Lots are worth weight * NAV per ticker, so dividing by NAV turns lot sales into weight sold.
+		lot_weights = tax_lots["CurrentValue"].to_numpy(dtype=float) / tax_lot_ledger.nav
 		lot_to_ticker = self._map_lot_to_ticker(tax_lots)
-		dollar_sold_per_lot = cp.multiply(tax_lots["CurrentValue"].values, sell_fractions)
-		weight_reduction_per_ticker = lot_to_ticker.T @ (dollar_sold_per_lot / total_portfolio_value)
+		weight_reduction_per_ticker = lot_to_ticker.T @ cp.multiply(lot_weights, sell_fractions)
 
 		return [
 			sell_fractions <= 1,
@@ -454,10 +476,10 @@ class TargetWeightOptimizer(BaseOptimizer):
 		risk_aversion = getattr(rebalance_problem, 'risk_aversion', 1.0)
 		transaction_cost = getattr(rebalance_problem, 'transaction_cost', 0.003)
 		portfolio_weights = decision_variables.get('portfolio_weights')
-		mean_vector = signals.mean_returns()
-		expected_median_vector = np.nanmedian(mean_vector) if np.isfinite(mean_vector).any() else 0.0
-		np.nan_to_num(mean_vector, copy=False, nan=expected_median_vector)
-		cov_matrix = signals.covariance_matrix()
+		mean_vector = np.array(signals.mean_returns(), dtype=float)
+		finite = np.isfinite(mean_vector)
+		expected_median_vector = float(np.median(mean_vector[finite])) if finite.any() else 0.0
+		mean_vector = np.where(finite, mean_vector, expected_median_vector)
 
 		# Get indices of risky assets and their corresponding weights
 		risky_weights = portfolio_weights[self._risky_indices]
@@ -514,23 +536,20 @@ class TargetWeightOptimizer(BaseOptimizer):
 
 		tax_lots = tax_lot_ledger.tax_lots
 		sell_fractions = decision_variables.get('portfolio_sell_fractions')
-		total_portfolio_value = tax_lots["CurrentValue"].sum() if not tax_lots.empty else 1.0
-		tax_costs = tax_lots["TaxCost"].values
-		return cp.sum(cp.multiply(tax_costs / total_portfolio_value, sell_fractions))
+		if tax_lots.empty or sell_fractions is None:
+			return 0
+		tax_costs = tax_lots["TaxCost"].to_numpy(dtype=float)
+		return cp.sum(cp.multiply(tax_costs / tax_lot_ledger.nav, sell_fractions))
 
-	def _map_lot_to_ticker(self, tax_lots: pd.DataFrame) -> pd.DataFrame:
-		matrix = np.zeros((len(tax_lots), len(self._risky_tickers)))
-		ticker_positions = {
-			ticker: index
-			for index, ticker in enumerate(self._risky_tickers)
-		}
-
-		for lot_index, ticker in enumerate(tax_lots["Ticker"]):
-			ticker_position = ticker_positions.get(ticker)
-			if ticker_position is not None:
-				matrix[lot_index, ticker_position] = 1
-
-		return matrix
+	def _map_lot_to_ticker(self, tax_lots: pd.DataFrame) -> sparse.csr_matrix:
+		"""Sparse (n_lots x n_risky) indicator matrix: lot i belongs to risky ticker j."""
+		ticker_positions = {ticker: index for index, ticker in enumerate(self._risky_tickers)}
+		columns = tax_lots["Ticker"].map(ticker_positions)
+		rows = np.flatnonzero(columns.notna().to_numpy())
+		return sparse.csr_matrix(
+			(np.ones(len(rows)), (rows, columns.iloc[rows].astype(int).to_numpy())),
+			shape=(len(tax_lots), len(self._risky_tickers)),
+		)
 
 	def _log_failure_diagnostics(self, prob, current_weights, signals):
 		"""Log diagnostic info when optimization fails."""

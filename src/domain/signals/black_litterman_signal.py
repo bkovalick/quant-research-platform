@@ -27,6 +27,9 @@ class BlackLittermanSignal(RiskReturnSignals):
         bl = self.signals_config.black_litterman or {}
         self.black_litterman = bl if bl else None
         self.tau = bl.get("tau", 0.05)
+        if self.black_litterman is not None and not self.tau > 0:
+            # The posterior inverts tau * Sigma; tau = 0 makes that singular (and would ignore every view).
+            raise ValueError(f"black_litterman.tau must be > 0 (typically 0.01-0.1), got {self.tau!r}")
         self.delta = bl.get("delta", 2.5)
         self.view_direction = bl.get("view_direction", "momentum")
 
@@ -70,7 +73,7 @@ class BlackLittermanSignal(RiskReturnSignals):
           Omega — (1 x 1) diagonal uncertainty matrix scaled by tau * P @ Sigma @ P'.
         """        
         ranked, expected_spread = self._get_ranked_scores()
-        n = len(ranked)
+        n = int(ranked.notna().sum())     # quintiles of the names that have a score, not of NaNs
         quintile = n // 5
         losers  = ranked <= quintile
         winners = ranked > n - quintile

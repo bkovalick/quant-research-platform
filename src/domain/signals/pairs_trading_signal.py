@@ -42,7 +42,14 @@ class PairsTradingSignal:
         prices = self.market_state.lookback_prices()
         log_prices = np.log(prices)
         if self._calls % self.reselect_every == 0:
-            self._reselect_pairs(prices, log_prices, position_book)
+            # Select only among names priced over the whole window and tradable today, so a pair
+            # can't be formed around a leg the engine will force to zero (an unhedged position).
+            complete = prices.columns[prices.notna().all()]
+            tradable = getattr(self.market_state, "tradable", None)
+            if tradable is not None:
+                mask = tradable()
+                complete = [t for t in complete if bool(mask.get(t, False))]
+            self._reselect_pairs(prices[complete], log_prices[complete], position_book)
         self._calls += 1
 
         rows = []

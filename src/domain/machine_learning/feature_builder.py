@@ -105,8 +105,13 @@ class FeatureBuilder:
         predicted = beta_1y.values * market_rets.iloc[-self.lookbacks["1y"]:].values[:, None]
         residuals = rets.iloc[-self.lookbacks["1y"]:].values - predicted
         features["idiosyncratic_vol"] = pd.Series(residuals.std(axis=0), index=rets.columns)
-        features = features.rank(axis=0, pct=True).replace([np.inf, -np.inf], np.nan)
-        return features.fillna(0.0)
+        # Same treatment as the precomputed path: drop names with no features at all (not listed
+        # yet), rank the rest, and give a partially missing feature the neutral rank 0.5.
+        features = features.replace([np.inf, -np.inf], np.nan).dropna(how="all")
+        features = features.rank(axis=0, pct=True)
+        if self.features:
+            features = features[self.features]
+        return features.fillna(0.5)
     
     def build_forward_returns(self,
                               as_of_date: pd.Timestamp,
@@ -165,7 +170,10 @@ class FeatureBuilder:
                 "idiosyncratic_vol": idiosyncratic_vol.loc[date]
             })
 
-            feat = feat.rank(axis=0, pct=True).replace([np.inf, -np.inf], np.nan)
+            # A name with no features at all hasn't listed yet: leave it out rather than give it
+            # a fake neutral row, which would get a score and shift every real name's rank.
+            feat = feat.replace([np.inf, -np.inf], np.nan).dropna(how="all")
+            feat = feat.rank(axis=0, pct=True)
             feat = feat.fillna(0.5)
             if self.features:
                 feat = feat[self.features]

@@ -153,10 +153,12 @@ class ExcelGenerator:
 
             # Time series
             series = strategy_run.result.series
-            if "portfolio_weights" in series:
+            if "portfolio_wealth_factors" in series:
                 try:
-                    weights_df = deserialize_dataframe(series["portfolio_weights"])
                     wealth_series = deserialize_series(series["portfolio_wealth_factors"])
+                    # Weight columns are optional: results loaded in the UI leave the weight matrix out.
+                    weights_df = (deserialize_dataframe(series["portfolio_weights"]) if "portfolio_weights" in series
+                                  else pd.DataFrame(index=range(len(wealth_series))))
                     returns_series = deserialize_series(series["portfolio_returns"])
                     turnover_series = deserialize_series(series["portfolio_turnover"])
                     trades_series = deserialize_series(series["portfolio_trades"])

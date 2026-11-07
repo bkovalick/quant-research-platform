@@ -6,7 +6,7 @@ from domain.signals.volatility_forecasting_signals import VolatilityForecastingS
 from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from models.inverse_vol_config import InverseVolConfig
 from models.rebalance_problem import RebalanceProblem
-from models.rebalance_context import RebalanceContext
+from models.rebalance_context import RebalanceContext, tradable_mask
 from models.rebalance_solution import RebalanceSolution
 
 CASH = "CASH"
@@ -16,8 +16,8 @@ class InverseVolStrategy(BaseStrategy):
     """
     Inverse volatility strategy. Risky weights are proportional to 1 / forecast vol
     and sum to (1 - cash_allocation); CASH, when in the universe, holds cash_allocation.
-    Assets without a usable forecast (zero or undefined vol, e.g. prices backfilled
-    before an ETF listed) get no weight.
+    Assets without a usable forecast (zero or undefined vol, or untradable because they
+    have no price yet / an incomplete lookback window) get no weight.
     """
     def __init__(self,
                  rebalance_problem: RebalanceProblem,
@@ -50,8 +50,11 @@ class InverseVolStrategy(BaseStrategy):
             raise ValueError("inverse_vol_strategy needs a signals_config.inverse_vol block")
 
         universe = list(rebalance_context.investment_universe)
+        tradable = tradable_mask(rebalance_context)
         risky = [t for t in universe if t != CASH]
-        vols = self._get_volatility_forecast(active_signal, config).reindex(risky)
+        # Only assets with a full lookback window get a forecast; a partial window (just listed)
+        # gives a noisy vol that would otherwise attract weight.
+        vols = self._get_volatility_forecast(active_signal, config).reindex(risky).where(tradable.reindex(risky))
         usable = vols.where(np.isfinite(vols) & (vols > 0))
         if usable.notna().sum() == 0:
             return pd.Series(rebalance_context.current_weights, index=universe)

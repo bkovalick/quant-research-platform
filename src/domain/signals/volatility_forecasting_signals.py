@@ -27,7 +27,7 @@ class VolatilityForecastingSignals:
         """
         Annualized one-step GARCH(1,1) conditional vol per asset. Returns are fitted
         in percent (arch converges poorly on decimal returns). Assets with no
-        variation in the window (CASH, or prices backfilled before listing) or a
+        variation in the window (CASH), fewer than 30 observations (just listed) or a
         failed fit get NaN.
         """
         r = self.market_state.lookback_returns()

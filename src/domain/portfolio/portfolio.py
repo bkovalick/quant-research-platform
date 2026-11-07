@@ -1,5 +1,9 @@
+import logging
+
 import pandas as pd
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 class Portfolio:
     """Portfolio class that houses weights, returns, and turnover calculations."""
@@ -29,7 +33,15 @@ class Portfolio:
         self.turnover.iloc[cursor] = turnover
 
     def drift(self, prev_weights: np.ndarray, asset_returns: np.ndarray, cursor: int) -> np.ndarray:
-        """ Updates weights, returns, and financing """
+        """ Updates weights, returns, and financing."""
+        asset_returns = np.asarray(asset_returns, dtype=float)
+        missing = ~np.isfinite(asset_returns)
+        if missing.any():
+            held = missing & (np.abs(prev_weights) > 1e-12)
+            if held.any():
+                logger.warning("No price at cursor %s for held assets %s; carrying at last price",
+                               cursor, list(self.weights.columns[held]))
+            asset_returns = np.where(missing, 0.0, asset_returns)
         gross_return = np.sum(prev_weights * asset_returns)
 
         borrowed = max(np.sum(np.abs(prev_weights)) - 1.0, 0.0)

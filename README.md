@@ -11,6 +11,7 @@ pip install -r requirements.txt
 ```
 
 Python 3.10+. Uses numpy, pandas, scipy, scikit-learn, cvxpy, yfinance, pandas_datareader, fastapi, duckdb, openpyxl.
+PyArrow is required for the market-data Parquet cache and is installed via `requirements.txt`.
 
 ## Running
 
