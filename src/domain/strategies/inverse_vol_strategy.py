@@ -11,7 +11,6 @@ from models.rebalance_solution import RebalanceSolution
 
 CASH = "CASH"
 
-
 class InverseVolStrategy(BaseStrategy):
     """
     Inverse volatility strategy. Risky weights are proportional to 1 / forecast vol
@@ -52,8 +51,6 @@ class InverseVolStrategy(BaseStrategy):
         universe = list(rebalance_context.investment_universe)
         tradable = tradable_mask(rebalance_context)
         risky = [t for t in universe if t != CASH]
-        # Only assets with a full lookback window get a forecast; a partial window (just listed)
-        # gives a noisy vol that would otherwise attract weight.
         vols = self._get_volatility_forecast(active_signal, config).reindex(risky).where(tradable.reindex(risky))
         usable = vols.where(np.isfinite(vols) & (vols > 0))
         if usable.notna().sum() == 0:

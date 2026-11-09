@@ -11,9 +11,22 @@
     "risk_free_rate": 0.03,
     "transaction_cost": 0.003,
     "apply_market_caps": false,
+    "historical_sp500_tickers_path": "data/S&P 500 Historical Components & Changes.csv",
     "tickers": [
-      "^VIX",
-      "SPY",
+      "XLK",
+      "XLV",
+      "XLF",
+      "XLY",
+      "XLI",
+      "XLP",
+      "XLC",
+      "XLE",
+      "XLU",
+      "XLB",
+      "XLRE",
+      "AGG",
+      "LQD",
+      "TLT",
       "ACN",
       "AKAM",
       "APH",
@@ -431,20 +444,7 @@
       "VICI",
       "WELL",
       "WY",
-      "AGG",
-      "LQD",
-      "XLK",
-      "XLV",
-      "XLF",
-      "XLY",
-      "XLI",
-      "XLP",
-      "XLC",
-      "XLE",
-      "XLU",
-      "XLB",
-      "XLRE",
-      "TLT"
+      "^VIX"
     ]
   },
   "strategies": [
@@ -1310,7 +1310,8 @@
           "VICI": "XLRE",
           "WELL": "XLRE",
           "WY": "XLRE"
-        }
+        },
+        "include_sp500_members": false
       },
       "signals_config": {
         "apply_winsorizing": true,
@@ -1350,28 +1351,28 @@
       "rebalance_problem": {
         "optimizer_type": "portfolio_optimizer",
         "rebalance_frequency": "monthly",
-        "initial_weights": {    
-          "XLK":  0.320,
-          "XLV":  0.125,
-          "XLF":  0.130,
-          "XLY":  0.105,
-          "XLI":  0.085,
-          "XLP":  0.058,
-          "XLC":  0.088,
-          "XLE":  0.038,
-          "XLU":  0.023,
-          "XLB":  0.022,
+        "initial_weights": {
+          "XLK": 0.32,
+          "XLV": 0.125,
+          "XLF": 0.13,
+          "XLY": 0.105,
+          "XLI": 0.085,
+          "XLP": 0.058,
+          "XLC": 0.088,
+          "XLE": 0.038,
+          "XLU": 0.023,
+          "XLB": 0.022,
           "XLRE": 0.022,
-          "AGG":  0.015,
-          "LQD":  0.010,
-          "TLT":  0.010
+          "AGG": 0.015,
+          "LQD": 0.01,
+          "TLT": 0.01
         },
         "constraints": {
           "concentration_strength": 0,
           "risk_aversion": 1.0,
           "turnover_limit": 1.0,
           "min_position_size": 0.0,
-          "max_position_size": 0.50,
+          "max_position_size": 0.5,
           "max_positions": 14,
           "asset_class_constraints": {
             "Equity": [

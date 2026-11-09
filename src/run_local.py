@@ -80,8 +80,6 @@ def run_full_suite():
     logger.info("run_full_suite:: Starting local run of full suite of strategies")
     with open(f"src/config/experiment_full_suite.json", 'r') as f:
         config = json.load(f)
-    # 44 strategies: the Excel time-series sheet alone is ~135M cells, too much for this machine.
-    # Skip it here; rebuild later with excel_report_from_pickle(<the .pkl path printed>) if needed.
     local_run(config, excel=False, max_workers=3)
 
 def run_equal_weight_strategy():

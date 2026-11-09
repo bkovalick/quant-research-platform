@@ -95,8 +95,8 @@ class BacktestingEngine:
             for ticker in rebalance_problem.investment_universe
         ])
         prices = self.market_state.investment_prices
-        priced = prices.iloc[0].reindex(rebalance_problem.investment_universe).notna().to_numpy()
-        initial_weights = self._restrict_to_tradable(initial_weights, priced, rebalance_problem.cash_index)
+        tradable = self._tradable_mask(0, rebalance_problem).to_numpy()
+        initial_weights = self._restrict_to_tradable(initial_weights, tradable, rebalance_problem.cash_index)
         self.portfolio.initialize(prices.index, prices.columns, initial_weights)
 
         if self.tax_lot_ledger is not None:
@@ -144,9 +144,7 @@ class BacktestingEngine:
 
     @staticmethod
     def _restrict_to_tradable(weights: np.ndarray, tradable: np.ndarray, cash_index: Optional[int]) -> np.ndarray:
-        """Zero the weight of untradable assets. The freed weight goes to CASH when it is in the
-        universe; otherwise the remaining weights are rescaled to keep the same net exposure
-        (skipped for a ~zero-net book, e.g. market neutral, where it just stays unallocated)."""
+        """Restrict weights to tradable assets, reallocating freed weight to cash or rescaling."""
         weights = np.nan_to_num(np.asarray(weights, dtype=float), nan=0.0)
         tradable = np.asarray(tradable, dtype=bool)
         if tradable.all():

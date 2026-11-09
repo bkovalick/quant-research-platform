@@ -13,6 +13,7 @@ from models.rebalance_solution import RebalanceSolution
 from models.rebalance_context import RebalanceContext, tradable_mask
 
 SOLVER_OPTIONS = {cp.SCS: {"max_iters": 5000}}
+MAX_INACCURATE_VIOLATION = 1e-4
 
 class TargetWeightOptimizer(BaseOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
@@ -90,12 +91,21 @@ class TargetWeightOptimizer(BaseOptimizer):
 					return None
 
 				if prob.status == cp.OPTIMAL_INACCURATE:
+					violation = max((float(np.max(c.violation())) for c in prob.constraints), default=0.0)
+					if np.isfinite(violation) and violation <= MAX_INACCURATE_VIOLATION:
+						self.logger.warning(
+							"reason_code=solver_inaccurate solver=%s status=%s violation=%.2e",
+							solver,
+							prob.status,
+							violation,
+						)
+						return None
 					self.logger.warning(
-						"reason_code=solver_inaccurate solver=%s status=%s",
+						"reason_code=solver_inaccurate_rejected solver=%s violation=%.2e",
 						solver,
-						prob.status,
+						violation,
 					)
-					return None
+					continue
 
 				self.logger.warning(
 					"reason_code=solver_nonoptimal solver=%s status=%s",
@@ -283,8 +293,6 @@ class TargetWeightOptimizer(BaseOptimizer):
 				portfolio_weights <= max_position_size,
 			]
 
-		# Untradable assets (no price / incomplete lookback) are pinned to zero; the position
-		# bounds apply only to the rest, so a positive min_position_size can't force a holding.
 		tradable_idx = np.flatnonzero(self._tradable)
 		untradable_idx = np.flatnonzero(~self._tradable)
 		constraints.append(portfolio_weights[untradable_idx] == 0)
@@ -381,7 +389,15 @@ class TargetWeightOptimizer(BaseOptimizer):
 			cp.abs(beta_vector @ portfolio_weights) <= max_beta_exposure
 		]
 
-	def _setup_asset_class_constraints(self, 
+	def _tradable_indices(self, indices: list) -> list:
+		"""Group members that can trade today. A group with none (e.g. a bond sleeve whose ETFs
+		haven't listed yet) can't meet a minimum, so its limits are skipped rather than making
+		every rebalance infeasible; its untradable members are pinned to 0 anyway."""
+		if self._tradable is None:
+			return list(indices)
+		return [i for i in indices if self._tradable[i]]
+
+	def _setup_asset_class_constraints(self,
 								       decision_variables: dict,
 								       rebalance_problem: RebalanceProblem) -> list:
 		"""Setup asset class size constraints: Equity < 90%, Fixed < 20%, etc..."""
@@ -401,7 +417,10 @@ class TargetWeightOptimizer(BaseOptimizer):
 	
 			min_weight, max_weight = min_max[0], min_max[1]
 			indices = [idx[0] for idx in asset_class_map[asset_class]] \
-				if asset_class != "Cash" else [asset_class_map[asset_class][0]] 
+				if asset_class != "Cash" else [asset_class_map[asset_class][0]]
+			indices = self._tradable_indices(indices)
+			if not indices:
+				continue
 			class_weight = cp.sum(portfolio_weights[indices])
 			
 			if min_weight > 0:
@@ -431,8 +450,10 @@ class TargetWeightOptimizer(BaseOptimizer):
 
 			min_weight, max_weight = min_max[0], min_max[1]
 			indices = [idx[0] for idx in sector_map[sector]] \
-				if sector != "Cash" else [sector_map[sector][0]] 
-			
+				if sector != "Cash" else [sector_map[sector][0]]
+			indices = self._tradable_indices(indices)
+			if not indices:
+				continue
 			sector_weight = cp.sum(portfolio_weights[indices])
 
 			if min_weight > 0:

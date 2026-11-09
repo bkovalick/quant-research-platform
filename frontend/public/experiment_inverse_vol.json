@@ -10,6 +10,8 @@
     "benchmark": "SPY",
     "risk_free_rate": 0.03,
     "transaction_cost": 0.001,
+    "apply_market_caps": false,
+    "historical_sp500_tickers_path": "data/S&P 500 Historical Components & Changes.csv",
     "tickers": [
       "SPY",
       "EFA",
@@ -44,7 +46,8 @@
           "LQD",
           "GLD",
           "VNQ"
-        ]
+        ],
+        "include_sp500_members": false
       },
       "signals_config": {
         "inverse_vol": {
@@ -80,7 +83,8 @@
           "LQD",
           "GLD",
           "VNQ"
-        ]
+        ],
+        "include_sp500_members": false
       },
       "signals_config": {
         "inverse_vol": {
@@ -116,7 +120,8 @@
           "LQD",
           "GLD",
           "VNQ"
-        ]
+        ],
+        "include_sp500_members": false
       },
       "signals_config": {
         "inverse_vol": {
@@ -152,7 +157,8 @@
           "LQD",
           "GLD",
           "VNQ"
-        ]
+        ],
+        "include_sp500_members": false
       },
       "signals_config": {},
       "rebalance_problem": {

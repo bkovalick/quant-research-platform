@@ -171,9 +171,9 @@ class StrategyResultsDataGateway(GatewayBase):
         VALUES (?, ?, ?, ?, ?)
     """
 
-    # Series entries that are frames rather than date->value series. Weights get
-    # their own table; the long variant is derivable from it, so it is dropped.
-    _FRAME_SERIES = {"portfolio_weights", "portfolio_weights_long"}
+    # Saved from the DataFrame into its own table, never through to_dict (cell-by-cell
+    # serialization of ~1,200 tickers x thousands of dates is what made saves take minutes).
+    _WEIGHT_SERIES = frozenset({"portfolio_weights"})
 
     def __init__(self, database_name: str | None = None, conn=None):
         super().__init__(database_name, conn)
@@ -256,7 +256,7 @@ class StrategyResultsDataGateway(GatewayBase):
         )
 
     def save_strategy_run(self, experiment_id: str, run: StrategyRun):
-        run_dict = run.to_dict()
+        run_dict = run.to_dict(exclude_series=self._WEIGHT_SERIES)
         run_id = run_dict["run_id"]
         logger.info("Saving strategy run %s for experiment %s", run_id, experiment_id)
         self.conn.execute(self.INSERT_STRATEGY_RUN, [
@@ -273,7 +273,7 @@ class StrategyResultsDataGateway(GatewayBase):
 
         self._save_backtest_summary(experiment_id, run_id, result.get("summary"))
         self._save_backtest_series(experiment_id, run_id, series)
-        self._save_portfolio_weights(experiment_id, run_id, series.get("portfolio_weights"))
+        self._save_portfolio_weights(experiment_id, run_id, run.result.series.get("portfolio_weights"))
         self._save_ic_summary(
             experiment_id,
             run_id,
@@ -317,8 +317,6 @@ class StrategyResultsDataGateway(GatewayBase):
 
         rows = []
         for series_name, payload in series.items():
-            if series_name in self._FRAME_SERIES:
-                continue
             for observed_at, value in self._iter_series_points(payload):
                 rows.append((
                     experiment_id,
@@ -340,52 +338,34 @@ class StrategyResultsDataGateway(GatewayBase):
         )
         logger.debug("Saved %d series rows for run %s", len(rows), run_id)
 
-    def _save_portfolio_weights(self, experiment_id: str, run_id: str, weights):
-        """weights arrives as a DataFrame in split/dict form: date index x ticker columns."""
-        if not weights:
-            logger.debug("No portfolio weights to save for run %s in experiment %s", run_id, experiment_id)
+    def _save_portfolio_weights(self, experiment_id: str, run_id: str, weights: pd.DataFrame | None):
+        """Sparse: only non-zero weights, plus a 0 row on the date a position closes so
+        get_portfolio_positions' LAG still sees the exit. Most cells of a point-in-time
+        universe (~1,200 tickers) are 0, so this is the bulk of the saving."""
+        if weights is None or weights.empty:
             return
-
-        rows = []
-        index = weights.get("index") if isinstance(weights, dict) else None
-        columns = weights.get("columns") if isinstance(weights, dict) else None
-        data = None
-        if isinstance(weights, dict):
-            data = weights.get("values")
-            if data is None:
-                data = weights.get("data")
-
-        if index is not None and columns is not None and data is not None:
-            # pandas orient="split"
-            for observed_at, row_values in zip(index, data):
-                cleaned_date = _clean_date(observed_at)
-                for ticker, value in zip(columns, row_values):
-                    rows.append((experiment_id, run_id, cleaned_date, ticker, _clean_float(value)))
-        elif isinstance(weights, dict):
-            # pandas default to_dict(): {ticker: {date: weight}}
-            for ticker, by_date in weights.items():
-                if not isinstance(by_date, dict):
-                    continue
-                for observed_at, value in by_date.items():
-                    rows.append((
-                        experiment_id,
-                        run_id,
-                        _clean_date(observed_at),
-                        ticker,
-                        _clean_float(value),
-                    ))
-
-        if not rows:
-            logger.debug("Portfolio weights for run %s were not in a recognised shape", run_id)
-            return
-
-        self._bulk_insert(
-            "portfolio_weights",
-            ["experiment_id", "run_id", "observed_at", "ticker", "weight"],
-            ["run_id", "observed_at", "ticker"],
-            rows,
-        )
-        logger.debug("Saved %d weight rows for run %s", len(rows), run_id)
+        values = np.nan_to_num(weights.to_numpy(dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
+        held = np.abs(values) > 1e-12
+        keep = held.copy()
+        keep[1:] |= held[:-1]
+        rows, cols = np.nonzero(keep)
+        frame = pd.DataFrame({
+            "experiment_id": experiment_id,
+            "run_id": run_id,
+            "observed_at": pd.DatetimeIndex(weights.index[rows]).normalize(),
+            "ticker": weights.columns.to_numpy()[cols].astype(str),
+            "weight": values[rows, cols],
+        })
+        self.conn.execute("DELETE FROM portfolio_weights WHERE run_id = ?", [run_id])
+        self.conn.register("_weights", frame)
+        try:
+            self.conn.execute("""
+                INSERT INTO portfolio_weights (experiment_id, run_id, observed_at, ticker, weight)
+                SELECT experiment_id, run_id, CAST(observed_at AS DATE), ticker, weight FROM _weights
+            """)
+        finally:
+            self.conn.unregister("_weights")
+        logger.debug("Saved %d weight rows for run %s", len(frame), run_id)
 
     def _save_ic_summary(self,
                          experiment_id: str,
