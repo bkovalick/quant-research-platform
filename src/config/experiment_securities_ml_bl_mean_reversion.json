@@ -73,7 +73,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "strategy_rules": {
@@ -207,7 +207,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "strategy_rules": {
           "vol_target": 0.15,

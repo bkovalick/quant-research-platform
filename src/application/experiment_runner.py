@@ -145,7 +145,7 @@ def _run_strategy(strategy_cfg: dict, market_store_config: MarketStoreConfig, re
         RebalanceProblemConfig.from_dict(strategy_cfg["rebalance_problem"]), market_state
     ).build()
     
-    optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type)
+    optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type, rebalance_problem)
     tax_lot_ledger = build_tax_lot_ledger(rebalance_problem)
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
     signals_factory = build_signals_factory(strategy_cfg, market_state)

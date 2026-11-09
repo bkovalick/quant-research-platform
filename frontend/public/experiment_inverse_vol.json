@@ -163,7 +163,7 @@
       "signals_config": {},
       "rebalance_problem": {
         "strategy_type": "ewp_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "monthly",
         "apply_market_caps": false,
         "monitoring_type": "none"

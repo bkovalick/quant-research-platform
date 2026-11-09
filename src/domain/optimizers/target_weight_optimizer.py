@@ -30,7 +30,6 @@ class TargetWeightOptimizer(BaseOptimizer):
 		"""Optimize portfolio weights for the given rebalance problem."""
 		current_weights = rebalance_context.current_weights
 		rebalance_problem = rebalance_context.rebalance_problem
-		active_signal = active_signal
 		tax_lot_ledger = rebalance_context.tax_lot_ledger
 		self._set_risky_universe(rebalance_problem)
 		self._tradable = tradable_mask(rebalance_context).to_numpy()

@@ -1349,7 +1349,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "monthly",
         "initial_weights": {
           "XLK": 0.32,

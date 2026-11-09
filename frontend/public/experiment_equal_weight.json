@@ -28,7 +28,7 @@
       "rebalance_problem": {
         "strategy_type": "ewp_strategy",
         "apply_market_caps": false,
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly"
       }
     }

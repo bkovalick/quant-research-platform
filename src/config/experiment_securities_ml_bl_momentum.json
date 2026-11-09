@@ -75,7 +75,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "strategy_rules": {
