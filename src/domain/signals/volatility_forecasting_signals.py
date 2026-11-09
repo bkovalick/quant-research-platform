@@ -13,6 +13,7 @@ class VolatilityForecastingSignals:
         self.signals_cfg = signals_cfg
         self.apply_winsorizing = signals_cfg.apply_winsorizing
         self.windsor_percentiles = signals_cfg.windsor_percentiles
+        self.refit_every = signals_cfg.inverse_vol.refit_every
 
     def rolling_realized_vol(self, window = 20) -> pd.Series:
         p = self.market_state.lookback_returns()
@@ -31,15 +32,27 @@ class VolatilityForecastingSignals:
         failed fit get NaN.
         """
         r = self.market_state.lookback_returns()
-        vols = {}
-        for col in r.columns:
-            series = r[col].dropna() * 100.0
+        cursor = self.market_state.cursor
+        vols, params, last_fit = {}, {}, {}
+        for asset in r.columns:
+            series = r[asset].dropna() * 100.0
             if len(series) < 30 or series.std() == 0:
-                vols[col] = np.nan
+                vols[asset] = np.nan
                 continue
-            try:
-                res = arch_model(series, vol="Garch", p=1, q=1, rescale=False).fit(disp="off")
-                vols[col] = res.conditional_volatility.iloc[-1] / 100.0 * np.sqrt(self.ann_factor)
-            except Exception:
-                vols[col] = np.nan
+
+            if asset not in last_fit or (cursor - last_fit.get(asset, pd.Timestamp.min)) >= self.refit_every:
+                try:
+                    res = arch_model(series, vol="Garch", p=1, q=1, rescale=False).fit(disp="off")
+                    vols[asset] = res.conditional_volatility.iloc[-1] / 100.0 * np.sqrt(self.ann_factor)
+                    params[asset] = (res.params["mu"], res.params["omega"], res.params["alpha[1]"], res.params["beta[1]"])
+                    last_fit[asset] = cursor
+                except Exception:
+                    vols[asset] = np.nan
+
+            mu, omega, alpha, beta = params[asset]
+            eps = r * 100.0 - mu
+            for e in eps:
+                var = omega + alpha * e**2 + beta * (var if 'var' in locals() else series.var())
+            vols[asset] = np.sqrt(var) / 100.0 * np.sqrt(self.ann_factor)
+        
         return pd.Series(vols)

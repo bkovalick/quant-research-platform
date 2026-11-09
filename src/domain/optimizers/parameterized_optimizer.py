@@ -35,6 +35,7 @@ class ParameterizedOptimizer(TargetWeightOptimizer):
 		fallback = self._run_solver(self._prob, current_weights, rebalance_problem)
 		if fallback is not None:
 			return fallback
+		
 		return RebalanceSolution(
 			target_weights=pd.Series(self._w.value, index=rebalance_problem.investment_universe),
 			sell_allocations={},
