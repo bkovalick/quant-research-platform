@@ -79,7 +79,12 @@ class TargetWeightOptimizer(BaseOptimizer):
 						message="Solution may be inaccurate.*",
 						category=UserWarning,
 					)
-					prob.solve(solver=solver, verbose=False, **SOLVER_OPTIONS.get(solver, {}), warm_start=True)
+					prob.solve(
+						solver=solver, 
+						verbose=False, 
+						**SOLVER_OPTIONS.get(solver, {}), 
+						warm_start=True,
+						canon_backend=cp.SCIPY_CANON_BACKEND)
 
 				if prob.status == cp.OPTIMAL:
 					self.logger.info(

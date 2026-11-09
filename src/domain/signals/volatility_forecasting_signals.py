@@ -13,7 +13,9 @@ class VolatilityForecastingSignals:
         self.signals_cfg = signals_cfg
         self.apply_winsorizing = signals_cfg.apply_winsorizing
         self.windsor_percentiles = signals_cfg.windsor_percentiles
-        self.refit_every = signals_cfg.inverse_vol.refit_every
+        self.inverse_vol_cfg = self.signals_cfg.inverse_vol
+        if self.inverse_vol_cfg is None:
+            self.refit_every = "12M"
 
     def rolling_realized_vol(self, window = 20) -> pd.Series:
         p = self.market_state.lookback_returns()

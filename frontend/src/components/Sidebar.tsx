@@ -71,6 +71,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const [loading, setLoading] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
   const [runProgress, setRunProgress] = useState<RunProgress | null>(null)
+  const [runCount, setRunCount] = useState(0)
   const [persistRun, setPersistRun] = useState<boolean>(readPersistPref)
   const [lastSave, setLastSave] = useState<SaveStatus | null>(null)
   const [loadInfo, setLoadInfo] = useState<MergeResult | null>(null)
@@ -197,6 +198,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
       setRunError("Every loaded strategy is pinned — unpin one to run it again.")
       return
     }
+    setRunCount(strategiesToRun.length)
 
     for (const s of strategiesToRun) {
 
@@ -541,7 +543,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
             disabled={loading}
             onClick={strategySet ? runExperiment : () => document.getElementById("strategy-file-input")?.click()}
           >
-            {loading ? `Running ${editedStrategies.length || strategySet?.strategies?.length || 0} strategies…` : strategySet ? "Run Experiment" : "Load a Strategy Set"}
+            {loading ? `Running ${runCount} ${runCount === 1 ? "strategy" : "strategies"}…` : strategySet ? "Run Experiment" : "Load a Strategy Set"}
           </button>
           {runProgress && <RunProgressPanel progress={runProgress} />}
           {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import cvxpy as cp
+from scipy.sparse.linalg import eigsh, ArpackNoConvergence
 
 from domain.signals.signals import Signals
 from models.rebalance_problem import RebalanceProblem
@@ -172,7 +173,18 @@ class ParameterizedOptimizer(TargetWeightOptimizer):
 	def _update_risk_model(self, signal: Signals) -> None:
 		"""Update the risk model parameters (F and d) based on the signal's covariance matrix."""
 		risky = self._risky_indices
-		self._F.value, self._d.value = self._risk_model(signal.covariance_matrix()[np.ix_(risky, risky)], self._k)
+		cov = signal.covariance_matrix()[np.ix_(risky, risky)]
+		live = np.flatnonzero(self._tradable[risky])
+
+		F = np.zeros((len(risky), self._k))
+		d = np.zeros(len(risky))
+		if len(live):
+			cov = cov[np.ix_(live, live)]
+			F_live, d_live = self._risk_model(cov, self._k)
+			F[live, :F_live.shape[1]] = F_live
+			d[live] = d_live
+
+		self._F.value, self._d.value = F, d
 
 	def _update_position_bounds(self, rp: RebalanceProblem) -> None:
 		"""Update the position bounds (lower and upper) based on the rebalance problem and tradable mask."""
@@ -207,8 +219,14 @@ class ParameterizedOptimizer(TargetWeightOptimizer):
 			except np.linalg.LinAlgError:
 				vals, vecs = np.linalg.eigh(cov)
 				return vecs * np.sqrt(np.clip(vals, 0.0, None)), np.zeros(n)
-		vals, vecs = np.linalg.eigh(cov)                      # ascending
-		F = vecs[:, -k:] * np.sqrt(np.clip(vals[-k:], 0.0, None))
+
+		try:
+			vals, vecs = eigsh(cov, k=k, which="LA")
+		except ArpackNoConvergence:
+			vals, vecs = np.linalg.eigh(cov)
+			vals, vecs = vals[-k:], vecs[:, -k:]
+
+		F = vecs * np.sqrt(np.clip(vals, 0.0, None))
 		residual = np.clip(np.diag(cov) - np.sum(F ** 2, axis=1), 0.0, None)
 		return F, np.sqrt(residual)
 
