@@ -237,22 +237,12 @@ class PerformanceAnalyzer:
 
     def _build_performance_series(self, performance_metrics: dict) -> dict:
         """Create performance series dictionary for BacktestResult dataclass."""
-        try:
-            _w = performance_metrics["portfolio_weights"]
-            port_weights_long = pd.DataFrame({
-                "Date": np.repeat(_w.index, len(_w.columns)),
-                "Ticker": np.tile(_w.columns, len(_w.index)),
-                "Weight": _w.values.ravel(),
-            })
-        except MemoryError:
-            port_weights_long = pd.DataFrame(columns=["Date", "Ticker", "Weight"])
         return {
             "benchmark_wealth_factors": self.benchmark_wealth_factors,
             "benchmark_returns": self.benchmark_returns,            
             "portfolio_wealth_factors": performance_metrics["portfolio_wealth_factors"],
             "portfolio_trades": performance_metrics["portfolio_trades"],
             "portfolio_weights": performance_metrics["portfolio_weights"],
-            "portfolio_weights_long": port_weights_long,
             "portfolio_returns": performance_metrics["portfolio_returns"],
             "portfolio_turnover": performance_metrics["portfolio_turnover"],
             "cumulative_returns": performance_metrics["cumulative_returns"],
@@ -309,12 +299,7 @@ def align_series_to_dataframe(df: pd.DataFrame, series: pd.Series) -> pd.Series:
 
 
 def compound_by_period(returns: pd.Series | None, rule: str) -> pd.Series:
-    """
-    Compound periodic returns into calendar periods ("ME" month-end, "YE" year-end).
-    Works for daily, weekly or monthly input. Indexed by period end; a period with
-    no observations is dropped rather than reported as 0%. The first and last
-    periods are partial when the backtest starts or ends mid-period.
-    """
+    """Compound periodic returns into calendar periods (e.g., month-end, year-end)."""
     if returns is None or len(returns) == 0:
         return pd.Series(dtype=float)
     r = pd.Series(returns, dtype=float).replace([np.inf, -np.inf], np.nan).dropna()
