@@ -4,6 +4,11 @@ from arch import arch_model
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
 
+# A 252-day window often puts the GARCH fit on a boundary (omega ~ 0 or alpha + beta ~ 1), which
+# collapses or explodes the forecast. Those fits fall back to the window's sample variance.
+MIN_OMEGA = 1e-6          # pct^2 per day
+MAX_PERSISTENCE = 0.999
+
 class VolatilityForecastingSignals:
     def __init__(self, 
                  market_state: MarketState, 
@@ -42,7 +47,10 @@ class VolatilityForecastingSignals:
             if asset not in self._params:
                 vols[asset] = np.nan
                 continue
-            vols[asset] = self._filter(series.to_numpy(), *self._params[asset])
+            returns = series.to_numpy()
+            params = self._params[asset]
+            daily_var = self._filter(returns, *params) if self._usable(*params) else returns.var()
+            vols[asset] = np.sqrt(daily_var) / 100.0 * np.sqrt(self.ann_factor)
         
         return pd.Series(vols)
 
@@ -51,7 +59,7 @@ class VolatilityForecastingSignals:
         if asset not in self._params:
             return True
         last_fit = self._last_fit.get(asset, None)
-        return last_fit is None or today >= last_fit + pd.Timedelta(days=self.refit_every)
+        return last_fit is None or today >= last_fit + pd.DateOffset(months=self.refit_every)
 
     def _fit(self, asset: str, series: pd.Series, today: pd.Timestamp) -> None:
         "Fit the GARCH(1,1) model for the given asset and series, and store the parameters."
@@ -65,14 +73,21 @@ class VolatilityForecastingSignals:
         self._last_fit[asset] = today
 
     @staticmethod
-    def _filter(returns: np.ndarray, mu: float, omega: float, alpha: float, beta: float, ann_factor: float) -> float:
-        "Filter the series using the GARCH(1,1) parameters and return the annualized one-step-ahead volatility."
+    def _usable(mu: float, omega: float, alpha: float, beta: float) -> bool:
+        """False for boundary fits: no baseline variance, or (near) non-stationary."""
+        return (np.isfinite([mu, omega, alpha, beta]).all()
+                and omega > MIN_OMEGA and alpha >= 0 and beta >= 0
+                and alpha + beta < MAX_PERSISTENCE)
+
+    @staticmethod
+    def _filter(returns: np.ndarray, mu: float, omega: float, alpha: float, beta: float) -> float:
+        """Run the GARCH(1,1) variance recursion over the window and return the next-period
+        variance, in the units of `returns` squared (pct^2 here)."""
         if len(returns) == 0:
             return np.nan
 
         eps = returns - mu
-        persistence = alpha + beta
-        var = omega / (1 - persistence) if persistence < 1 else eps.var()
+        var = eps.var()                      # start at the window's sample variance
         for e in eps:
             var = omega + alpha * e * e + beta * var
         return var
