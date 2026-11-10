@@ -229,15 +229,3 @@ class ParameterizedOptimizer(TargetWeightOptimizer):
 		F = vecs * np.sqrt(np.clip(vals, 0.0, None))
 		residual = np.clip(np.diag(cov) - np.sum(F ** 2, axis=1), 0.0, None)
 		return F, np.sqrt(residual)
-
-	@staticmethod
-	def _current_weights(rebalance_context: RebalanceContext) -> pd.Series:
-		"""Retrieve the current weights for the given rebalance context, falling back to initial weights if necessary."""
-		rp = rebalance_context.rebalance_problem
-		tickers = rp.investment_universe
-		current = rebalance_context.current_weights
-		if current is None:
-			return pd.Series([rp.initial_weights.get(t, 0.0) for t in tickers], index=tickers, dtype=float)
-		if not isinstance(current, pd.Series):
-			return pd.Series(current, index=tickers, dtype=float)
-		return current.reindex(tickers).astype(float).fillna(0.0)

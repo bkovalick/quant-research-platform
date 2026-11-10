@@ -35,14 +35,12 @@ class TargetWeightOptimizer(BaseOptimizer):
 			rebalance_context.rebalance_problem, 
 			rebalance_context.tax_lot_ledger
 		)
-		# beta_vector = getattr(active_signal, "beta_vector", None)
-			
+	
 		constraints = self._setup_constraints(
 			decision_variables,
-			# rebalance_context.rebalance_problem,
-			current_weights,
-			# rebalance_context.tax_lot_ledger,
-			# beta_vector=beta_vector,
+			rebalance_context,
+			active_signal,
+			current_weights
 		)
 		objective = self._setup_objective(
 			decision_variables, 
@@ -78,8 +76,7 @@ class TargetWeightOptimizer(BaseOptimizer):
 						solver=solver, 
 						verbose=False, 
 						**SOLVER_OPTIONS.get(solver, {}), 
-						warm_start=True,
-						canon_backend=cp.SCIPY_CANON_BACKEND)
+						warm_start=True)
 
 				if prob.status == cp.OPTIMAL:
 					self.logger.info("reason_code=solver_success solver=%s status=%s", solver, prob.status)
@@ -381,12 +378,6 @@ class TargetWeightOptimizer(BaseOptimizer):
 			cp.abs(beta_vector @ portfolio_weights) <= max_beta_exposure
 		]
 
-	def _tradable_indices(self, indices: list) -> list:
-		"""Group members that can trade today."""
-		if self._tradable is None:
-			return list(indices)
-		return [i for i in indices if self._tradable[i]]
-
 	def _setup_asset_class_constraints(self,
 								       decision_variables: dict,
 								       rebalance_problem: RebalanceProblem) -> list:
@@ -552,6 +543,12 @@ class TargetWeightOptimizer(BaseOptimizer):
 		tax_costs = tax_lots["TaxCost"].to_numpy(dtype=float)
 		return cp.sum(cp.multiply(tax_costs / tax_lot_ledger.nav, sell_fractions))
 
+	def _tradable_indices(self, indices: list) -> list:
+		"""Group members that can trade today."""
+		if self._tradable is None:
+			return list(indices)
+		return [i for i in indices if self._tradable[i]]
+	
 	def _map_lot_to_ticker(self, tax_lots: pd.DataFrame) -> sparse.csr_matrix:
 		"""Sparse (n_lots x n_risky) indicator matrix: lot i belongs to risky ticker j."""
 		ticker_positions = {ticker: index for index, ticker in enumerate(self._risky_tickers)}

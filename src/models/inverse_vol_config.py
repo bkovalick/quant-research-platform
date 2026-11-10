@@ -17,7 +17,7 @@ class InverseVolConfig:
     """
     forecast_type: str = "ewma"
     window: int = 20
-    refit_every: str = "12M"
+    refit_every: int = 12
 
     def __post_init__(self):
         if self.forecast_type not in FORECAST_TYPES:
