@@ -45,7 +45,6 @@ def _build_market_state(market_frequency="d"):
         {
             "market_frequency": market_frequency,
             "investment_universe": ["ASSET"],
-            "signal_universe": ["ASSET"],
         }
     )
     return MarketState(store, config)

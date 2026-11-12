@@ -138,7 +138,7 @@ def run_parameter_sweep():
     sweep.run()
 
 if __name__ == '__main__':
-    # run_full_suite()
+    run_full_suite()
     # run_pairs_strategy()
     # run_ml_momentum_strategy()
     # run_ml_mean_reversion_strategy()
@@ -150,4 +150,4 @@ if __name__ == '__main__':
     # run_ls_market_neutral_ml()
     # run_mean_reversion_strategy()
     # run_inverse_volatility_strategy()
-    run_black_litterman_strategy()
+    # run_black_litterman_strategy()

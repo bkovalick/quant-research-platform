@@ -24,8 +24,7 @@ class MarketState:
         self.lookback_window = state_config.lookback_window
         self._pit_members: set = set()
         self.investment_universe = self._build_investment_universe(store, state_config)
-        self.signal_universe = list(state_config.signal_universe) \
-            or [t for t in self.investment_universe if t != "CASH"]
+        self.signal_universe = [t for t in self.investment_universe if t != "CASH"]
         self.exogenous_tickers = state_config.exogenous_tickers
         self.cash_allocation = state_config.cash_allocation
         self.annual_trading_days = state_config.annual_trading_days

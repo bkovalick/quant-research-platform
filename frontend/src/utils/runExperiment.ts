@@ -46,7 +46,7 @@ export interface RunOutcome {
 export async function runExperimentWithProgress(
   config: unknown,
   onProgress: (p: RunProgress) => void,
-  { parallel = false, persist = false }: { parallel?: boolean; persist?: boolean } = {},
+  { parallel = true, persist = false }: { parallel?: boolean; persist?: boolean } = {},
 ): Promise<RunOutcome> {
   const { data } = await axios.post(`${API}/experiments`, config, { params: { parallel, persist } })
   const jobId: string = data.job_id

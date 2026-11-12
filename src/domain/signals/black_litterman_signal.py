@@ -43,11 +43,7 @@ class BlackLittermanSignal(RiskReturnSignals):
         return np.ones(n) / n
     
     def _compute_equilibrium_returns(self, sigma: np.ndarray) -> np.ndarray:
-        """
-        Computes the CAPM-implied equilibrium excess returns (pi) using reverse
-        optimization: pi = delta * Sigma * w, where delta is the risk aversion
-        coefficient and w is the current portfolio weight vector.
-        """
+        """ Computes the CAPM-implied equilibrium excess returns (pi) using reverse optimization: pi = delta * Sigma * w """
         return self.delta * sigma @ self.equilibrium_weights
 
     def _build_views(self, sigma: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -56,13 +52,15 @@ class BlackLittermanSignal(RiskReturnSignals):
         n = int(ranked.notna().sum())
         quintile = n // 5
         losers  = ranked <= quintile
+        losers.reindex(self.investment_universe, fill_value=False).to_numpy()
         winners = ranked > n - quintile
+        winners.reindex(self.investment_universe, fill_value=False).to_numpy()
 
         if winners.sum() == 0 or losers.sum() == 0:
             n_investment = len(self.investment_universe)
             return np.zeros((1, n_investment)), np.array([0.0]), np.eye(1)
-
-        P = self._determine_view_direction(ranked, winners, losers)
+        
+        P = self._determine_view_direction(winners, losers)
         Q = np.array([expected_spread])
         prior_view_variance = np.diag(P @ sigma @ P.T)
         view_variance = self.view_uncertainty * prior_view_variance
@@ -92,7 +90,7 @@ class BlackLittermanSignal(RiskReturnSignals):
     def _get_ranked_scores(self):
         """ Returns ranked scores used to construct the view matrix P. """
         if self.use_ml:
-            scores = self.ml_state.scores
+            scores = self.ml_state.scores.reindex(self.investment_universe)
             return scores.rank(), self.black_litterman.get("ml_view_spread", 0.03)
 
         window = self.signals_config.mean_reversion_window
@@ -100,27 +98,16 @@ class BlackLittermanSignal(RiskReturnSignals):
         return short_returns.rank(), self.black_litterman.get("reversion_view", 0.03)
     
     def _determine_view_direction(self, 
-                                  ranked_scores: pd.Series, 
                                   winners: np.ndarray, 
                                   losers: np.ndarray) -> np.ndarray:
-        """
-        Builds the (1 x N) pick matrix P encoding a single long/short relative
-        view based on the configured view_direction:
-          "momentum"       — long winners, short losers (trend-following).
-          "mean_reversion" — long losers, short winners (contrarian).
-        """
-        n_investment = len(self.investment_universe)
-        P = np.zeros((1, n_investment))
-
+        """ Builds the (1 x N) pick matrix P encoding a single long/short relative view based on the configured view_direction. """
+        sign = 1 if self.view_direction == "momentum" else -1
+        P = np.zeros((1, len(self.investment_universe)))
         if winners.sum() == 0 or losers.sum() == 0:
             return P
 
-        for ticker in ranked_scores.index:
-            idx = self.investment_universe.index(ticker)
-            if losers.loc[ticker]:
-                P[0, idx]  = -1 / losers.sum() if self.view_direction == "momentum" else 1 / losers.sum()
-            elif winners.loc[ticker]:
-                P[0, idx] =  1 / winners.sum() if self.view_direction == "momentum" else -1 / winners.sum()
+        P[0, winners] = sign / winners.sum()
+        P[0, losers] = -sign / losers.sum()
         return P
 
     @property

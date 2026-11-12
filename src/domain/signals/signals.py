@@ -33,21 +33,22 @@ class Signals(ABC):
         if not self.apply_winsorizing:
             return r
 
-        lower_bound = r.quantile(self.windsor_percentiles["lower"])
-        upper_bound = r.quantile(self.windsor_percentiles["upper"])
-        return r.clip(lower=lower_bound, upper=upper_bound, axis = 1)
-    
-    def lookback_prices(self) -> pd.DataFrame:
-        """ Returns the lookback prices for the investment universe. """
-        return self.market_state.lookback_prices()
-    
-    def update(self, cursor: int, as_of_date: pd.Timestamp) -> None:
-        """Per-step heartbeat. Stateless signals inherit doing nothing."""
-        pass
+        lower = self.windsor_percentiles["lower"]
+        upper = self.windsor_percentiles["upper"]
+        values = r.to_numpy(dtype=float)
+        if values.size == 0:
+            return r
 
-    def get_diagnostics(self) -> Dict[str, Any]:
-        """Measurement artifacts accumulated during the run."""
-        return {}
+        lo = np.full(values.shape[1], np.nan)
+        hi = np.full(values.shape[1], np.nan)
+        nan_counts = np.isnan(values).sum(axis=0)
+        complete = nan_counts == 0
+        partial = (nan_counts > 0) & (nan_counts < len(values))
+        if complete.any():
+            lo[complete], hi[complete] = np.quantile(values[:, complete], [lower, upper], axis=0)
+        if partial.any():
+            lo[partial], hi[partial] = np.nanquantile(values[:, partial], [lower, upper], axis=0)
+        return pd.DataFrame(np.clip(values, lo, hi), index=r.index, columns=r.columns)
 
     @property
     def beta_vector(self):
@@ -84,6 +85,18 @@ class Signals(ABC):
         enough = (counts >= 2) & (market_variance > 1e-18)
         return np.where(enough, beta, np.nan)
 
+    def lookback_prices(self) -> pd.DataFrame:
+        """ Returns the lookback prices for the investment universe. """
+        return self.market_state.lookback_prices()
+    
+    def update(self, cursor: int, as_of_date: pd.Timestamp) -> None:
+        """Per-step heartbeat. Stateless signals inherit doing nothing."""
+        pass
+
+    def get_diagnostics(self) -> Dict[str, Any]:
+        """Measurement artifacts accumulated during the run."""
+        return {}
+    
     @abstractmethod
     def mean_returns(self) -> np.ndarray: ...
 

@@ -9,7 +9,6 @@ class MarketStateConfig:
     lookback_window: int
     cash_allocation: float
     investment_universe: List[str]
-    signal_universe: List[str]
     exogenous_tickers: List[str]
     annual_trading_days: int
     include_sp500_members: bool = False
@@ -22,7 +21,6 @@ class MarketStateConfig:
         annual_trading_days = LOOKBACK_WINDOWS[market_frequency]["1y"]
         cash_allocation = d.get("cash_allocation", 0.0)
         investment_universe = list(d.get("investment_universe") or [])
-        signal_universe = list(d.get("signal_universe") or [])
         exogenous_tickers = list(d.get("exogenous_tickers", []))
         
         if cash_allocation > 0:
@@ -34,7 +32,6 @@ class MarketStateConfig:
             lookback_window = lookback_window,
             cash_allocation = cash_allocation,
             investment_universe = investment_universe,
-            signal_universe = signal_universe,
             exogenous_tickers = exogenous_tickers,
             annual_trading_days = annual_trading_days,
             include_sp500_members = bool(d.get("include_sp500_members", False)),

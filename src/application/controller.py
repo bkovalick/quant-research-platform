@@ -22,6 +22,8 @@ from models.strategy_run import StrategyRun
 from models.experiment_model import ExperimentModel
 from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway, save_experiment
 
+DEFAULT_RESULTS_DB = "research.duckdb"
+
 setup_logging()
 logger = logging.getLogger(__name__)
 
@@ -52,15 +54,11 @@ def run_experiment_parallel(config: dict = Body(...)):
     experiment_results = runner.run_parallel()
     return experiment_results.to_dict()
 
-DEFAULT_RESULTS_DB = "research.duckdb"
-
-
 def _resolve_db(config: Optional[dict] = None) -> str:
     """One place that decides which DuckDB file results go to (and are read from)."""
     config = config or {}
     db = config.get("results_database") or config.get("database_name") or DEFAULT_RESULTS_DB
     return os.path.abspath(db)
-
 
 @app.post("/save-experiment")
 def save_experiment_endpoint(experiment: Experiment, config: dict = Body(...)):
@@ -76,7 +74,6 @@ class _Job:
 _JOBS: "OrderedDict[str, _Job]" = OrderedDict()
 _JOBS_LOCK = threading.Lock()
 _MAX_JOBS = 20
-
 
 def _run_job(job: _Job, config: dict, parallel: bool, persist: bool) -> None:
     try:
@@ -103,14 +100,12 @@ def _run_job(job: _Job, config: dict, parallel: bool, persist: bool) -> None:
             job.tracker.set_save(database, error=f"{type(exc).__name__}: {exc}")
     job.tracker.set_status("done")
 
-
 def _get_job(job_id: str) -> _Job:
     with _JOBS_LOCK:
         job = _JOBS.get(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail=f"Unknown job {job_id}")
     return job
-
 
 @app.post("/experiments")
 def start_experiment(config: dict = Body(...), parallel: bool = False, persist: bool = False):
@@ -131,14 +126,12 @@ def start_experiment(config: dict = Body(...), parallel: bool = False, persist: 
 def experiment_progress(job_id: str):
     return {"job_id": job_id, **_get_job(job_id).tracker.snapshot()}
 
-
 @app.get("/experiments/{job_id}/result")
 def experiment_result(job_id: str):
     job = _get_job(job_id)
     if job.tracker.status != "done" or job.result is None:
         raise HTTPException(status_code=409, detail=f"Job {job_id} is {job.tracker.status}")
     return job.result
-
 
 @app.post("/download")
 def download(body: ExperimentModel = Body(...)):

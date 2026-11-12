@@ -64,7 +64,8 @@ class TargetWeightOptimizer(BaseOptimizer):
 					current_weights: pd.Series, 
 					rebalance_problem: RebalanceProblem) -> RebalanceSolution | None:
 		"""Run solvers and return fallback solution on failure, else None."""
-		for solver in [cp.CLARABEL, cp.SCS, cp.OSQP]:
+		# for solver in [cp.CLARABEL, cp.SCS, cp.OSQP]:
+		for solver in [cp.OSQP]:
 			try:
 				with warnings.catch_warnings():
 					warnings.filterwarnings(

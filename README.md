@@ -55,7 +55,6 @@ src/
 Strategies separate what they trade from what they look at:
 
 - `investment_universe` — what the optimizer can hold
-- `signal_universe` — what features are computed on (defaults to the investment universe)
 - `exogenous_tickers` — inputs like ^VIX that feed signals but are never allocated to
 
 ```json
