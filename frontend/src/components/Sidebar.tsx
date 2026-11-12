@@ -1012,7 +1012,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                           ) : (
                             <button style={blAddBtn} onClick={() => {
                               updateField(["signals_config", "black_litterman"],
-                                { delta: 2.5, tau: 0.05, reversion_view: 0.03, ml_view_spread: 0.03, view_direction: "momentum" })
+                                { delta: 2.5, view_uncertainty: 1.0, reversion_view: 0.03, ml_view_spread: 0.03, view_direction: "momentum" })
                             }}>+ Add</button>
                           )}
                         </div>
@@ -1021,7 +1021,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                           <div style={blBlock}>
                             {([
                               ["Delta", "delta", 0.1, "Risk aversion coefficient for implied equilibrium returns; higher = more conservative prior (typical range 1–4)"],
-                              ["Tau", "tau", 0.01, "Scales uncertainty of the equilibrium prior; smaller = more confidence in the prior (typical range 0.01–0.10)"],
+                              ["View Uncertainty", "view_uncertainty", 0.25, "How many times less certain the view is than the prior. The posterior moves 1 / (1 + value) of the way toward the view: 1 = halfway, 3 = a quarter, 0.25 = 80%. Noisy signals deserve 3–10"],
                               ["Reversion View", "reversion_view", 0.01, "Expected mean-reversion return magnitude used as the investor view when applying mean-reversion signals"],
                               ["ML View Spread", "ml_view_spread", 0.01, "Expected return spread used as the investor view when applying ML-based signals"],
                             ] as [string, string, number, string][]).map(([labelText, key, step, tooltip]) => (

@@ -26,7 +26,6 @@ class MarketDataStore:
         self._prices = self._prices.where(self._prices > 0)
         self._prices = self._prices.dropna(how='all')
         self._market_caps = None
-        self._etf_market_caps = None
         self._sectors = None
 
         if len(self._prices) == 0:
@@ -108,13 +107,6 @@ class MarketDataStore:
                 self._market_caps["CASH"] = 0
         return pd.Series(self._market_caps).fillna(0)
     
-    @property
-    def etf_market_caps(self) -> pd.Series:
-        if not self.apply_market_caps:
-            return pd.Series(dtype=float)
-        if self._etf_market_caps is None:
-            self._etf_market_caps = MarketDataGateway.get_etf_market_caps(self.prices.columns.tolist())
-        return pd.Series(self._etf_market_caps).fillna(0)
     
     @property
     def sectors(self) -> pd.Series:

@@ -8,6 +8,7 @@ from models.signals_config import SignalsConfig
 
 class DummyMarketState:
     annual_trading_days = 252
+    cursor = 0
     investment_universe = ["A", "B", "C", "D"]
 
     def lookback_returns(self):

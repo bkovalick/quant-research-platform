@@ -26,7 +26,6 @@ class MarketState:
         self.investment_universe = self._build_investment_universe(store, state_config)
         self.signal_universe = list(state_config.signal_universe) \
             or [t for t in self.investment_universe if t != "CASH"]
-        self.security_to_etf_map = state_config.security_to_etf_map
         self.exogenous_tickers = state_config.exogenous_tickers
         self.cash_allocation = state_config.cash_allocation
         self.annual_trading_days = state_config.annual_trading_days
@@ -73,10 +72,6 @@ class MarketState:
         """Return the market capitalizations of the assets in the investment universe."""
         return self.store.market_caps[self.investment_universe]
     
-    @property
-    def etf_market_caps(self):
-        """Return the market capitalizations of the ETFs in the investment universe."""
-        return self.store.etf_market_caps[self.investment_universe]
 
     def tradable(self, cursor: Optional[int] = None) -> pd.Series:
         """Return a boolean mask indicating which assets are tradable at the given cursor position."""

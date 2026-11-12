@@ -295,13 +295,9 @@ class ExperimentRunner:
         benchmark_name = market_store_config.benchmark
         portfolio = Portfolio()
         portfolio.initialize(dates, np.array([benchmark_name]), np.array([1.0]))
-        portfolio.returns = benchmark_returns
-        portfolio.weights = pd.DataFrame(1.0, index=dates, columns=[benchmark_name])
-        portfolio.turnover = pd.Series(0.0, index=dates)
+        portfolio.returns = benchmark_returns.reindex(dates).fillna(0.0).to_numpy(dtype=float)
+        portfolio.weights[:] = 1.0
         analyzer = PerformanceAnalyzer()
         return analyzer.compute(
             portfolio, market_store_config, market_state_config, benchmark_returns
-        )        
-
-if __name__ == "__main__":
-    pass
+        )

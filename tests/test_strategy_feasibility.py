@@ -57,7 +57,6 @@ def _build_market_state() -> MarketState:
         transaction_cost=0.003,
         sectors=pd.Series({ticker: "Information Technology" for ticker in TICKERS}),
         market_caps=pd.Series({ticker: 1.0e9 for ticker in TICKERS}),
-        etf_market_caps=pd.Series({ticker: 1.0e9 for ticker in TICKERS}),
     )
 
     config = MarketStateConfig.from_dict(

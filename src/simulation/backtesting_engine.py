@@ -191,7 +191,7 @@ class BacktestingEngine:
         return RebalanceContext(
             tradable=tradable,
             cursor=cursor,
-            current_weights=self.portfolio.weights.iloc[cursor],
+            current_weights=self.portfolio.weights[cursor].copy(),
             signals=signals,
             portfolio=self.portfolio,
             initial_weights=rebalance_problem.initial_weights,

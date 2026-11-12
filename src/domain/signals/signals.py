@@ -1,5 +1,4 @@
 from typing import Any, Dict
-
 import numpy as np
 import pandas as pd
 import logging
@@ -7,8 +6,6 @@ from abc import ABC, abstractmethod
 
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
-
-import numpy as np
 
 class Signals(ABC):
     def __init__(self, 
@@ -20,8 +17,18 @@ class Signals(ABC):
         self.signals_config = signals_config
         self.apply_winsorizing = signals_config.apply_winsorizing
         self.windsor_percentiles = signals_config.windsor_percentiles
+        self._returns_cursor = None
+        self._returns = None
 
     def lookback_returns(self) -> pd.DataFrame:
+        """ Returns the lookback returns for the investment universe, applying caching. """
+        if self._returns_cursor != self.market_state.cursor:
+            self._returns_cursor = self.market_state.cursor
+            self._returns = self._compute_lookback_returns()
+        return self._returns
+
+    def _compute_lookback_returns(self) -> pd.DataFrame:
+        """ Computes the lookback returns, applying winsorization if configured. """
         r = self.market_state.lookback_returns()
         if not self.apply_winsorizing:
             return r
@@ -31,6 +38,7 @@ class Signals(ABC):
         return r.clip(lower=lower_bound, upper=upper_bound, axis = 1)
     
     def lookback_prices(self) -> pd.DataFrame:
+        """ Returns the lookback prices for the investment universe. """
         return self.market_state.lookback_prices()
     
     def update(self, cursor: int, as_of_date: pd.Timestamp) -> None:
@@ -57,8 +65,6 @@ class Signals(ABC):
         if len(aligned_returns) < 2:
             return None
 
-        # Per asset, over the dates where both it and the market have a return: assets list at
-        # different times, and one NaN must not poison every beta (np.cov would).
         market = aligned_returns["market"].to_numpy(dtype=float)
         assets = aligned_returns.drop(columns="market").to_numpy(dtype=float)
         valid = np.isfinite(assets) & np.isfinite(market)[:, None]
@@ -76,7 +82,6 @@ class Signals(ABC):
             beta = covariance / market_variance
 
         enough = (counts >= 2) & (market_variance > 1e-18)
-        # No usable history -> NaN (the optimizer treats it as 0; such assets carry no weight).
         return np.where(enough, beta, np.nan)
 
     @abstractmethod

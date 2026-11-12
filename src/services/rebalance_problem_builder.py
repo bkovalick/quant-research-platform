@@ -99,7 +99,6 @@ class RebalanceProblemBuilder:
             "sector_map": self.market_state.sector_map,
             "investment_universe": investment_universe,
             "signal_universe": self.market_state.signal_universe,
-            "security_to_etf_map": self.market_state.security_to_etf_map,
             "optimizer_vol_constraint": self.rebalance_config.constraints.optimizer_vol_constraint,
             "vol_target": self.rebalance_config.strategy_rules.vol_target,
             "vol_lookback_days": self._resolve_window(self.rebalance_config.strategy_rules.vol_lookback_days),

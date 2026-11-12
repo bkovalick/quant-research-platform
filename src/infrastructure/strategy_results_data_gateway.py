@@ -147,28 +147,10 @@ class StrategyResultsDataGateway(GatewayBase):
         VALUES (?, ?, ?)
     """
 
-    INSERT_B_SERIES = """
-        INSERT OR REPLACE INTO backtest_series
-            (experiment_id, run_id, series_name, observed_at, value)
-        VALUES (?, ?, ?, ?, ?)
-    """
-
-    INSERT_WEIGHTS = """
-        INSERT OR REPLACE INTO portfolio_weights
-            (experiment_id, run_id, observed_at, ticker, weight)
-        VALUES (?, ?, ?, ?, ?)
-    """
-
     INSERT_IC_SUMMARY = """
         INSERT OR REPLACE INTO ic_summary
             (experiment_id, run_id, ic_summary, regression_summary)
         VALUES (?, ?, ?, ?)
-    """
-
-    INSERT_IC_SERIES = """
-        INSERT OR REPLACE INTO ic_series
-            (experiment_id, run_id, ic_name, observed_at, value)
-        VALUES (?, ?, ?, ?, ?)
     """
 
     # Saved from the DataFrame into its own table, never through to_dict (cell-by-cell

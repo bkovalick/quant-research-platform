@@ -499,17 +499,6 @@ class TargetWeightOptimizer(BaseOptimizer):
 						  portfolio_risk - concentration_objective - transaction_cost_penalty - tax_cost_objective)
 		return objective
 
-	def _setup_minimum_variance_objective(self,
-										  decision_variables: dict,
-										  signals: Signals = None,) -> callable:
-		"""Set minimum variance objective for the optimization problem"""
-		portfolio_weights = decision_variables.get('portfolio_weights')
-		cov_matrix = signals.covariance_matrix()
-		risky_weights = portfolio_weights[self._risky_indices]
-		cov_matrix = cov_matrix[np.ix_(self._risky_indices, self._risky_indices)]
-		portfolio_risk = cp.quad_form(risky_weights, cp.psd_wrap(cov_matrix))
-		return cp.Minimize(portfolio_risk)
-	
 	def _get_concentration_objective(self, 
 									 risky_weights,
 								 	 rebalance_problem: RebalanceProblem):
@@ -558,19 +547,6 @@ class TargetWeightOptimizer(BaseOptimizer):
 			(np.ones(len(rows)), (rows, columns.iloc[rows].astype(int).to_numpy())),
 			shape=(len(tax_lots), len(self._risky_tickers)),
 		)
-
-	def _log_failure_diagnostics(self, prob, current_weights, signals):
-		"""Log diagnostic info when optimization fails."""
-		self.logger.warning(f"Status: {prob.status}")
-		self.logger.warning(f"Current weights: {current_weights}")
-		self.logger.warning(f"Current weights sum: {current_weights.sum():.6f}")
-		self.logger.warning(f"Num constraints: {len(prob.constraints)}")
-		if signals is not None:
-			mean_ret = signals.mean_returns()
-			cov = signals.covariance_matrix()
-			self.logger.warning(f"Mean returns range: [{mean_ret.min():.6f}, {mean_ret.max():.6f}]")
-			self.logger.warning(f"Cov matrix condition number: {np.linalg.cond(cov):.2e}")
-			self.logger.warning(f"Any NaN in mean: {np.any(np.isnan(mean_ret))}, cov: {np.any(np.isnan(cov))}")
 
 	@staticmethod
 	def _current_weights(rebalance_context: RebalanceContext) -> pd.Series:

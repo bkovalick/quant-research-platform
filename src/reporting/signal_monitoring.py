@@ -42,7 +42,7 @@ class PairsSpreadDiagnostics(BaseDiagnostic):
             .replace([np.inf, -np.inf], np.nan)
             .dropna()
         )
-        ic_sp, pval = spearmanr(-clean["Zscore"], clean["FwdReturn"])
+        ic_sp, _ = spearmanr(-clean["Zscore"], clean["FwdReturn"])
         return pd.Series([ic_sp], dtype=float)
     
 class LongOnlyICDiagnostics(BaseDiagnostic):
@@ -141,9 +141,8 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
                  risk_free_rate: float = 0.03,
                  periods_per_year: int | None = None):
         self._run = run
-        # Fallback only: the regression uses the Ken French RF series when it is available.
         self._risk_free_rate = risk_free_rate
-        self._portfolio_returns = pd.Series(run.portfolio.returns) if run.portfolio is not None else None
+        self._portfolio_returns = run.portfolio.returns_series if run.portfolio is not None else None
 
         if self._portfolio_returns is None or self._portfolio_returns.empty:
             self._portfolio_returns = None
@@ -185,16 +184,7 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
     def aggregate_factors_to_periods(self,
                                      daily_factors: pd.DataFrame,
                                      period_ends: pd.DatetimeIndex) -> pd.DataFrame:
-        """
-        Compound daily factor returns (Ken French percent units) over each portfolio
-        period (previous period end, this period end]. Returns decimal returns indexed
-        by period end. The first period (no known start) and any period not fully
-        covered by the factor data are dropped.
-
-        Mkt-RF is rebuilt as compounded market minus compounded RF, rather than
-        compounding the daily excess return. For daily portfolios each period holds
-        one factor day, so this reduces to the plain daily regression.
-        """
+        "Aggregate daily Fama-French factors to match the periods of portfolio returns."
         daily = daily_factors.sort_index() / 100.0
         rf_daily = daily["RF"] if "RF" in daily else pd.Series(
             self._risk_free_rate / 252, index=daily.index)
@@ -205,8 +195,6 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
         if len(period_ends) < 2:
             raise ValueError("Not enough overlap between portfolio returns and Fama-French factor data")
 
-        # Label each factor day with the first period end on or after it. Position 0
-        # means the day falls in the first period, whose start is unknown, so drop it.
         position = period_ends.searchsorted(daily.index, side="left")
         in_range = (position > 0) & (position < len(period_ends))
         daily = daily[in_range]
@@ -228,7 +216,6 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
 
     @property
     def _get_fama_french_five_factors(self) -> pd.DataFrame:
-        # Start a month early so the first portfolio periods have factor days behind them.
         start_date = pd.Timestamp(self._portfolio_returns.index[0]) - pd.DateOffset(months=1)
         end_date = self._portfolio_returns.index[-1]
         ff_dataset = FamaFrenchReader('F-F_Research_Data_5_Factors_2x3_daily', start=start_date, end=end_date)

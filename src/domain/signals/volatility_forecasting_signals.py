@@ -4,8 +4,6 @@ from arch import arch_model
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
 
-# A 252-day window often puts the GARCH fit on a boundary (omega ~ 0 or alpha + beta ~ 1), which
-# collapses or explodes the forecast. Those fits fall back to the window's sample variance.
 MIN_OMEGA = 1e-6          # pct^2 per day
 MAX_PERSISTENCE = 0.999
 
@@ -87,7 +85,7 @@ class VolatilityForecastingSignals:
             return np.nan
 
         eps = returns - mu
-        var = eps.var()                      # start at the window's sample variance
+        var = eps.var()
         for e in eps:
             var = omega + alpha * e * e + beta * var
         return var

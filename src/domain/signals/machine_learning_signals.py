@@ -106,7 +106,7 @@ class MLPredictorSignalsState:
         self.last_trained = cursor
 
     def _update_forward_returns(self, cursor: int, dates: pd.DatetimeIndex):
-        for pred_date, pred_scores in list(self.scores_history.items()):
+        for pred_date in list(self.scores_history):
             if pred_date in self.fwd_returns_history:
                 continue
             pred_idx = dates.get_loc(pred_date)
