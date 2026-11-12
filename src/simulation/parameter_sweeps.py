@@ -2,7 +2,7 @@
 We need to define what parameters we want to do sweeps on.
     1. Rebalance Frequency (rebalance_frequency): daily/weekly/quarterly/yearly
     2. Black Litterman Config
-        a. tau
+        a. view_uncertainty
         b. delta
         c. reversion_view
         d. ml_view_spread
@@ -121,18 +121,14 @@ class ParameterSweeps:
         if not bl_config:
             return
         
-        risk_aversion_view_sweeps = [0.03]
-        ml_view_spread_sweeps = [0.01, 0.03, 0.05, 0.10]
-        tau_sweeps = [0.01, 0.05, 0.10]
+        view_uncertainty_sweeps = [0.25, 1.0, 3.0]
         view_direction_sweep = ["mean_reversion", "momentum"]
         variants = []
-        for sweep in product(view_direction_sweep, tau_sweeps):
-            view_dir = sweep[0]
-            tau = sweep[1]
+        for view_dir, view_uncertainty in product(view_direction_sweep, view_uncertainty_sweeps):
             variant = copy.deepcopy(strategy)
             variant["signals_config"]["black_litterman"]["view_direction"] = view_dir
-            variant["signals_config"]["black_litterman"]["tau"] = tau
-            variant["name"] = f"{strategy['name']}_view_dir_{view_dir}_tau_{tau}"
+            variant["signals_config"]["black_litterman"]["view_uncertainty"] = view_uncertainty
+            variant["name"] = f"{strategy['name']}_view_dir_{view_dir}_view_unc_{view_uncertainty}"
             variants.append(variant)
         return variants
 

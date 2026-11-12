@@ -71,6 +71,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const [loading, setLoading] = useState(false)
   const [runError, setRunError] = useState<string | null>(null)
   const [runProgress, setRunProgress] = useState<RunProgress | null>(null)
+  const [runCount, setRunCount] = useState(0)
   const [persistRun, setPersistRun] = useState<boolean>(readPersistPref)
   const [lastSave, setLastSave] = useState<SaveStatus | null>(null)
   const [loadInfo, setLoadInfo] = useState<MergeResult | null>(null)
@@ -197,6 +198,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
       setRunError("Every loaded strategy is pinned — unpin one to run it again.")
       return
     }
+    setRunCount(strategiesToRun.length)
 
     for (const s of strategiesToRun) {
 
@@ -541,7 +543,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
             disabled={loading}
             onClick={strategySet ? runExperiment : () => document.getElementById("strategy-file-input")?.click()}
           >
-            {loading ? `Running ${editedStrategies.length || strategySet?.strategies?.length || 0} strategies…` : strategySet ? "Run Experiment" : "Load a Strategy Set"}
+            {loading ? `Running ${runCount} ${runCount === 1 ? "strategy" : "strategies"}…` : strategySet ? "Run Experiment" : "Load a Strategy Set"}
           </button>
           {runProgress && <RunProgressPanel progress={runProgress} />}
           {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}
@@ -1010,7 +1012,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                           ) : (
                             <button style={blAddBtn} onClick={() => {
                               updateField(["signals_config", "black_litterman"],
-                                { delta: 2.5, tau: 0.05, reversion_view: 0.03, ml_view_spread: 0.03, view_direction: "momentum" })
+                                { delta: 2.5, view_uncertainty: 1.0, reversion_view: 0.03, ml_view_spread: 0.03, view_direction: "momentum" })
                             }}>+ Add</button>
                           )}
                         </div>
@@ -1019,7 +1021,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                           <div style={blBlock}>
                             {([
                               ["Delta", "delta", 0.1, "Risk aversion coefficient for implied equilibrium returns; higher = more conservative prior (typical range 1–4)"],
-                              ["Tau", "tau", 0.01, "Scales uncertainty of the equilibrium prior; smaller = more confidence in the prior (typical range 0.01–0.10)"],
+                              ["View Uncertainty", "view_uncertainty", 0.25, "How many times less certain the view is than the prior. The posterior moves 1 / (1 + value) of the way toward the view: 1 = halfway, 3 = a quarter, 0.25 = 80%. Noisy signals deserve 3–10"],
                               ["Reversion View", "reversion_view", 0.01, "Expected mean-reversion return magnitude used as the investor view when applying mean-reversion signals"],
                               ["ML View Spread", "ml_view_spread", 0.01, "Expected return spread used as the investor view when applying ML-based signals"],
                             ] as [string, string, number, string][]).map(([labelText, key, step, tooltip]) => (

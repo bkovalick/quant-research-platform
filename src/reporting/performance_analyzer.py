@@ -27,7 +27,7 @@ class PerformanceAnalyzer:
         )
     
     def _align_benchmark_returns(self, benchmark_returns: Optional[pd.Series]) -> pd.Series:
-        portfolio_returns = self._portfolio.returns
+        portfolio_returns = self._portfolio.returns_series
         if portfolio_returns is None or len(portfolio_returns) == 0:
             raise ValueError("Portfolio Returns must exist in order to reindex Benchmark")
         if benchmark_returns is None:
@@ -45,13 +45,9 @@ class PerformanceAnalyzer:
     def _calculate_performance_metrics(self) -> dict:
         """Calculate performance metrics for the portfolio."""
         risk_free_rate = self._market_store_config.risk_free_rate
-        portfolio_weights = self._portfolio.weights
-        portfolio_trades = self._portfolio.weights.diff().abs().fillna(0)
-        if isinstance(portfolio_trades, pd.DataFrame):
-            portfolio_trades = portfolio_trades.sum(axis=1)
-
-        portfolio_returns = self._portfolio.returns
-        portfolio_turnover = self._portfolio.turnover
+        portfolio_weights = self._portfolio.weights_frame
+        portfolio_returns = self._portfolio.returns_series
+        portfolio_turnover = self._portfolio.turnover_series
         benchmark_returns = self.benchmark_returns
         wealth_factors = (1 + portfolio_returns).cumprod()
         cumulative_returns = wealth_factors - 1
@@ -78,7 +74,6 @@ class PerformanceAnalyzer:
         information_ratio = self._calculate_information_ratio(annualized_return, portfolio_returns, benchmark_returns)
         performance_metrics = {
             "portfolio_wealth_factors": wealth_factors,
-            "portfolio_trades": portfolio_trades,
             "portfolio_weights": portfolio_weights,
             "portfolio_returns": portfolio_returns,
             "portfolio_turnover": portfolio_turnover,
@@ -125,9 +120,9 @@ class PerformanceAnalyzer:
             "cvar_97.5": portfolio_returns[portfolio_returns < var_975].mean() if (portfolio_returns < var_975).any() else 0.0,
             "cvar_99":   portfolio_returns[portfolio_returns < var_99 ].mean() if (portfolio_returns < var_99 ).any() else 0.0,
             "excess_return_decay": self._calculate_excess_return(
-                portfolio_returns[-self._annual_trading_days:],
+                portfolio_returns.iloc[-self._annual_trading_days:],
                 self._annual_trading_days,
-                benchmark_returns[-self._annual_trading_days:]
+                benchmark_returns.iloc[-self._annual_trading_days:]
             ) if len(portfolio_returns) >= self._annual_trading_days else None,
         })
         return performance_metrics
@@ -241,7 +236,6 @@ class PerformanceAnalyzer:
             "benchmark_wealth_factors": self.benchmark_wealth_factors,
             "benchmark_returns": self.benchmark_returns,            
             "portfolio_wealth_factors": performance_metrics["portfolio_wealth_factors"],
-            "portfolio_trades": performance_metrics["portfolio_trades"],
             "portfolio_weights": performance_metrics["portfolio_weights"],
             "portfolio_returns": performance_metrics["portfolio_returns"],
             "portfolio_turnover": performance_metrics["portfolio_turnover"],

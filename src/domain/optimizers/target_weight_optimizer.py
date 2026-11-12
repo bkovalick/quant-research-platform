@@ -28,44 +28,36 @@ class TargetWeightOptimizer(BaseOptimizer):
 			     rebalance_context: RebalanceContext, 
 				 active_signal: Signals = None) -> RebalanceSolution:
 		"""Optimize portfolio weights for the given rebalance problem."""
-		current_weights = rebalance_context.current_weights
-		rebalance_problem = rebalance_context.rebalance_problem
-		active_signal = active_signal
-		tax_lot_ledger = rebalance_context.tax_lot_ledger
-		self._set_risky_universe(rebalance_problem)
+		current_weights = self._current_weights(rebalance_context)
+		self._set_risky_universe(rebalance_context.rebalance_problem)
 		self._tradable = tradable_mask(rebalance_context).to_numpy()
-
-		if current_weights is None:
-			tickers = rebalance_problem.investment_universe
-			current_weights = pd.Series(
-				[rebalance_problem.initial_weights.get(ticker, 0.0) for ticker in tickers],
-				index=tickers,
-				dtype=float,
-			)
-		elif not isinstance(current_weights, pd.Series):
-			tickers = rebalance_problem.investment_universe
-			current_weights = pd.Series(current_weights, index=tickers, dtype=float)
-		else:
-			tickers = rebalance_problem.investment_universe
-			current_weights = current_weights.reindex(tickers).astype(float)
-
-		decision_variables = self._setup_decision_variables(rebalance_problem, tax_lot_ledger)
-		beta_vector = getattr(active_signal, "beta_vector", None)
-			
+		decision_variables = self._setup_decision_variables(
+			rebalance_context.rebalance_problem, 
+			rebalance_context.tax_lot_ledger
+		)
+	
 		constraints = self._setup_constraints(
 			decision_variables,
-			rebalance_problem,
-			current_weights,
-			tax_lot_ledger,
-			beta_vector=beta_vector,
+			rebalance_context,
+			active_signal,
+			current_weights
 		)
-		objective = self._setup_objective(decision_variables, rebalance_problem, active_signal, tax_lot_ledger)
+		objective = self._setup_objective(
+			decision_variables, 
+			rebalance_context.rebalance_problem, 
+			active_signal, 
+			rebalance_context.tax_lot_ledger
+		)
 		prob = cp.Problem(objective, constraints)
-		solver_fallback = self._run_solver(prob, current_weights, rebalance_problem)
+		solver_fallback = self._run_solver(prob, current_weights, rebalance_context.rebalance_problem)
 		if solver_fallback is not None:
 			return solver_fallback
 
-		return self._prepare_optimizer_output(decision_variables, rebalance_problem, tax_lot_ledger)
+		return self._prepare_optimizer_output(
+			decision_variables, 
+			rebalance_context.rebalance_problem, 
+			rebalance_context.tax_lot_ledger
+		)
 
 	def _run_solver(self, 
 	                prob: cp.Problem, 
@@ -80,14 +72,14 @@ class TargetWeightOptimizer(BaseOptimizer):
 						message="Solution may be inaccurate.*",
 						category=UserWarning,
 					)
-					prob.solve(solver=solver, verbose=False, **SOLVER_OPTIONS.get(solver, {}))
+					prob.solve(
+						solver=solver, 
+						verbose=False, 
+						**SOLVER_OPTIONS.get(solver, {}), 
+						warm_start=True)
 
 				if prob.status == cp.OPTIMAL:
-					self.logger.info(
-						"reason_code=solver_success solver=%s status=%s",
-						solver,
-						prob.status,
-					)
+					self.logger.info("reason_code=solver_success solver=%s status=%s", solver, prob.status)
 					return None
 
 				if prob.status == cp.OPTIMAL_INACCURATE:
@@ -95,39 +87,19 @@ class TargetWeightOptimizer(BaseOptimizer):
 					if np.isfinite(violation) and violation <= MAX_INACCURATE_VIOLATION:
 						self.logger.warning(
 							"reason_code=solver_inaccurate solver=%s status=%s violation=%.2e",
-							solver,
-							prob.status,
-							violation,
+							solver, prob.status, violation,
 						)
 						return None
 					self.logger.warning(
-						"reason_code=solver_inaccurate_rejected solver=%s violation=%.2e",
-						solver,
-						violation,
+						"reason_code=solver_inaccurate_rejected solver=%s violation=%.2e", solver, violation,
 					)
 					continue
 
-				self.logger.warning(
-					"reason_code=solver_nonoptimal solver=%s status=%s",
-					solver,
-					prob.status,
-				)
-
+				self.logger.warning("reason_code=solver_nonoptimal solver=%s status=%s", solver, prob.status)
 			except cp.SolverError as e:
-				self.logger.warning(
-					"reason_code=solver_error solver=%s error=%s",
-					solver,
-					e,
-				)
-				continue
-
+				self.logger.warning("reason_code=solver_error solver=%s error=%s", solver, e)
 			except Exception as e:
-				self.logger.warning(
-					"reason_code=solver_exception solver=%s error=%s",
-					solver,
-					e,
-				)
-				continue
+				self.logger.warning("reason_code=solver_exception solver=%s error=%s", solver, e)
 
 		self.logger.warning("reason_code=solver_failure_fallback status=%s", prob.status)
 
@@ -159,6 +131,21 @@ class TargetWeightOptimizer(BaseOptimizer):
 				tracking_error=None,
 			)
 
+		tax_solution = self._build_tax_solution(
+			decision_variables=decision_variables,
+			target_weights=target_weights,
+			tickers=tickers,
+			sell_fractions=np.asarray(decision_variables["portfolio_sell_fractions"].value, dtype=float),
+			tax_lot_ledger=tax_lot_ledger,
+		)
+		return tax_solution
+
+	def _build_tax_solution(self,
+	                        decision_variables: dict, 
+	                        target_weights: np.ndarray, 
+							tickers: list, sell_fractions: np.ndarray, 
+							tax_lot_ledger: TaxLotLedger) -> RebalanceSolution:
+		"""Build a tax-aware rebalance solution based on the decision variables, target weights, and tax lot ledger."""
 		tax_lots = tax_lot_ledger.tax_lots if tax_lot_ledger is not None else pd.DataFrame()
 		if tax_lots.empty:
 			return RebalanceSolution(
@@ -193,7 +180,7 @@ class TargetWeightOptimizer(BaseOptimizer):
 			sell_allocations=sell_allocations,
 			realized_tax_cost=realized_tax_cost,
 			tracking_error=None
-		)
+		)		
 
 	def _set_risky_universe(self, rebalance_problem: RebalanceProblem) -> None:
 		"""Cache the non-cash universe for the current optimization request."""
@@ -237,42 +224,43 @@ class TargetWeightOptimizer(BaseOptimizer):
 
 	def _setup_constraints(self, 
 						   decision_variables: dict,
-						   rebalance_problem: RebalanceProblem,
-					   	   current_weights: pd.Series = None,
-						   tax_lot_ledger: TaxLotLedger = None,
-						   beta_vector: np.ndarray = None) -> list:
+						   rebalance_context: RebalanceContext,
+						   active_signal: Signals,
+					   	   current_weights: pd.Series = None) -> list:
 		"""Setup constraints for the optimization problem."""
 		constraints = []
 		constraints.extend(
-			self._setup_portfolio_constraints(decision_variables, rebalance_problem, current_weights)
+			self._setup_portfolio_constraints(decision_variables, rebalance_context.rebalance_problem, current_weights)
 		)
 		constraints.extend(
-			self._setup_gross_exposure_constraints(decision_variables, rebalance_problem)
+			self._setup_gross_exposure_constraints(decision_variables, rebalance_context.rebalance_problem)
 		)
 		constraints.extend(
-			self._setup_long_short_decomposition_constraints(decision_variables, rebalance_problem)
+			self._setup_long_short_decomposition_constraints(decision_variables, rebalance_context.rebalance_problem)
 		)
 		constraints.extend(
-			self._setup_turnover_constraints(decision_variables, rebalance_problem, current_weights)
+			self._setup_turnover_constraints(decision_variables, rebalance_context.rebalance_problem, current_weights)
 		)
 		constraints.extend(
-			self._setup_beta_exposure_constraints(decision_variables, rebalance_problem, beta_vector)
+			self._setup_beta_exposure_constraints(
+				decision_variables, rebalance_context.rebalance_problem, getattr(active_signal, "beta_vector", None)
+			)
 		)
 		constraints.extend(
-			self._setup_asset_class_constraints(decision_variables, rebalance_problem)
+			self._setup_asset_class_constraints(decision_variables, rebalance_context.rebalance_problem)
 		)
 		constraints.extend(
-			self._setup_sector_constraints(decision_variables, rebalance_problem)
+			self._setup_sector_constraints(decision_variables, rebalance_context.rebalance_problem)
 		)
 		constraints.extend(
-			self._setup_tax_constraints(decision_variables, rebalance_problem, tax_lot_ledger)
+			self._setup_tax_constraints(decision_variables, rebalance_context.rebalance_problem, rebalance_context.tax_lot_ledger)
 		)
 		return constraints
 	
 	def _setup_portfolio_constraints(self, 
 								     decision_variables: dict,
 								     rebalance_problem: RebalanceProblem,
-								 current_weights: pd.Series = None) -> list: 
+								 	 current_weights: pd.Series = None) -> list: 
 		"""Setup basic portfolio constraints (weights sum to 1, bounds)."""
 		min_position_size = getattr(rebalance_problem, 'min_position_size', 0.0)
 		max_position_size = getattr(rebalance_problem, 'max_position_size', 1.0)
@@ -358,7 +346,7 @@ class TargetWeightOptimizer(BaseOptimizer):
 	def _setup_turnover_constraints(self, 
 								    decision_variables: dict,
 								    rebalance_problem: RebalanceProblem,
-								current_weights: pd.Series = None) -> list: 
+									current_weights: pd.Series = None) -> list: 
 		"""Setup turnover constraints based on turnover limit."""
 		if getattr(rebalance_problem, 'turnover_limit') is None or current_weights is None:
 			return []
@@ -372,30 +360,23 @@ class TargetWeightOptimizer(BaseOptimizer):
 		]
 
 	def _setup_beta_exposure_constraints(self,
-									  decision_variables: dict,
-									  rebalance_problem: RebalanceProblem,
-									  beta_vector: np.ndarray = None) -> list:
+									  	decision_variables: dict,
+									  	rebalance_problem: RebalanceProblem,
+									  	beta_vector: np.ndarray = None) -> list:
 		"""Setup a beta-neutral exposure cap when configured."""
 		max_beta_exposure = getattr(rebalance_problem, 'max_beta_exposure', None)
 		if max_beta_exposure is None or beta_vector is None:
 			return []
+		
 		portfolio_weights = decision_variables.get('portfolio_weights')
 		beta_vector = np.asarray(beta_vector, dtype=float)
 		if beta_vector.shape[0] != portfolio_weights.shape[0]:
 			return []
-		# Assets without enough history have no beta; they carry zero weight anyway.
+
 		beta_vector = np.nan_to_num(beta_vector, nan=0.0, posinf=0.0, neginf=0.0)
 		return [
 			cp.abs(beta_vector @ portfolio_weights) <= max_beta_exposure
 		]
-
-	def _tradable_indices(self, indices: list) -> list:
-		"""Group members that can trade today. A group with none (e.g. a bond sleeve whose ETFs
-		haven't listed yet) can't meet a minimum, so its limits are skipped rather than making
-		every rebalance infeasible; its untradable members are pinned to 0 anyway."""
-		if self._tradable is None:
-			return list(indices)
-		return [i for i in indices if self._tradable[i]]
 
 	def _setup_asset_class_constraints(self,
 								       decision_variables: dict,
@@ -518,17 +499,6 @@ class TargetWeightOptimizer(BaseOptimizer):
 						  portfolio_risk - concentration_objective - transaction_cost_penalty - tax_cost_objective)
 		return objective
 
-	def _setup_minimum_variance_objective(self,
-										  decision_variables: dict,
-										  signals: Signals = None,) -> callable:
-		"""Set minimum variance objective for the optimization problem"""
-		portfolio_weights = decision_variables.get('portfolio_weights')
-		cov_matrix = signals.covariance_matrix()
-		risky_weights = portfolio_weights[self._risky_indices]
-		cov_matrix = cov_matrix[np.ix_(self._risky_indices, self._risky_indices)]
-		portfolio_risk = cp.quad_form(risky_weights, cp.psd_wrap(cov_matrix))
-		return cp.Minimize(portfolio_risk)
-	
 	def _get_concentration_objective(self, 
 									 risky_weights,
 								 	 rebalance_problem: RebalanceProblem):
@@ -562,6 +532,12 @@ class TargetWeightOptimizer(BaseOptimizer):
 		tax_costs = tax_lots["TaxCost"].to_numpy(dtype=float)
 		return cp.sum(cp.multiply(tax_costs / tax_lot_ledger.nav, sell_fractions))
 
+	def _tradable_indices(self, indices: list) -> list:
+		"""Group members that can trade today."""
+		if self._tradable is None:
+			return list(indices)
+		return [i for i in indices if self._tradable[i]]
+	
 	def _map_lot_to_ticker(self, tax_lots: pd.DataFrame) -> sparse.csr_matrix:
 		"""Sparse (n_lots x n_risky) indicator matrix: lot i belongs to risky ticker j."""
 		ticker_positions = {ticker: index for index, ticker in enumerate(self._risky_tickers)}
@@ -572,15 +548,14 @@ class TargetWeightOptimizer(BaseOptimizer):
 			shape=(len(tax_lots), len(self._risky_tickers)),
 		)
 
-	def _log_failure_diagnostics(self, prob, current_weights, signals):
-		"""Log diagnostic info when optimization fails."""
-		self.logger.warning(f"Status: {prob.status}")
-		self.logger.warning(f"Current weights: {current_weights}")
-		self.logger.warning(f"Current weights sum: {current_weights.sum():.6f}")
-		self.logger.warning(f"Num constraints: {len(prob.constraints)}")
-		if signals is not None:
-			mean_ret = signals.mean_returns()
-			cov = signals.covariance_matrix()
-			self.logger.warning(f"Mean returns range: [{mean_ret.min():.6f}, {mean_ret.max():.6f}]")
-			self.logger.warning(f"Cov matrix condition number: {np.linalg.cond(cov):.2e}")
-			self.logger.warning(f"Any NaN in mean: {np.any(np.isnan(mean_ret))}, cov: {np.any(np.isnan(cov))}")
+	@staticmethod
+	def _current_weights(rebalance_context: RebalanceContext) -> pd.Series:
+		"""Retrieve the current weights for the given rebalance context, falling back to initial weights if necessary."""
+		rp = rebalance_context.rebalance_problem
+		tickers = rp.investment_universe
+		current = rebalance_context.current_weights
+		if current is None:
+			return pd.Series([rp.initial_weights.get(t, 0.0) for t in tickers], index=tickers, dtype=float)
+		if not isinstance(current, pd.Series):
+			return pd.Series(current, index=tickers, dtype=float)
+		return current.reindex(tickers).astype(float).fillna(0.0)

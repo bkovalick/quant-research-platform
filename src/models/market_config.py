@@ -10,7 +10,6 @@ class MarketStateConfig:
     cash_allocation: float
     investment_universe: List[str]
     signal_universe: List[str]
-    security_to_etf_map: Optional[Dict[str, str]]
     exogenous_tickers: List[str]
     annual_trading_days: int
     include_sp500_members: bool = False
@@ -24,7 +23,6 @@ class MarketStateConfig:
         cash_allocation = d.get("cash_allocation", 0.0)
         investment_universe = list(d.get("investment_universe") or [])
         signal_universe = list(d.get("signal_universe") or [])
-        security_to_etf_map = d.get("security_to_etf_map", None)
         exogenous_tickers = list(d.get("exogenous_tickers", []))
         
         if cash_allocation > 0:
@@ -37,7 +35,6 @@ class MarketStateConfig:
             cash_allocation = cash_allocation,
             investment_universe = investment_universe,
             signal_universe = signal_universe,
-            security_to_etf_map = security_to_etf_map,
             exogenous_tickers = exogenous_tickers,
             annual_trading_days = annual_trading_days,
             include_sp500_members = bool(d.get("include_sp500_members", False)),

@@ -3,7 +3,7 @@ import numpy as np
 
 from domain.machine_learning.return_predictor import ReturnPredictor
 from models.machine_learning_config import MachineLearningConfig
-from sklearn.ensemble import GradientBoostingRegressor, HistGradientBoostingRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 

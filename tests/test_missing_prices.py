@@ -79,7 +79,7 @@ def test_backtest_gives_no_weight_until_tradable_and_returns_stay_finite():
     engine = BacktestingEngine(portfolio, EqualWeightStrategy(problem), state, signal_factory)
     engine.run_backtest(problem)
 
-    weights, returns = portfolio.weights, portfolio.returns
+    weights, returns = portfolio.weights_frame, portfolio.returns
     assert np.isfinite(returns).all()
     # Initial 30% in LATE can't be bought (no price); with no CASH it is spread pro rata.
     np.testing.assert_allclose(weights.iloc[0].to_numpy(), [0.4 / 0.7, 0.3 / 0.7, 0.0])
@@ -96,7 +96,7 @@ def test_held_asset_that_loses_its_price_is_carried_then_exited():
     portfolio.initialize(pd.date_range("2024-01-01", periods=2), np.array(["A", "B", "C"]), weights)
     drifted = portfolio.drift(weights, returns, cursor=1)
     assert np.isfinite(drifted).all()
-    assert np.isclose(portfolio.returns.iloc[1], 0.005)              # only A's return counts
+    assert np.isclose(portfolio.returns[1], 0.005)              # only A's return counts
 
     restricted = BacktestingEngine._restrict_to_tradable(
         np.array([0.3, 0.5, 0.2]), np.array([True, False, True]), cash_index=2)

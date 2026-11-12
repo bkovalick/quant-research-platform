@@ -59,15 +59,15 @@ class TaxLotLedger:
     def initialize(self, market_state: MarketState, portfolio: Portfolio, cursor: int) -> None:
         """Seed open lots from the initial portfolio holdings."""
         self._nav, self._nav_cursor = self._base_nav, cursor
-        date = portfolio.weights.index[cursor]
+        date = portfolio.dates[cursor]
         prices = self._prices_at(market_state, cursor)
-        self._reconcile(portfolio.weights.iloc[cursor], date, prices)
+        self._reconcile(portfolio.weights_at(cursor), date, prices)
         self._last_rebalance_date = date
 
     def mark_to_market(self, market_state: MarketState, portfolio: Portfolio, cursor: int) -> None:
         """Roll NAV forward and reprice lots, so the optimizer sees current values and gains."""
         self._advance_nav(portfolio, cursor)
-        self._refresh(portfolio.weights.index[cursor], self._prices_at(market_state, cursor))
+        self._refresh(portfolio.dates[cursor], self._prices_at(market_state, cursor))
 
     def apply_rebalance(self,
                         market_state: MarketState,
@@ -75,7 +75,7 @@ class TaxLotLedger:
                         rebalance_solution: RebalanceSolution,
                         cursor: int) -> None:
         """Apply the rebalance's lot sales, then reconcile every ticker to its new target weight."""
-        date = portfolio.weights.index[cursor]
+        date = portfolio.dates[cursor]
         if self._last_rebalance_date is not None and date <= self._last_rebalance_date:
             raise ValueError(f"Rebalance date {date} must be after the last applied rebalance date "
                              f"{self._last_rebalance_date}.")
@@ -84,7 +84,7 @@ class TaxLotLedger:
         self._advance_nav(portfolio, cursor)
         self._refresh(date, prices)
         self._sell_lot_fractions(rebalance_solution.sell_allocations)
-        self._reconcile(portfolio.weights.iloc[cursor], date, prices)
+        self._reconcile(portfolio.weights_at(cursor), date, prices)
         self._last_rebalance_date = date
 
     @property
@@ -116,7 +116,7 @@ class TaxLotLedger:
 
     def _advance_nav(self, portfolio: Portfolio, cursor: int) -> None:
         if cursor > self._nav_cursor:
-            growth = (1.0 + portfolio.returns.iloc[self._nav_cursor + 1:cursor + 1]).prod()
+            growth = (1.0 + portfolio.returns[self._nav_cursor + 1:cursor + 1]).prod()
             self._nav *= float(growth)
             self._nav_cursor = cursor
 

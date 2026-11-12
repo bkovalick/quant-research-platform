@@ -101,7 +101,7 @@
       },
       "rebalance_problem": {
         "strategy_type": "mean_variance_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_market_caps": false,
         "constraints": {

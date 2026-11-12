@@ -37,7 +37,7 @@
       },
       "rebalance_problem": {
         "strategy_type": "systematic_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "signal_source": "mean_reversion",
         "monitoring_type": "long_only",
         "rebalance_frequency": "weekly",
@@ -72,7 +72,7 @@
       },
       "rebalance_problem": {
         "strategy_type": "systematic_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "signal_source": "mean_reversion",
         "monitoring_type": "long_only",
         "rebalance_frequency": "weekly",

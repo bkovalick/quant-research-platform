@@ -1,8 +1,9 @@
 import logging
 import pandas as pd
 
-from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
 from domain.optimizers.base_optimizer import BaseOptimizer
+from domain.optimizers.target_weight_optimizer import TargetWeightOptimizer
+from domain.optimizers.parameterized_optimizer import ParameterizedOptimizer
 from domain.signals.signals import Signals
 from models.rebalance_context import RebalanceContext
 from models.rebalance_solution import RebalanceSolution
@@ -30,18 +31,24 @@ class OptimizerFactory:
 
     _optimizers = {
         "portfolio_optimizer": TargetWeightOptimizer,
-        "fwp_optimizer": FixedWeightOptimizer
+        "fwp_optimizer": FixedWeightOptimizer,
+        "parameterized_optimizer": ParameterizedOptimizer
     }
 
     """Concrete implementation of a optimizer factory."""
     @classmethod
-    def create_optimizer(cls, optimizer_type):
+    def create_optimizer(cls, optimizer_type, rebalance_problem=None):
         logger.info("Creating optimizer for type %s", optimizer_type)
         optimizer = cls._optimizers.get(optimizer_type)
         if optimizer_type == "None":
             logger.debug("Using fixed-weight optimizer for type None")
             return FixedWeightOptimizer()
 
+        if optimizer is ParameterizedOptimizer:
+            # Builds its problem once from the rebalance problem's structure.
+            if rebalance_problem is None:
+                raise ValueError("parameterized_optimizer needs the rebalance_problem")
+            return ParameterizedOptimizer(rebalance_problem)
         if optimizer:
             logger.debug("Instantiated optimizer class %s", optimizer.__name__)
             return optimizer()

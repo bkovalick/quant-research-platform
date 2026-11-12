@@ -1,4 +1,5 @@
 import numpy as np
+
 from models.signals_config import SignalsConfig
 from simulation.market_state import MarketState
 from sklearn.covariance import LedoitWolf
@@ -9,23 +10,25 @@ class RiskReturnSignals(Signals):
                  market_state: MarketState, 
                  signals_config: SignalsConfig):
         super().__init__(market_state, signals_config)
+        self._cov_cursor = None
+        self._cov = None
 
     def mean_returns(self) -> np.ndarray:
-        """Annualized mean return; NaN for assets without a complete lookback window (they
-        are untradable, and the optimizer fills them before use)."""
+        """ Annualized mean return """
         lookback_returns = self.lookback_returns()
         complete = lookback_returns.notna().all()
         mu = lookback_returns.mean() * self.ann_factor
         return mu.where(complete).to_numpy(dtype=float)
 
     def covariance_matrix(self) -> np.ndarray:
-        """Ledoit-Wolf covariance over assets with a complete lookback window, embedded in the
-        full universe matrix. Incomplete assets get no covariance and a median variance on the
-        diagonal: it keeps the matrix PSD and invertible (Black-Litterman inverts it), and those
-        assets are held at zero weight anyway.
+        """ Returns the annualized covariance matrix of asset returns. """
+        if self._cov_cursor != self.market_state.cursor:
+            self._cov_cursor = self.market_state.cursor
+            self._cov = self._compute_covariance_matrix()
+        return self._cov
 
-        Dropping incomplete *columns* rather than rows matters: one late listing would otherwise
-        throw away most of the window for every asset."""
+    def _compute_covariance_matrix(self) -> np.ndarray:
+        """ Ledoit-Wolf covariance over assets with a complete lookback window, embedded in the full universe matrix. """
         lookback_returns = self.lookback_returns()
         n = lookback_returns.shape[1]
         complete = lookback_returns.notna().all().to_numpy()

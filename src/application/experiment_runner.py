@@ -145,7 +145,7 @@ def _run_strategy(strategy_cfg: dict, market_store_config: MarketStoreConfig, re
         RebalanceProblemConfig.from_dict(strategy_cfg["rebalance_problem"]), market_state
     ).build()
     
-    optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type)
+    optimizer = OptimizerFactory.create_optimizer(rebalance_problem.optimizer_type, rebalance_problem)
     tax_lot_ledger = build_tax_lot_ledger(rebalance_problem)
     strategy = StrategyFactory.create_strategy(rebalance_problem, optimizer)
     signals_factory = build_signals_factory(strategy_cfg, market_state)
@@ -295,13 +295,9 @@ class ExperimentRunner:
         benchmark_name = market_store_config.benchmark
         portfolio = Portfolio()
         portfolio.initialize(dates, np.array([benchmark_name]), np.array([1.0]))
-        portfolio.returns = benchmark_returns
-        portfolio.weights = pd.DataFrame(1.0, index=dates, columns=[benchmark_name])
-        portfolio.turnover = pd.Series(0.0, index=dates)
+        portfolio.returns = benchmark_returns.reindex(dates).fillna(0.0).to_numpy(dtype=float)
+        portfolio.weights[:] = 1.0
         analyzer = PerformanceAnalyzer()
         return analyzer.compute(
             portfolio, market_store_config, market_state_config, benchmark_returns
-        )        
-
-if __name__ == "__main__":
-    pass
+        )

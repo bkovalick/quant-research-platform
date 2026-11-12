@@ -47,11 +47,6 @@ class MarketDataGateway:
         return {ticker: value or 0 for ticker, value in caps.items()}
 
     @staticmethod
-    def get_etf_market_caps(tickers: list) -> dict:
-        caps = MarketDataGateway._get_info_field(tickers, "totalAssets", MARKET_CAP_MAX_AGE_DAYS)
-        return {ticker: value or 0 for ticker, value in caps.items()}
-
-    @staticmethod
     def _get_info_field(tickers: list, field: str, max_age_days: float) -> dict:
         """One yfinance ``Ticker.info`` field per ticker, via the on-disk cache unless it's turned off."""
         fetch_info = lambda ticker: yf.Ticker(ticker).info

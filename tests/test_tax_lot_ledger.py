@@ -69,8 +69,8 @@ def _simulate(seed: int, n_days: int = 400, rebalance_every: int = 5, optimizer_
 @pytest.mark.parametrize("optimizer_sells", [True, False])
 def test_ledger_tracks_portfolio_weights_and_nav(optimizer_sells):
     for ledger, portfolio, cursor in _simulate(seed=7, optimizer_sells=optimizer_sells):
-        assert np.allclose(_ledger_weights(ledger), portfolio.weights.iloc[cursor], atol=1e-9)
-        nav = 1_000_000_000 * (1 + portfolio.returns.iloc[1:cursor + 1]).prod()
+        assert np.allclose(_ledger_weights(ledger), portfolio.weights[cursor], atol=1e-9)
+        nav = 1_000_000_000 * (1 + portfolio.returns[1:cursor + 1]).prod()
         assert ledger.nav == pytest.approx(nav, rel=1e-12)
 
 

@@ -1,6 +1,4 @@
 
-import numpy as np
-
 class RebalanceProblem:    
     """
     Pure data container for a prepared rebalance problem.
@@ -104,9 +102,6 @@ class RebalanceProblem:
     def sector_map(self) -> dict:
         return self._data.get("sector_map", None)
 
-    @property
-    def security_to_etf_map(self) -> dict:
-        return self._data.get("security_to_etf_map", None)
     
     @property
     def signal_universe(self) -> list:

@@ -180,7 +180,7 @@
       "signals_config": {},
       "rebalance_problem": {
         "strategy_type": "ewp_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly"
       }
     },
@@ -207,7 +207,7 @@
       "signals_config": {},
       "rebalance_problem": {
         "strategy_type": "fwp_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "initial_weights": {
           "SPY": 0.142857,
@@ -244,7 +244,7 @@
       "signals_config": {},
       "rebalance_problem": {
         "strategy_type": "fwp_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "initial_weights": {
           "SPY": 0.142857,
@@ -285,7 +285,7 @@
         "momentum_skip_periods": 21
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -381,7 +381,7 @@
         "momentum_skip_periods": 21
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -477,7 +477,7 @@
         "momentum_skip_periods": 21
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -572,14 +572,14 @@
         "momentum_skip_periods": 21,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "momentum"
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -674,14 +674,14 @@
         "momentum_skip_periods": 21,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "mean_reversion"
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -801,7 +801,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -897,7 +897,7 @@
         "momentum_skip_periods": 21,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "momentum"
@@ -928,7 +928,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -1043,7 +1043,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -1139,7 +1139,7 @@
         "momentum_skip_periods": 21,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "mean_reversion"
@@ -1165,7 +1165,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -1261,7 +1261,7 @@
         "momentum_skip_periods": 21,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "mean_reversion"
@@ -1290,7 +1290,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -1383,7 +1383,7 @@
         "momentum_skip_periods": 21,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "mean_reversion"
@@ -1409,7 +1409,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -1519,7 +1519,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "constraints": {
@@ -1759,7 +1759,7 @@
       "signals_config": {},
       "rebalance_problem": {
         "strategy_type": "fwp_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "leverage": 1.0,
         "financing_spread": 0.005,
@@ -1921,7 +1921,7 @@
       "rebalance_problem": {
         "strategy_type": "ewp_strategy",
         "apply_market_caps": false,
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly"
       },
       "_source": "experiment_equal_weight.json"
@@ -2065,7 +2065,7 @@
       "signals_config": {},
       "rebalance_problem": {
         "strategy_type": "ewp_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "monthly",
         "apply_market_caps": false,
         "monitoring_type": "none"
@@ -2112,7 +2112,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "constraints": {
           "max_long": 1.3,
@@ -2222,7 +2222,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "constraints": {
           "max_long": 1.0,
@@ -2311,7 +2311,7 @@
       },
       "rebalance_problem": {
         "strategy_type": "systematic_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "signal_source": "mean_reversion",
         "monitoring_type": "long_only",
         "rebalance_frequency": "weekly",
@@ -2347,7 +2347,7 @@
       },
       "rebalance_problem": {
         "strategy_type": "systematic_strategy",
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "signal_source": "mean_reversion",
         "monitoring_type": "long_only",
         "rebalance_frequency": "weekly",
@@ -2454,14 +2454,14 @@
         "momentum_skip_periods": 4,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "momentum"
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_market_caps": false,
         "strategy_rules": {
@@ -2563,7 +2563,7 @@
         "momentum_skip_periods": 4
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": true,
         "constraints": {
@@ -2660,7 +2660,7 @@
         "momentum_skip_periods": 4,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "mean_reversion"
@@ -2689,7 +2689,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "strategy_rules": {
@@ -2790,7 +2790,7 @@
         "momentum_skip_periods": 4,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "mean_reversion"
@@ -2824,7 +2824,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "strategy_rules": {
           "vol_target": 0.15,
@@ -2924,7 +2924,7 @@
         "momentum_skip_periods": 4,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "momentum"
@@ -2955,7 +2955,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "strategy_rules": {
@@ -3057,7 +3057,7 @@
         "momentum_skip_periods": 4,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "momentum"
@@ -3087,7 +3087,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": false,
         "strategy_rules": {
@@ -3189,7 +3189,7 @@
         "momentum_skip_periods": 4,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "momentum"
@@ -3220,7 +3220,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "strategy_rules": {
           "vol_target": 0.15,
@@ -3321,7 +3321,7 @@
         "momentum_skip_periods": 4,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "momentum"
@@ -3352,7 +3352,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "strategy_rules": {
           "vol_target": 0.15,
@@ -3527,7 +3527,7 @@
         "momentum_skip_periods": 21
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": true,
         "constraints": {
@@ -3623,7 +3623,7 @@
         "momentum_skip_periods": 21
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": true,
         "constraints": {
@@ -3719,7 +3719,7 @@
         "momentum_skip_periods": 21
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": true,
         "constraints": {
@@ -3814,14 +3814,14 @@
         "momentum_skip_periods": 21,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "momentum"
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": true,
         "constraints": {
@@ -3918,7 +3918,7 @@
         "momentum_skip_periods": 21,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "momentum"
@@ -3949,7 +3949,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": true,
         "constraints": {
@@ -4045,7 +4045,7 @@
         "momentum_skip_periods": 21,
         "black_litterman": {
           "delta": 2.5,
-          "tau": 0.05,
+          "view_uncertainty": 1.0,
           "reversion_view": 0.03,
           "ml_view_spread": 0.03,
           "view_direction": "mean_reversion"
@@ -4071,7 +4071,7 @@
         }
       },
       "rebalance_problem": {
-        "optimizer_type": "portfolio_optimizer",
+        "optimizer_type": "parameterized_optimizer",
         "rebalance_frequency": "weekly",
         "apply_tax_objective": true,
         "constraints": {

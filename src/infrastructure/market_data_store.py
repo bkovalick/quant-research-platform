@@ -22,9 +22,10 @@ class MarketDataStore:
         logger.info("Initializing MarketDataStore for %s to %s", market_store_config.start_date, market_store_config.end_date)
         self._prices = self.get_prices(market_store_config)
         self._prices = self._prices.sort_index()
+        # A close <= 0 is bad vendor data (e.g. DEC has 732 zero closes); pct_change would make it inf.
+        self._prices = self._prices.where(self._prices > 0)
         self._prices = self._prices.dropna(how='all')
         self._market_caps = None
-        self._etf_market_caps = None
         self._sectors = None
 
         if len(self._prices) == 0:
@@ -106,13 +107,6 @@ class MarketDataStore:
                 self._market_caps["CASH"] = 0
         return pd.Series(self._market_caps).fillna(0)
     
-    @property
-    def etf_market_caps(self) -> pd.Series:
-        if not self.apply_market_caps:
-            return pd.Series(dtype=float)
-        if self._etf_market_caps is None:
-            self._etf_market_caps = MarketDataGateway.get_etf_market_caps(self.prices.columns.tolist())
-        return pd.Series(self._etf_market_caps).fillna(0)
     
     @property
     def sectors(self) -> pd.Series:
