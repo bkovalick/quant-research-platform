@@ -199,6 +199,7 @@ class ExperimentRunner:
         print(f"ExperimentRunner initialized with {len(self.config.get('strategies', []))} strategies")
 
     def run(self, progress: Optional[ProgressCallback] = None) -> Experiment:
+        """Run the experiment sequentially."""
         m_cfg = self._get_market_config()
         experiment = self._create_experiment(m_cfg)
         logger.info("Starting sequential experiment run")
@@ -212,12 +213,14 @@ class ExperimentRunner:
         print("Sequential experiment run complete with %s strategy runs" % len(experiment.strategy_runs))
         return experiment
 
-    def run_parallel(self, progress: Optional[ProgressCallback] = None) -> Experiment:
+    def run_parallel(self, progress: Optional[ProgressCallback] = None, max_workers: Optional[int] = None) -> Experiment:
+        """Run the experiment in parallel using the specified number of workers."""
+        max_workers = max_workers or self.max_workers
         m_cfg = self._get_market_config()
         experiment = self._create_experiment(m_cfg)
         strategies = self.config["strategies"]
 
-        logger.info(f"Running {len(strategies)} strategies in parallel with max_workers={self.max_workers}")
+        logger.info(f"Running {len(strategies)} strategies in parallel with max_workers={max_workers}")
         self._warm_market_cache(m_cfg)
         manager = multiprocessing.Manager() if progress is not None else None
         drainer = None
@@ -228,7 +231,7 @@ class ExperimentRunner:
                 worker_progress = QueueReporter(queue)
                 drainer = threading.Thread(target=_drain_progress, args=(queue, progress), daemon=True)
                 drainer.start()
-            with ProcessPoolExecutor(max_workers=self.max_workers) as executor:
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
                 futures = [
                     executor.submit(run_strategy_worker, s_cfg, m_cfg, worker_progress)
                     for s_cfg in strategies
@@ -258,14 +261,17 @@ class ExperimentRunner:
         MarketDataGateway.get_price_data(m_cfg, tickers=list(m_cfg.tickers))
 
     def _get_market_config(self) -> MarketStoreConfig:
+        """Retrieve the market store configuration from the experiment configuration."""
         cfg = self.config.get("market_store_config")
         if not cfg: raise ValueError("Error: Market store configuration must be present")
         return MarketStoreConfig.from_dict(cfg)
 
     def _create_experiment(self, m_cfg: MarketStoreConfig) -> Experiment:
+        """Create a new experiment instance with a unique ID and the given market configuration."""
         return Experiment(experiment_id=str(uuid.uuid4()), created_at=datetime.now(), market_config=m_cfg)        
 
     def _build_benchmark_run(self, m_cfg: MarketStoreConfig, experiment: Experiment) -> StrategyRun:
+        """Build a benchmark strategy run based on the first strategy run in the experiment."""
         first = experiment.strategy_runs[0]
         state_cfg = build_market_state_config(self.config["strategies"][0])
         dates = first.result.series["portfolio_returns"].index

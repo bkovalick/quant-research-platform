@@ -80,15 +80,13 @@ def _run_job(job: _Job, config: dict, parallel: bool, max_workers: int, persist:
         runner = ExperimentRunner(config)
         experiment = runner.run_parallel(job.tracker, max_workers=max_workers) if parallel else runner.run(job.tracker)
         job.tracker.set_status("finalizing")
-        job.result = experiment_ui_payload(experiment)   # weight matrices left out: ~95% of the size, unused by the UI
+        job.result = experiment_ui_payload(experiment)
     except Exception as exc:
         logger.exception("Experiment job failed")
         job.tracker.set_status("failed", error=f"{type(exc).__name__}: {exc}")
         return
 
     if persist:
-        # A failed save must not cost the user their results: the run still
-        # completes and the save error is reported alongside it.
         database = _resolve_db(config)
         job.tracker.set_save(database)
         job.tracker.set_status("saving")
@@ -118,7 +116,7 @@ def start_experiment(config: dict = Body(...), parallel: bool = False, max_worke
         for k in finished[: max(0, len(_JOBS) - _MAX_JOBS)]:
             del _JOBS[k]
     threading.Thread(target=_run_job, args=(job, config, parallel, max_workers, persist), daemon=True).start()
-    logger.info("Started experiment job %s with %s strategies (parallel=%s, persist=%s)",
+    logger.info("Started experiment job %s with %s strategies (parallel=%s, max_workers=%s, persist=%s)",
                 job_id, len(names), parallel, max_workers, persist)
     return {"job_id": job_id}
 
