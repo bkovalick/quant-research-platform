@@ -36,7 +36,7 @@ class RiskReturnSignals(Signals):
         idx = np.flatnonzero(complete)
 
         if len(idx) >= 2 and len(lookback_returns) >= 2:
-            lw = LedoitWolf()
+            lw = LedoitWolf(store_precision=False)
             lw.fit(lookback_returns.iloc[:, idx].to_numpy(dtype=float))
             cov[np.ix_(idx, idx)] = lw.covariance_ * self.ann_factor
         elif len(idx) == 1 and len(lookback_returns) >= 2:
@@ -50,6 +50,7 @@ class RiskReturnSignals(Signals):
         return 0.5 * (cov + cov.T)
     
     def portfolio_vol(self, curr_weights: np.ndarray) -> float:
+        """ Computes the portfolio volatility given current weights. """
         cov = self.covariance_matrix()
         return np.sqrt(curr_weights.T @ cov @ curr_weights)
 

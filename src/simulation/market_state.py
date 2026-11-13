@@ -24,11 +24,11 @@ class MarketState:
         self.lookback_window = state_config.lookback_window
         self._pit_members: set = set()
         self.investment_universe = self._build_investment_universe(store, state_config)
-        self.signal_universe = list(state_config.signal_universe) \
-            or [t for t in self.investment_universe if t != "CASH"]
+        self.signal_universe = [t for t in self.investment_universe if t != "CASH"]
         self.exogenous_tickers = state_config.exogenous_tickers
         self.cash_allocation = state_config.cash_allocation
         self.annual_trading_days = state_config.annual_trading_days
+        self.fundamental_data_universe = self._build_fundamental_data_universe(store, state_config)
         self.setup()
 
     def setup(self):
@@ -72,7 +72,6 @@ class MarketState:
         """Return the market capitalizations of the assets in the investment universe."""
         return self.store.market_caps[self.investment_universe]
     
-
     def tradable(self, cursor: Optional[int] = None) -> pd.Series:
         """Return a boolean mask indicating which assets are tradable at the given cursor position."""
         cursor = self.cursor if cursor is None else cursor
@@ -146,7 +145,7 @@ class MarketState:
         """Return True if there are more steps to advance in the market state."""
         return self.cursor < len(self.investment_prices) - 1
 
-    def _build_investment_universe(self, store, state_config: MarketStateConfig) -> list:
+    def _build_investment_universe(self, store: MarketDataStore, state_config: MarketStateConfig) -> list:
         """Explicit tickers, or (include_sp500_members) every historical S&P 500 member with
         prices plus the explicit tickers. CASH stays last: cash-aware weights rely on it."""
         explicit = list(state_config.investment_universe)
@@ -165,6 +164,11 @@ class MarketState:
         self._pit_members = set(members)
         extras = [t for t in listed if t not in self._pit_members]
         return members + extras + (["CASH"] if has_cash else [])
+
+    def _build_fundamental_data_universe(self, store: MarketDataStore, state_config: MarketStateConfig) -> Optional[pd.DataFrame]:
+        """Fundamental data from the store, or None when the run has no fundamental data source.
+        A signal that needs fundamentals should check for None and say so."""
+        return store.fundamental_data
     
     def _build_market_returns(self) -> Optional[pd.Series]:
         """Build and return the market returns series based on the benchmark in the store."""

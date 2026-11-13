@@ -9,7 +9,6 @@ class MarketStateConfig:
     lookback_window: int
     cash_allocation: float
     investment_universe: List[str]
-    signal_universe: List[str]
     exogenous_tickers: List[str]
     annual_trading_days: int
     include_sp500_members: bool = False
@@ -22,7 +21,6 @@ class MarketStateConfig:
         annual_trading_days = LOOKBACK_WINDOWS[market_frequency]["1y"]
         cash_allocation = d.get("cash_allocation", 0.0)
         investment_universe = list(d.get("investment_universe") or [])
-        signal_universe = list(d.get("signal_universe") or [])
         exogenous_tickers = list(d.get("exogenous_tickers", []))
         
         if cash_allocation > 0:
@@ -34,7 +32,6 @@ class MarketStateConfig:
             lookback_window = lookback_window,
             cash_allocation = cash_allocation,
             investment_universe = investment_universe,
-            signal_universe = signal_universe,
             exogenous_tickers = exogenous_tickers,
             annual_trading_days = annual_trading_days,
             include_sp500_members = bool(d.get("include_sp500_members", False)),
@@ -52,7 +49,8 @@ class MarketStoreConfig:
     risk_free_rate: float
     transaction_cost: float
     apply_market_caps: bool
-
+    fundamental_data_source: Optional[Dict] = None
+    
     @classmethod
     def from_dict(cls, d: dict):
         return cls(
@@ -65,7 +63,8 @@ class MarketStoreConfig:
             benchmark = d.get("benchmark", "SPY"),
             risk_free_rate = d.get("risk_free_rate", 0.0),
             transaction_cost = d.get("transaction_cost", 0.0),
-            apply_market_caps = d.get("apply_market_caps", False)
+            apply_market_caps = d.get("apply_market_caps", False),
+            fundamental_data_source = d.get("fundamental_data_source", None)
         )
     
     def to_dict(self):
@@ -79,6 +78,7 @@ class MarketStoreConfig:
             "benchmark": self.benchmark,
             "risk_free_rate": self.risk_free_rate,
             "transaction_cost": self.transaction_cost,
-            "apply_market_caps": self.apply_market_caps
+            "apply_market_caps": self.apply_market_caps,
+            "fundamental_data_source": self.fundamental_data_source
         }
     

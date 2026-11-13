@@ -6,11 +6,12 @@ class ReturnPredictor(ABC):
     """Interface for cross-sectional return prediction models."""
 
     @abstractmethod
-    def fit(self, X: pd.DataFrame, y: pd.Series) -> None:
+    def fit(self, X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray) -> None:
         """
         Train on historical cross-sectional data.
         X: (n_samples, n_features) — one row per asset per date
         y: (n_samples,)            — forward return for each asset
+        Arrays must be row-aligned; a DataFrame/Series pair is aligned on index.
         """
         ...
 

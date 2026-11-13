@@ -34,17 +34,13 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[2] / "data" / "market_cache"
-OVERLAP_DAYS = 10          # calendar days re-fetched before the cached end to detect re-adjustment
-# Yahoo's adjusted closes wobble by ~1e-6 between identical requests; real dividend/split
-# re-adjustments move history by >= ~5e-4, so 1e-5 separates the two with room either side.
+OVERLAP_DAYS = 10
 OVERLAP_RTOL = 1e-5
 
-Fetcher = Callable[[list, str, str], pd.DataFrame]   # (tickers, start, end) -> close prices
-
+Fetcher = Callable[[list, str, str], pd.DataFrame] 
 
 def cache_enabled() -> bool:
     return os.environ.get("QRP_MARKET_CACHE", "").strip().lower() not in {"off", "0", "false", "none"}
-
 
 class MarketDataCache:
     def __init__(self, root: str | os.PathLike | None = None):
@@ -128,6 +124,7 @@ class MarketDataCache:
 
     @staticmethod
     def _download(fetch: Fetcher, tickers: list, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+        """Download price data for the given tickers and date range."""
         data = fetch(list(tickers), str(start.date()), str(end.date()))
         if isinstance(data, pd.Series):
             data = data.to_frame(tickers[0])

@@ -60,6 +60,24 @@ const STRATEGY_TYPE_LABELS: Record<string, string> = {
   ewp_strategy: "Equal weight",
 }
 
+// Parameters each ML model reads (see CrossSectionalModel): [label, config key, input step, tooltip].
+const ML_MODEL_PARAMS: Record<string, [string, string, number, string][]> = {
+  ridge: [
+    ["Alpha", "alpha", 0.1, "Regularization strength; higher = more regularization and a simpler model, lower = a closer fit"],
+  ],
+  gradientboostingregressor: [
+    ["Trees", "n_estimators", 10, "Number of boosting iterations (trees); more = closer fit and slower training"],
+    ["Max Depth", "max_depth", 1, "Maximum depth of each tree; deeper trees capture more feature interactions and overfit more easily"],
+    ["Learning Rate", "learning_rate", 0.01, "How much each tree contributes; lower values need more trees but generalize better"],
+  ],
+}
+
+// Backend defaults (MachineLearningConfig.from_dict), used to seed a model's parameters when it is selected.
+const ML_MODEL_DEFAULTS: Record<string, Record<string, number>> = {
+  ridge: { alpha: 1.0 },
+  gradientboostingregressor: { n_estimators: 100, max_depth: 3, learning_rate: 0.05 },
+}
+
 function signalLabel(source: string) {
   return SIGNAL_SOURCE_OPTIONS.find(([v]) => v === source)?.[1] ?? source
 }
@@ -235,7 +253,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     setLastSave(null)
     try {
       const { experiment: result, save } = await runExperimentWithProgress(
-        config, setRunProgress, { persist: persistRun },
+        config, setRunProgress, { parallel: true, max_workers: 2, persist: persistRun },
       )
       setRunProgress(null)
       setLastSave(save)
@@ -425,6 +443,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   })()
 
   const hasMlSignals = !!currentStrategy?.signals_config?.ml_signals_config
+  const mlModel: string = currentStrategy?.signals_config?.ml_signals_config?.signals_model ?? "ridge"
   const hasBlackLitterman = !!currentStrategy?.signals_config?.black_litterman
   const hasPairsTrading = !!currentStrategy?.signals_config?.pairs_trading
   const hasMeanReversionSignals = currentStrategy?.signals_config?.mean_reversion_window !== undefined
@@ -948,6 +967,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                               onClick={() => updateField(["signals_config", "ml_signals_config"], {
                                 enabled: true,
                                 features_model: "cross_sectional_model",
+                                signals_model: "ridge",
                                 training_window: "2y",
                                 horizon: "1m",
                                 alpha: 1.0,
@@ -989,11 +1009,26 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                                 {["1d", "1w", "2w", "1m"].map(o => <option key={o} value={o}>{o}</option>)}
                               </select>
                             </Row>
-                            <Row label="Alpha" tooltip="Regularization strength for the ML model; higher = more regularization and simpler model, lower = more complex fit">
-                              <input type="number" step={0.1} style={inputStyle}
-                                value={currentStrategy.signals_config?.ml_signals_config?.alpha ?? 1.0}
-                                onChange={(e) => updateField(["signals_config", "ml_signals_config", "alpha"], Number(e.target.value))} />
+                            <Row label="Model" tooltip="Model that predicts returns: ridge = regularized linear regression, gradient boosting = boosted decision trees">
+                              <select style={inputStyle}
+                                value={mlModel}
+                                onChange={(e) => updateField(["signals_config", "ml_signals_config"], {
+                                  // Seed the chosen model's parameters; values already set are kept.
+                                  ...ML_MODEL_DEFAULTS[e.target.value],
+                                  ...currentStrategy.signals_config?.ml_signals_config,
+                                  signals_model: e.target.value,
+                                })}>
+                                <option value="ridge">ridge</option>
+                                <option value="gradientboostingregressor">gradient boosting</option>
+                              </select>
                             </Row>
+                            {(ML_MODEL_PARAMS[mlModel] ?? []).map(([labelText, key, step, tooltip]) => (
+                              <Row key={key} label={labelText} tooltip={tooltip}>
+                                <input type="number" step={step} style={inputStyle}
+                                  value={currentStrategy.signals_config?.ml_signals_config?.[key] ?? ML_MODEL_DEFAULTS[mlModel][key]}
+                                  onChange={(e) => updateField(["signals_config", "ml_signals_config", key], Number(e.target.value))} />
+                              </Row>
+                            ))}
                           </div>
                         )}
                       </>

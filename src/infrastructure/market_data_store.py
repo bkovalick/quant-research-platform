@@ -4,11 +4,13 @@ import os
 from pathlib import Path
 
 from infrastructure.market_data_gateway import MarketDataGateway
+from infrastructure.fundamental_data_gateway import FundamentalDataGateway
 from models.market_config import MarketStoreConfig
 
 logger = logging.getLogger(__name__)
 
 MAX_FILL_DAYS = 5
+FUNDAMENTAL_LOOKBACK_DAYS = 730
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 class MarketDataStore:
@@ -19,10 +21,10 @@ class MarketDataStore:
         self.benchmark = market_store_config.benchmark
         self.transaction_cost = market_store_config.transaction_cost
         self.apply_market_caps = market_store_config.apply_market_caps
+        self.fundamental_data_source = market_store_config.fundamental_data_source
         logger.info("Initializing MarketDataStore for %s to %s", market_store_config.start_date, market_store_config.end_date)
         self._prices = self.get_prices(market_store_config)
         self._prices = self._prices.sort_index()
-        # A close <= 0 is bad vendor data (e.g. DEC has 732 zero closes); pct_change would make it inf.
         self._prices = self._prices.where(self._prices > 0)
         self._prices = self._prices.dropna(how='all')
         self._market_caps = None
@@ -30,6 +32,8 @@ class MarketDataStore:
 
         if len(self._prices) == 0:
             raise ValueError("Market Data Store not created properly, please check inputs.")
+
+        self._fundamental_data = self._load_fundamental_data(market_store_config)
 
         logger.info("Loaded market prices with shape %s", self._prices.shape)
         self._prices = self._prices.ffill(limit=MAX_FILL_DAYS)
@@ -46,22 +50,30 @@ class MarketDataStore:
         self._historical_sp500_universe = self._get_historical_sp500_universe(
             market_store_config.historical_sp500_tickers_path
         )
-        # Every ever-member, plus the config's own tickers (ETFs, exogenous series like ^VIX,
-        # non-index names) that strategies list explicitly.
+
         members = self._get_historical_sp500_tickers(self._historical_sp500_universe)
         member_set = set(members)
         extras = [t for t in market_store_config.tickers if t not in member_set]
         return MarketDataGateway.get_price_data(market_store_config, members + extras)
 
+    def _load_fundamental_data(self, market_store_config: MarketStoreConfig) -> pd.DataFrame | None:
+        """Fundamentals for every priced ticker, or None when no source is configured. The window
+        opens FUNDAMENTAL_LOOKBACK_DAYS before the price start so that filings made before the
+        first backtest date are available on day one."""
+        if not self.fundamental_data_source:
+            return None
+        tickers = [t for t in self._prices.columns if t != "CASH"]
+        start = pd.Timestamp(market_store_config.start_date) - pd.Timedelta(days=FUNDAMENTAL_LOOKBACK_DAYS)
+        return FundamentalDataGateway.get_fundamental_market_data(
+            self.fundamental_data_source, tickers, start, market_store_config.end_date
+        )
+
     def _get_historical_sp500_universe(self, ticker_path: str) -> pd.DataFrame:
         """ Load historical S&P 500 universe from CSV file """
-        # Relative paths are relative to the repo root, not the working directory: the API runs
-        # from src/ (uvicorn) while run_local.py runs from the repo root.
         path = Path(ticker_path)
         ticker_path = str(path if path.is_absolute() else REPO_ROOT / path)
         if not os.path.exists(ticker_path):
             raise FileNotFoundError(f"Ticker file not found: {ticker_path}")
-        # Sorted: membership is looked up as "latest snapshot on or before date".
         return pd.read_csv(ticker_path, index_col=0, parse_dates=True).sort_index()
 
     def _get_historical_sp500_tickers(self, historical_sp500_universe: pd.DataFrame) -> list[str]:
@@ -113,3 +125,8 @@ class MarketDataStore:
         if self._sectors is None:
             self._sectors = MarketDataGateway.get_sector_data(self.prices.columns.tolist())
         return pd.Series(self._sectors).fillna("Unknown")
+
+    @property
+    def fundamental_data(self) -> pd.DataFrame | None:
+        """Long-format fundamentals, or None when the config has no fundamental_data_source."""
+        return self._fundamental_data

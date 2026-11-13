@@ -46,9 +46,9 @@ export interface RunOutcome {
 export async function runExperimentWithProgress(
   config: unknown,
   onProgress: (p: RunProgress) => void,
-  { parallel = false, persist = false }: { parallel?: boolean; persist?: boolean } = {},
+  { parallel = true, max_workers = 2, persist = false }: { parallel?: boolean; max_workers?: number; persist?: boolean } = {},
 ): Promise<RunOutcome> {
-  const { data } = await axios.post(`${API}/experiments`, config, { params: { parallel, persist } })
+  const { data } = await axios.post(`${API}/experiments`, config, { params: { parallel, max_workers, persist } })
   const jobId: string = data.job_id
 
   let progress: RunProgress

@@ -25,7 +25,6 @@ def local_run(config, excel: bool = True, max_workers: int | None = None):
     config = config.copy()
     runner = ExperimentRunner(config, max_workers=max_workers)
     experiment_results = runner.run_parallel()
-    # experiment_results = runner.run()
 
     folder_path = "backtest_results" + "/" + datetime.now().strftime('%Y-%m-%d')
     stamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
@@ -130,6 +129,12 @@ def run_black_litterman_strategy():
         config = json.load(f)
     local_run(config)
 
+def run_ml_signal_cadence_strategy():
+    logger.info("run_ml_signal_cadence_strategy:: Starting local run of ML signal cadence strategy")
+    with open(f"src/config/experiment_ml_signal_cadence.json", 'r') as f:
+        config = json.load(f)
+    local_run(config, excel=False, max_workers=3)
+
 def run_parameter_sweep():
     with open(f"src/config/experiment_securities_ml_bl_momentum.json", 'r') as f:
         config = json.load(f)
@@ -139,6 +144,7 @@ def run_parameter_sweep():
 
 if __name__ == '__main__':
     # run_full_suite()
+    run_ml_signal_cadence_strategy()
     # run_pairs_strategy()
     # run_ml_momentum_strategy()
     # run_ml_mean_reversion_strategy()
@@ -150,4 +156,4 @@ if __name__ == '__main__':
     # run_ls_market_neutral_ml()
     # run_mean_reversion_strategy()
     # run_inverse_volatility_strategy()
-    run_black_litterman_strategy()
+    # run_black_litterman_strategy()

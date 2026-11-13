@@ -136,6 +136,7 @@ class BacktestingEngine:
         return target_weights
 
     def _tradable_mask(self, cursor: int, rebalance_problem: RebalanceProblem) -> pd.Series:
+        """Return a boolean mask indicating which assets are tradable at the given cursor position."""
         universe = list(rebalance_problem.investment_universe)
         tradable = getattr(self.market_state, "tradable", None)
         if tradable is None:

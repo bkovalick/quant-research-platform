@@ -62,14 +62,14 @@ class MarketDataGateway:
         return out
 
     @staticmethod
-    def get_price_data_y_finance(tickers, start_date, end_date):
+    def get_price_data_y_finance(tickers: list, start_date: pd.Timestamp, end_date: pd.Timestamp):
         """Close prices, served from the on-disk cache; only missing tickers/dates are downloaded."""
         if not cache_enabled():
             return MarketDataGateway._download_close(tickers, start_date, end_date)
         return MarketDataCache().get_close(tickers, start_date, end_date, MarketDataGateway._download_close)
 
     @staticmethod
-    def _download_close(tickers, start_date, end_date) -> pd.DataFrame:
+    def _download_close(tickers: list, start_date: pd.Timestamp, end_date: pd.Timestamp) -> pd.DataFrame:
         logger.info("Downloading price data from yfinance for %s tickers (%s to %s)", len(tickers), start_date, end_date)
         data = yf.download(list(tickers), start=start_date, end=end_date, progress=False)
         logger.debug("Downloaded yfinance data with shape %s", getattr(data, "shape", None))

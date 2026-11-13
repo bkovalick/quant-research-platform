@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-
+from scipy.stats import rankdata
 import numpy as np
 import pandas as pd
 
@@ -38,8 +38,8 @@ class MLPredictorSignalsState:
     def update(self, cursor: int, as_of_date: datetime):
         """
         Retrains the model on a rolling window of historical features and forward returns,
-        then generates and caches predicted scores for the current date. Retraining is
-        skipped if the configured cadence has not elapsed since the last training run.
+        then generates and caches predicted scores for the current date. Retraining happens
+        only on cursors that are a multiple of the cadence, the same grid rebalances use.
         """
         if not self._should_retrain(cursor):
             return 
@@ -61,38 +61,37 @@ class MLPredictorSignalsState:
         train_dates = dates[train_start:train_end:self.sample_stride]
 
         X_list, y_list = [], []
+        feature_names = None
         for date in train_dates:
             X_t = self.feature_builder.build(date)
             y_t = self.feature_builder.build_forward_returns(date, self.horizon)
             if X_t.empty or y_t.empty:
                 continue
 
-            y_t = y_t.reindex(X_t.index).replace([np.inf, -np.inf], np.nan)
-            valid = y_t.notna()
+            X_raw = X_t.to_numpy(dtype=np.float32)
+            y_raw = y_t.reindex(X_t.index).to_numpy(dtype=np.float32)
+
+            valid = np.isfinite(y_raw) & np.isfinite(X_raw).all(axis=1)
             if valid.sum() < 10:
                 continue
 
             # cross-sectional label: rank within the date, centered at 0.
             # Removes the market's move so the model learns stock selection, not timing.
-            y_t = y_t[valid].rank(pct=True) - 0.5
-            X_t = X_t[valid]
+            y_clean = rankdata(y_raw[valid], method='average') / valid.sum() - 0.5
 
-            # (date, ticker) index so X and y align row-for-row
-            X_t.index = pd.MultiIndex.from_product([[date], X_t.index], names=["date", "ticker"])
-            y_t.index = X_t.index
-
-            # append to the training list
-            X_list.append(X_t)
-            y_list.append(y_t)
+            # rows of X and y stay aligned by position
+            X_list.append(X_raw[valid])
+            y_list.append(y_clean)
+            feature_names = X_t.columns
 
         if not X_list:
             return
 
-        X_train = pd.concat(X_list)
-        y_train = pd.concat(y_list)
+        X_train = np.vstack(X_list)
+        y_train = np.concatenate(y_list)
 
         self.model.fit(X_train, y_train)
-        self._coefficient_history(X_train, as_of_date)
+        self._coefficient_history(feature_names, as_of_date)
         X_now = self.feature_builder.build(as_of_date)
         if X_now.empty:
             logger.warning("Skipping ML score generation at %s because current features are empty", as_of_date)
@@ -116,17 +115,15 @@ class MLPredictorSignalsState:
                     self.fwd_returns_history[pred_date] = fwd.copy()
 
     def _should_retrain(self, cursor: int) -> bool:
-        if self.last_trained is None:
-            return True
-        return (cursor - self.last_trained) >= self.cadence
+        return cursor % self.cadence == 0
     
-    def _coefficient_history(self, X_train: pd.DataFrame, as_of_date: datetime):
+    def _coefficient_history(self, feature_names: pd.Index, as_of_date: datetime):
         if hasattr(self.model.model, 'coef_'):
             self.coef_history[as_of_date] = pd.Series(
                 self.model.model.coef_,
-                index=X_train.columns
+                index=feature_names
             )
-            logger.debug("Stored ML coefficients for %s features at %s", len(X_train.columns), as_of_date)
+            logger.debug("Stored ML coefficients for %s features at %s", len(feature_names), as_of_date)
     
     @property
     def scores(self) -> pd.Series:

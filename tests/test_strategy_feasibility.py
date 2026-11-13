@@ -65,7 +65,6 @@ def _build_market_state() -> MarketState:
             "market_frequency": "d",
             "cash_allocation": 0.0,
             "investment_universe": TICKERS,
-            "signal_universe": TICKERS,
             "exogenous_tickers": [],
         }
     )
