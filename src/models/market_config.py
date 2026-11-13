@@ -64,7 +64,7 @@ class MarketStoreConfig:
             risk_free_rate = d.get("risk_free_rate", 0.0),
             transaction_cost = d.get("transaction_cost", 0.0),
             apply_market_caps = d.get("apply_market_caps", False),
-            fundamental_data_source = d.get("fundamental_data_source", {"edgar": None})
+            fundamental_data_source = d.get("fundamental_data_source", None)
         )
     
     def to_dict(self):

@@ -28,7 +28,7 @@ class MarketState:
         self.exogenous_tickers = state_config.exogenous_tickers
         self.cash_allocation = state_config.cash_allocation
         self.annual_trading_days = state_config.annual_trading_days
-        # self.fundamental_data_universe = self._build_fundamental_data_universe(store, state_config)
+        self.fundamental_data_universe = self._build_fundamental_data_universe(store, state_config)
         self.setup()
 
     def setup(self):
@@ -165,14 +165,9 @@ class MarketState:
         extras = [t for t in listed if t not in self._pit_members]
         return members + extras + (["CASH"] if has_cash else [])
 
-    def _build_fundamental_data_universe(self, store: MarketDataStore, state_config: MarketStateConfig) -> pd.DataFrame:
-        """Build and return the fundamental data universe based on the store and state configuration."""
-        if store._fundamental_data is None:
-            raise ValueError("Fundamental data not loaded in the store.")
-
-        if getattr(store, "_fundamental_data_config", None) is None:
-            raise ValueError("Fundamental data configuration not set in the store.")
-        
+    def _build_fundamental_data_universe(self, store: MarketDataStore, state_config: MarketStateConfig) -> Optional[pd.DataFrame]:
+        """Fundamental data from the store, or None when the run has no fundamental data source.
+        A signal that needs fundamentals should check for None and say so."""
         return store.fundamental_data
     
     def _build_market_returns(self) -> Optional[pd.Series]:

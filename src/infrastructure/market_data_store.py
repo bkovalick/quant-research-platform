@@ -10,6 +10,7 @@ from models.market_config import MarketStoreConfig
 logger = logging.getLogger(__name__)
 
 MAX_FILL_DAYS = 5
+FUNDAMENTAL_LOOKBACK_DAYS = 730
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 class MarketDataStore:
@@ -26,13 +27,13 @@ class MarketDataStore:
         self._prices = self._prices.sort_index()
         self._prices = self._prices.where(self._prices > 0)
         self._prices = self._prices.dropna(how='all')
-        self._fundamental_data = self.fundamental_data_source and \
-            FundamentalDataGateway.get_fundamental_market_data(self.fundamental_data_source)
         self._market_caps = None
         self._sectors = None
 
         if len(self._prices) == 0:
             raise ValueError("Market Data Store not created properly, please check inputs.")
+
+        self._fundamental_data = self._load_fundamental_data(market_store_config)
 
         logger.info("Loaded market prices with shape %s", self._prices.shape)
         self._prices = self._prices.ffill(limit=MAX_FILL_DAYS)
@@ -55,11 +56,17 @@ class MarketDataStore:
         extras = [t for t in market_store_config.tickers if t not in member_set]
         return MarketDataGateway.get_price_data(market_store_config, members + extras)
 
-    def get_fundamental_data(self, fundamental_data_config: dict) -> pd.DataFrame:
-        """ Get fundamental market data based on the provided configuration """
-        if self._fundamental_data is None:
-            self._fundamental_data = FundamentalDataGateway.get_fundamental_market_data(fundamental_data_config)
-        return self._fundamental_data
+    def _load_fundamental_data(self, market_store_config: MarketStoreConfig) -> pd.DataFrame | None:
+        """Fundamentals for every priced ticker, or None when no source is configured. The window
+        opens FUNDAMENTAL_LOOKBACK_DAYS before the price start so that filings made before the
+        first backtest date are available on day one."""
+        if not self.fundamental_data_source:
+            return None
+        tickers = [t for t in self._prices.columns if t != "CASH"]
+        start = pd.Timestamp(market_store_config.start_date) - pd.Timedelta(days=FUNDAMENTAL_LOOKBACK_DAYS)
+        return FundamentalDataGateway.get_fundamental_market_data(
+            self.fundamental_data_source, tickers, start, market_store_config.end_date
+        )
 
     def _get_historical_sp500_universe(self, ticker_path: str) -> pd.DataFrame:
         """ Load historical S&P 500 universe from CSV file """
@@ -120,7 +127,6 @@ class MarketDataStore:
         return pd.Series(self._sectors).fillna("Unknown")
 
     @property
-    def fundamental_data(self) -> pd.DataFrame:
-        if self._fundamental_data is None:
-            raise ValueError("Fundamental data not loaded.")
+    def fundamental_data(self) -> pd.DataFrame | None:
+        """Long-format fundamentals, or None when the config has no fundamental_data_source."""
         return self._fundamental_data

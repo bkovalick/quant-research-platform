@@ -194,7 +194,7 @@ def _run_strategy(strategy_cfg: dict, market_store_config: MarketStoreConfig, re
 class ExperimentRunner:
     def __init__(self, config: dict, max_workers: Optional[int] = None):
         self.config = config
-        self.max_workers = max_workers or 4
+        self.max_workers = max_workers or 2
         logger.info("ExperimentRunner initialized with %s strategies", len(self.config.get("strategies", [])))
         print(f"ExperimentRunner initialized with {len(self.config.get('strategies', []))} strategies")
 

@@ -73,10 +73,14 @@ class TargetWeightOptimizer(BaseOptimizer):
 						message="Solution may be inaccurate.*",
 						category=UserWarning,
 					)
+					# ignore_dpp: cvxpy's parametrized (DPP) compile of the 1,200-asset problem
+					# briefly commits ~17 GB on the first solve; with several workers that
+					# exhausts system memory. Re-canonicalizing each solve costs ~0.1-0.2 s.
 					prob.solve(
-						solver=solver, 
-						verbose=False, 
-						**SOLVER_OPTIONS.get(solver, {}), 
+						solver=solver,
+						verbose=False,
+						ignore_dpp=True,
+						**SOLVER_OPTIONS.get(solver, {}),
 						warm_start=True)
 
 				if prob.status == cp.OPTIMAL:

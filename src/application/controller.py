@@ -75,10 +75,10 @@ _JOBS: "OrderedDict[str, _Job]" = OrderedDict()
 _JOBS_LOCK = threading.Lock()
 _MAX_JOBS = 20
 
-def _run_job(job: _Job, config: dict, parallel: bool, persist: bool) -> None:
+def _run_job(job: _Job, config: dict, parallel: bool, max_workers: int, persist: bool) -> None:
     try:
         runner = ExperimentRunner(config)
-        experiment = runner.run_parallel(job.tracker) if parallel else runner.run(job.tracker)
+        experiment = runner.run_parallel(job.tracker, max_workers=max_workers) if parallel else runner.run(job.tracker)
         job.tracker.set_status("finalizing")
         job.result = experiment_ui_payload(experiment)   # weight matrices left out: ~95% of the size, unused by the UI
     except Exception as exc:
@@ -108,7 +108,7 @@ def _get_job(job_id: str) -> _Job:
     return job
 
 @app.post("/experiments")
-def start_experiment(config: dict = Body(...), parallel: bool = False, persist: bool = False):
+def start_experiment(config: dict = Body(...), parallel: bool = False, max_workers: int = 2, persist: bool = False):
     names = [s.get("name", f"strategy_{i}") for i, s in enumerate(config.get("strategies", []))]
     job_id = str(uuid.uuid4())
     job = _Job(tracker=ProgressTracker(names))
@@ -117,9 +117,9 @@ def start_experiment(config: dict = Body(...), parallel: bool = False, persist: 
         finished = [k for k, j in _JOBS.items() if j.tracker.status in ("done", "failed")]
         for k in finished[: max(0, len(_JOBS) - _MAX_JOBS)]:
             del _JOBS[k]
-    threading.Thread(target=_run_job, args=(job, config, parallel, persist), daemon=True).start()
+    threading.Thread(target=_run_job, args=(job, config, parallel, max_workers, persist), daemon=True).start()
     logger.info("Started experiment job %s with %s strategies (parallel=%s, persist=%s)",
-                job_id, len(names), parallel, persist)
+                job_id, len(names), parallel, max_workers, persist)
     return {"job_id": job_id}
 
 @app.get("/experiments/{job_id}")

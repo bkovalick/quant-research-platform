@@ -253,7 +253,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     setLastSave(null)
     try {
       const { experiment: result, save } = await runExperimentWithProgress(
-        config, setRunProgress, { persist: persistRun },
+        config, setRunProgress, { parallel: true, max_workers: 2, persist: persistRun },
       )
       setRunProgress(null)
       setLastSave(save)

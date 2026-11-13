@@ -1,9 +1,16 @@
 import logging
+import time
 from typing import List, Optional
+from urllib.parse import quote
+
 import pandas as pd
 from edgar import Company, set_identity
 
+from infrastructure.market_data_cache import MarketDataCache, _atomic_write, cache_enabled
+
 logger = logging.getLogger(__name__)
+
+CACHE_MAX_AGE_DAYS = 7
 
 COLUMNS = ["ticker", "metric", "concept", "period_start", "period_end", "filing_date",
            "value", "unit", "fiscal_year", "fiscal_period", "form_type"]
@@ -42,19 +49,13 @@ class FundamentalDataGateway:
     }
 
     @staticmethod
-    def get_fundamental_market_data(config: dict) -> pd.DataFrame:
-        "Fetch fundamental market data based on the provided configuration."
-        logger.info(
-            "Fetching fundamental data for %s tickers from source %s",
-            len(config.tickers),
-            config.data_source,
-        )
-        return FundamentalDataGateway._determine_source(
-            config.data_source,
-            config.tickers,
-            config.start_date,
-            config.end_date
-        )
+    def get_fundamental_market_data(data_source: dict,
+                                    tickers: List[str],
+                                    start_date: Optional[pd.Timestamp] = None,
+                                    end_date: Optional[pd.Timestamp] = None) -> pd.DataFrame:
+        """ Fetch fundamental data for exactly the tickers given """
+        logger.info("Fetching fundamental data for %s tickers from source %s", len(tickers), data_source)
+        return FundamentalDataGateway._determine_source(data_source, list(tickers), start_date, end_date)
 
     @staticmethod
     def get_fund_data_edgar(tickers: List[str],
@@ -69,18 +70,15 @@ class FundamentalDataGateway:
 
         frames = []
         for ticker in tickers:
-            facts_df = FundamentalDataGateway._company_facts(ticker)
-            if facts_df is None:
+            ticker_df = FundamentalDataGateway._ticker_fundamentals(ticker)
+            if ticker_df is None:
                 continue
-
-            for name, tags in FundamentalDataGateway.tag_map.items():
-                metric_df = FundamentalDataGateway._extract_metric_data(facts_df, tags, name)
-                if start is not None:
-                    metric_df = metric_df[metric_df["filing_date"] >= start]
-                if end is not None:
-                    metric_df = metric_df[metric_df["filing_date"] <= end]
-                if not metric_df.empty:
-                    frames.append(metric_df.assign(ticker=ticker))
+            if start is not None:
+                ticker_df = ticker_df[ticker_df["filing_date"] >= start]
+            if end is not None:
+                ticker_df = ticker_df[ticker_df["filing_date"] <= end]
+            if not ticker_df.empty:
+                frames.append(ticker_df)
 
         if not frames:
             logger.warning("No fundamental data returned for any of %s tickers", len(tickers))
@@ -106,6 +104,33 @@ class FundamentalDataGateway:
             else:
                 raise ValueError(f"Unknown source type: {data_source}")
         raise ValueError("No fundamental data source configured")
+
+    @staticmethod
+    def _ticker_fundamentals(ticker: str) -> Optional[pd.DataFrame]:
+        """All metrics for one ticker over its whole filing history, or None when EDGAR has
+        nothing. Served from <market cache>/fundamentals/<TICKER>.parquet when that file is
+        younger than CACHE_MAX_AGE_DAYS; a ticker that failed or was not found is not cached,
+        so it is retried next run."""
+        path = None
+        if cache_enabled():
+            folder = MarketDataCache().root / "fundamentals"
+            folder.mkdir(parents=True, exist_ok=True)
+            path = folder / f"{quote(ticker, safe='')}.parquet"
+            if path.exists() and time.time() - path.stat().st_mtime <= CACHE_MAX_AGE_DAYS * 86400:
+                return pd.read_parquet(path)
+
+        facts_df = FundamentalDataGateway._company_facts(ticker)
+        if facts_df is None:
+            return None
+        frames = [FundamentalDataGateway._extract_metric_data(facts_df, tags, name)
+                  for name, tags in FundamentalDataGateway.tag_map.items()]
+        frames = [f for f in frames if not f.empty]
+        if not frames:
+            return pd.DataFrame(columns=COLUMNS)
+        ticker_df = pd.concat(frames, ignore_index=True).assign(ticker=ticker)[COLUMNS]
+        if path is not None:
+            _atomic_write(path, lambda tmp: ticker_df.to_parquet(tmp))
+        return ticker_df
 
     @staticmethod
     def _company_facts(ticker: str) -> Optional[pd.DataFrame]:
