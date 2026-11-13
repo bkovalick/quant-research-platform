@@ -3,7 +3,7 @@
   "database_name": "research.duckdb",
   "market_store_config": {
     "start_date": "2000-01-01",
-    "end_date": "2021-12-31",
+    "end_date": "2026-11-12",
     "data_source": {
       "yfinance": null
     },

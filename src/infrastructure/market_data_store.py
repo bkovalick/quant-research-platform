@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 from infrastructure.market_data_gateway import MarketDataGateway
+from infrastructure.fundamental_data_gateway import FundamentalDataGateway
 from models.market_config import MarketStoreConfig
 
 logger = logging.getLogger(__name__)
@@ -19,12 +20,14 @@ class MarketDataStore:
         self.benchmark = market_store_config.benchmark
         self.transaction_cost = market_store_config.transaction_cost
         self.apply_market_caps = market_store_config.apply_market_caps
+        self.fundamental_data_source = market_store_config.fundamental_data_source
         logger.info("Initializing MarketDataStore for %s to %s", market_store_config.start_date, market_store_config.end_date)
         self._prices = self.get_prices(market_store_config)
         self._prices = self._prices.sort_index()
-        # A close <= 0 is bad vendor data (e.g. DEC has 732 zero closes); pct_change would make it inf.
         self._prices = self._prices.where(self._prices > 0)
         self._prices = self._prices.dropna(how='all')
+        self._fundamental_data = self.fundamental_data_source and \
+            FundamentalDataGateway.get_fundamental_market_data(self.fundamental_data_source)
         self._market_caps = None
         self._sectors = None
 
@@ -46,22 +49,24 @@ class MarketDataStore:
         self._historical_sp500_universe = self._get_historical_sp500_universe(
             market_store_config.historical_sp500_tickers_path
         )
-        # Every ever-member, plus the config's own tickers (ETFs, exogenous series like ^VIX,
-        # non-index names) that strategies list explicitly.
+
         members = self._get_historical_sp500_tickers(self._historical_sp500_universe)
         member_set = set(members)
         extras = [t for t in market_store_config.tickers if t not in member_set]
         return MarketDataGateway.get_price_data(market_store_config, members + extras)
 
+    def get_fundamental_data(self, fundamental_data_config: dict) -> pd.DataFrame:
+        """ Get fundamental market data based on the provided configuration """
+        if self._fundamental_data is None:
+            self._fundamental_data = FundamentalDataGateway.get_fundamental_market_data(fundamental_data_config)
+        return self._fundamental_data
+
     def _get_historical_sp500_universe(self, ticker_path: str) -> pd.DataFrame:
         """ Load historical S&P 500 universe from CSV file """
-        # Relative paths are relative to the repo root, not the working directory: the API runs
-        # from src/ (uvicorn) while run_local.py runs from the repo root.
         path = Path(ticker_path)
         ticker_path = str(path if path.is_absolute() else REPO_ROOT / path)
         if not os.path.exists(ticker_path):
             raise FileNotFoundError(f"Ticker file not found: {ticker_path}")
-        # Sorted: membership is looked up as "latest snapshot on or before date".
         return pd.read_csv(ticker_path, index_col=0, parse_dates=True).sort_index()
 
     def _get_historical_sp500_tickers(self, historical_sp500_universe: pd.DataFrame) -> list[str]:
@@ -113,3 +118,9 @@ class MarketDataStore:
         if self._sectors is None:
             self._sectors = MarketDataGateway.get_sector_data(self.prices.columns.tolist())
         return pd.Series(self._sectors).fillna("Unknown")
+
+    @property
+    def fundamental_data(self) -> pd.DataFrame:
+        if self._fundamental_data is None:
+            raise ValueError("Fundamental data not loaded.")
+        return self._fundamental_data
