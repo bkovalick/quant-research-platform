@@ -33,7 +33,7 @@ class MarketDataStore:
         if len(self._prices) == 0:
             raise ValueError("Market Data Store not created properly, please check inputs.")
 
-        self._fundamental_data = self._load_fundamental_data(market_store_config)
+        self._raw_fundamental_data = self._load_fundamental_data(market_store_config)
 
         logger.info("Loaded market prices with shape %s", self._prices.shape)
         self._prices = self._prices.ffill(limit=MAX_FILL_DAYS)
@@ -129,4 +129,15 @@ class MarketDataStore:
     @property
     def fundamental_data(self) -> pd.DataFrame | None:
         """Long-format fundamentals, or None when the config has no fundamental_data_source."""
-        return self._fundamental_data
+        return self._raw_fundamental_data
+
+    @property
+    def fundamental_data_by_metric(self) -> dict[str, pd.DataFrame]:
+        if self._raw_fundamental_data is None:
+            return {}
+        result = {}
+        for metric in self._raw_fundamental_data["metric"].unique():
+            metric_data = self._raw_fundamental_data[self._raw_fundamental_data["metric"] == metric]
+            metric_data = metric_data.pivot_table(index="filing_date", columns="ticker", values="value", aggfunc="last")
+            result[metric] = metric_data
+        return result

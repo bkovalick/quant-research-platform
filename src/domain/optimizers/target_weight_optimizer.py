@@ -14,6 +14,7 @@ from models.rebalance_context import RebalanceContext, tradable_mask
 
 SOLVER_OPTIONS = {cp.SCS: {"max_iters": 5000}}
 MAX_INACCURATE_VIOLATION = 1e-4
+MAX_OPTIMAL_VIOLATION = 1e-2   # an "optimal" answer breaking constraints by more than this is not trusted
 
 class TargetWeightOptimizer(BaseOptimizer):
 	"""Optimizer using Cvxpy's minimize function."""
@@ -76,14 +77,23 @@ class TargetWeightOptimizer(BaseOptimizer):
 					# ignore_dpp: cvxpy's parametrized (DPP) compile of the 1,200-asset problem
 					# briefly commits ~17 GB on the first solve; with several workers that
 					# exhausts system memory. Re-canonicalizing each solve costs ~0.1-0.2 s.
+					# warm_start must stay False with ignore_dpp: the matrix sparsity changes from
+					# date to date, and OSQP's in-place update of its cached problem then fails
+					# ("osqp_update_data_mat ... out of bounds") yet still reports "optimal".
 					prob.solve(
 						solver=solver,
 						verbose=False,
 						ignore_dpp=True,
 						**SOLVER_OPTIONS.get(solver, {}),
-						warm_start=True)
+						warm_start=False)
 
 				if prob.status == cp.OPTIMAL:
+					violation = max((float(np.max(c.violation())) for c in prob.constraints), default=0.0)
+					if not np.isfinite(violation) or violation > MAX_OPTIMAL_VIOLATION:
+						self.logger.warning(
+							"reason_code=solver_optimal_rejected solver=%s violation=%.2e", solver, violation,
+						)
+						continue
 					self.logger.info("reason_code=solver_success solver=%s status=%s", solver, prob.status)
 					return None
 

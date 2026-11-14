@@ -18,22 +18,21 @@ class MarketState:
         self.transaction_cost = store.transaction_cost
 
         # Store the market state configuration
+        self._pit_members: set = set()
         self.state_config = state_config
         self.lookback_window_key = state_config.lookback_window_key
         self.market_frequency = state_config.market_frequency
         self.lookback_window = state_config.lookback_window
-        self._pit_members: set = set()
-        self.investment_universe = self._build_investment_universe(store, state_config)
-        self.signal_universe = [t for t in self.investment_universe if t != "CASH"]
         self.exogenous_tickers = state_config.exogenous_tickers
         self.cash_allocation = state_config.cash_allocation
         self.annual_trading_days = state_config.annual_trading_days
-        self.fundamental_data_universe = self._build_fundamental_data_universe(store, state_config)
-        self.setup()
+        self.setup(store, state_config)
 
-    def setup(self):
+    def setup(self, store: MarketDataStore, state_config: MarketStateConfig):
         """Initialize the market state by setting up the investment and signal prices, returns, and exogenous universe."""
         self.cursor = 0
+        self.investment_universe = self._build_investment_universe(store, state_config)
+        self.signal_universe = [t for t in self.investment_universe if t != "CASH"]
         self.investment_prices = self._resample(self.market_frequency, self._parse_universe(self.investment_universe))
         self.investment_returns = self.investment_prices.pct_change(fill_method=None)
         self.valuation_prices = self.investment_prices.ffill()
@@ -42,14 +41,15 @@ class MarketState:
         self.exogenous_universe = self._resample(self.market_frequency, self._parse_universe(self.exogenous_tickers)) \
                             if set(self.exogenous_tickers).issubset(self.store.prices.columns) else pd.DataFrame()        
         self.market_returns = self._build_market_returns()
+        self.fundamental_data_by_metric = self._build_and_align_fundamental_data(store, self.signal_prices)
 
     @property
-    def asset_class_map(self):
+    def asset_class_map(self) -> dict:
         """Return a mapping of asset classes for the investment universe."""
         return MarketMetadata.build_asset_class_map(self.investment_universe)
     
     @property
-    def sector_map(self):
+    def sector_map(self) -> dict:
         """Return a mapping of sectors for the investment universe."""
         return MarketMetadata.build_sector_map(self.investment_universe)
 
@@ -68,7 +68,7 @@ class MarketState:
         return sectors_to_tickers
 
     @property
-    def market_caps(self):
+    def market_caps(self) -> pd.Series:
         """Return the market capitalizations of the assets in the investment universe."""
         return self.store.market_caps[self.investment_universe]
     
@@ -95,7 +95,7 @@ class MarketState:
             members = {t.strip() for t in str(snapshots["tickers"].iloc[-1]).split(",")}
         return pd.Series([t not in self._pit_members or t in members for t in columns], index=columns)
 
-    def advance(self):
+    def advance(self) -> None:
         """Advance the market state cursor by one step."""
         self.cursor += 1
 
@@ -145,7 +145,8 @@ class MarketState:
         """Return True if there are more steps to advance in the market state."""
         return self.cursor < len(self.investment_prices) - 1
 
-    def _build_investment_universe(self, store: MarketDataStore, state_config: MarketStateConfig) -> list:
+    def _build_investment_universe(self, 
+                                   store: MarketDataStore, state_config: MarketStateConfig) -> list:
         """Explicit tickers, or (include_sp500_members) every historical S&P 500 member with
         prices plus the explicit tickers. CASH stays last: cash-aware weights rely on it."""
         explicit = list(state_config.investment_universe)
@@ -165,10 +166,20 @@ class MarketState:
         extras = [t for t in listed if t not in self._pit_members]
         return members + extras + (["CASH"] if has_cash else [])
 
-    def _build_fundamental_data_universe(self, store: MarketDataStore, state_config: MarketStateConfig) -> Optional[pd.DataFrame]:
-        """Fundamental data from the store, or None when the run has no fundamental data source.
-        A signal that needs fundamentals should check for None and say so."""
-        return store.fundamental_data
+    def _build_and_align_fundamental_data(self, 
+                                          store: MarketDataStore, 
+                                          signal_prices: pd.DataFrame) -> Optional[dict]:
+        """Fundamentals by metric on the signal grid (same index and columns as signal_prices),
+        or None if unavailable. A value is usable from the trading day after it was filed."""
+        metric_data = getattr(store, "fundamental_data_by_metric", None)
+        if metric_data is None:
+            return None
+        daily_fnd_data = {}
+        for metric, data in metric_data.items():
+            daily_index = store.prices.index.union(data.index)
+            daily = data.reindex(daily_index).ffill(limit=400).shift(1)
+            daily_fnd_data[metric] = daily.reindex(index=signal_prices.index, columns=signal_prices.columns)
+        return daily_fnd_data
     
     def _build_market_returns(self) -> Optional[pd.Series]:
         """Build and return the market returns series based on the benchmark in the store."""
@@ -190,7 +201,9 @@ class MarketState:
         """Parse the given list of tickers and return their corresponding price data from the store."""
         return self.store.prices[tickers]
         
-    def _resample(self, market_frequency: str, universe: pd.DataFrame) -> pd.DataFrame:
+    def _resample(self, 
+                  market_frequency: str, 
+                  universe: pd.DataFrame) -> pd.DataFrame:
         """Resample the given universe of prices to the specified market frequency."""
         if market_frequency == "d":
             return universe

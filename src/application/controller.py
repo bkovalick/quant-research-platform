@@ -23,6 +23,7 @@ from models.experiment_model import ExperimentModel
 from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway, save_experiment
 
 DEFAULT_RESULTS_DB = "research.duckdb"
+MAX_PARALLEL_WORKERS = 2
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -107,6 +108,7 @@ def _get_job(job_id: str) -> _Job:
 
 @app.post("/experiments")
 def start_experiment(config: dict = Body(...), parallel: bool = False, max_workers: int = 2, persist: bool = False):
+    max_workers = max(1, min(max_workers, MAX_PARALLEL_WORKERS))
     names = [s.get("name", f"strategy_{i}") for i, s in enumerate(config.get("strategies", []))]
     job_id = str(uuid.uuid4())
     job = _Job(tracker=ProgressTracker(names))
