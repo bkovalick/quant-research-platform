@@ -218,7 +218,7 @@ class ExperimentRunner:
         max_workers = max_workers or self.max_workers
         m_cfg = self._get_market_config()
         experiment = self._create_experiment(m_cfg)
-        strategies = [self.config["strategies"][0]]
+        strategies = self.config["strategies"]
 
         logger.info(f"Running {len(strategies)} strategies in parallel with max_workers={max_workers}")
         self._warm_market_cache(m_cfg)

@@ -21,6 +21,7 @@ from models.backtest_result import BacktestResult
 from models.strategy_run import StrategyRun
 from models.experiment_model import ExperimentModel
 from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataGateway, save_experiment
+from domain.machine_learning.feature_builder import ALL_FEATURES, FEATURE_GROUPS
 
 DEFAULT_RESULTS_DB = "research.duckdb"
 MAX_PARALLEL_WORKERS = 2
@@ -132,6 +133,11 @@ def experiment_result(job_id: str):
     if job.tracker.status != "done" or job.result is None:
         raise HTTPException(status_code=409, detail=f"Job {job_id} is {job.tracker.status}")
     return job.result
+
+@app.get("/ml-features")
+def ml_features():
+    """Features the ML signal supports, grouped by what they need, and the default set."""
+    return {"groups": FEATURE_GROUPS, "default": ALL_FEATURES}
 
 @app.post("/download")
 def download(body: ExperimentModel = Body(...)):

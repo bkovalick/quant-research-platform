@@ -1,9 +1,9 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { CSSProperties } from "react"
 import RunProgressPanel from "./RunProgress"
 import Switch from "./Switch"
-import { runExperimentWithProgress } from "../utils/runExperiment"
-import type { RunProgress, SaveStatus } from "../utils/runExperiment"
+import { fetchMlFeatures, runExperimentWithProgress } from "../utils/runExperiment"
+import type { MlFeatureCatalog, RunProgress, SaveStatus } from "../utils/runExperiment"
 import { mergeStrategySets } from "../utils/mergeStrategySets"
 import type { MergeResult } from "../utils/mergeStrategySets"
 
@@ -78,6 +78,13 @@ const ML_MODEL_DEFAULTS: Record<string, Record<string, number>> = {
   gradientboostingregressor: { n_estimators: 100, max_depth: 3, learning_rate: 0.05 },
 }
 
+// Labels and requirements for the feature groups served by GET /ml-features.
+const ML_FEATURE_GROUP_LABELS: Record<string, string> = {
+  price: "Price",
+  regime: "Regime",
+  fundamental: "Fundamental",
+}
+
 function signalLabel(source: string) {
   return SIGNAL_SOURCE_OPTIONS.find(([v]) => v === source)?.[1] ?? source
 }
@@ -130,6 +137,15 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const [jsonError, setJsonError] = useState<string | null>(null)
   const [newUniverseTicker, setNewUniverseTicker] = useState("")
   const [newUniverseTickerError, setNewUniverseTickerError] = useState<string | null>(null)
+  const [mlFeatureCatalog, setMlFeatureCatalog] = useState<MlFeatureCatalog | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchMlFeatures()
+      .then(catalog => { if (!cancelled) setMlFeatureCatalog(catalog) })
+      .catch(() => { /* backend not running: the checklist shows a note instead */ })
+    return () => { cancelled = true }
+  }, [])
 
   function getPreviousBusinessDay(date: Date = new Date()): Date {
     const dayOfWeek = date.getDay();
@@ -444,6 +460,26 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
 
   const hasMlSignals = !!currentStrategy?.signals_config?.ml_signals_config
   const mlModel: string = currentStrategy?.signals_config?.ml_signals_config?.signals_model ?? "ridge"
+  // No features listed means the backend's default set, so that is what shows as selected.
+  const listedMlFeatures: string[] = currentStrategy?.signals_config?.ml_signals_config?.features ?? []
+  const selectedMlFeatures: string[] = listedMlFeatures.length ? listedMlFeatures : (mlFeatureCatalog?.default ?? [])
+  const hasFundamentalSource = !!strategySet?.market_store_config?.fundamental_data_source
+  const hasVix = (currentStrategy?.market_state_config?.exogenous_tickers ?? []).includes("^VIX")
+  const mlFeatureGroupNote: Record<string, string | null> = {
+    regime: hasVix ? null : "needs ^VIX in Exogenous",
+    fundamental: hasFundamentalSource ? null : "needs fundamental_data_source in the market config",
+  }
+  const toggleMlFeature = (feature: string) => {
+    if (!mlFeatureCatalog) return
+    const next = selectedMlFeatures.includes(feature)
+      ? selectedMlFeatures.filter(f => f !== feature)
+      : [...selectedMlFeatures, feature]
+    if (!next.length) return   // an empty list would mean "all defaults" to the backend
+    // Keep the backend's order so the same selection always gives the same feature matrix.
+    const order = [...mlFeatureCatalog.default, ...Object.values(mlFeatureCatalog.groups).flat()]
+    next.sort((a, b) => order.indexOf(a) - order.indexOf(b))
+    updateField(["signals_config", "ml_signals_config", "features"], next)
+  }
   const hasBlackLitterman = !!currentStrategy?.signals_config?.black_litterman
   const hasPairsTrading = !!currentStrategy?.signals_config?.pairs_trading
   const hasMeanReversionSignals = currentStrategy?.signals_config?.mean_reversion_window !== undefined
@@ -1029,6 +1065,42 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                                   onChange={(e) => updateField(["signals_config", "ml_signals_config", key], Number(e.target.value))} />
                               </Row>
                             ))}
+                            <span style={labelStyle}>Features ({selectedMlFeatures.length})</span>
+                            {!mlFeatureCatalog && (
+                              <span style={labelStyle}>
+                                Feature list unavailable: start the backend to edit.
+                                {listedMlFeatures.length ? ` Selected: ${listedMlFeatures.join(", ")}` : " Using the default set."}
+                              </span>
+                            )}
+                            {mlFeatureCatalog && Object.entries(mlFeatureCatalog.groups).map(([group, features]) => {
+                              const note = mlFeatureGroupNote[group] ?? null
+                              const blocked = group === "fundamental" && !hasFundamentalSource
+                              return (
+                                <Row key={group} label={ML_FEATURE_GROUP_LABELS[group] ?? group} tooltip={note ?? undefined}>
+                                  <div style={tickerGrid}>
+                                    {features.map(feature => {
+                                      const selected = selectedMlFeatures.includes(feature)
+                                      return (
+                                        <button
+                                          key={feature}
+                                          // A feature that is already selected can always be removed.
+                                          disabled={blocked && !selected}
+                                          title={note ?? undefined}
+                                          style={{
+                                            ...(selected ? tickerChipActive : tickerChip),
+                                            ...(blocked && !selected ? { opacity: 0.45, cursor: "not-allowed" } : {}),
+                                          }}
+                                          onClick={() => toggleMlFeature(feature)}
+                                        >{feature}</button>
+                                      )
+                                    })}
+                                  </div>
+                                  {note && features.some(f => selectedMlFeatures.includes(f)) && (
+                                    <div style={errorMsg}>{note}</div>
+                                  )}
+                                </Row>
+                              )
+                            })}
                           </div>
                         )}
                       </>

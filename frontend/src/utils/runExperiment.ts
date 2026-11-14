@@ -31,6 +31,17 @@ export interface RunProgress {
   strategies: StrategyProgress[]
 }
 
+/** Features the ML signal supports (GET /ml-features), grouped by what each needs. */
+export interface MlFeatureCatalog {
+  groups: Record<string, string[]>
+  /** What the backend builds when a strategy lists no features. */
+  default: string[]
+}
+
+export async function fetchMlFeatures(): Promise<MlFeatureCatalog> {
+  return (await axios.get<MlFeatureCatalog>(`${API}/ml-features`)).data
+}
+
 export interface RunOutcome {
   experiment: unknown
   /** null when saving wasn't requested */
