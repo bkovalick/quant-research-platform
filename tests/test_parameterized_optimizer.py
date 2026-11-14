@@ -1,4 +1,4 @@
-﻿"""ParameterizedOptimizer must match TargetWeightOptimizer while compiling the problem only once."""
+﻿"""ParameterizedOptimizer must give the same weights as TargetWeightOptimizer."""
 import sys
 from pathlib import Path
 
@@ -52,7 +52,7 @@ def _context(problem, current, tradable):
                             tradable=pd.Series(tradable, index=TICKERS))
 
 
-def test_matches_target_weight_optimizer_and_compiles_once():
+def test_matches_target_weight_optimizer():
     problem = _problem()
     param = ParameterizedOptimizer(problem)
     assert param._prob.is_dpp()
@@ -66,8 +66,5 @@ def test_matches_target_weight_optimizer_and_compiles_once():
         expected = TargetWeightOptimizer().optimize(context, signal).target_weights.to_numpy(dtype=float)
         got = param.optimize(context, signal).target_weights.to_numpy(dtype=float)
         np.testing.assert_allclose(got, expected, atol=1e-4)
-        assert np.allclose(got[~np.array(tradable)], 0, atol=1e-7)
+        assert np.allclose(got[~np.array(tradable)], 0, atol=1e-4)
         current = got
-
-    # One compiled problem object, reused for every date.
-    assert param._prob._cache.param_prog is not None

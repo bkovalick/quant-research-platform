@@ -460,7 +460,6 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
 
   const hasMlSignals = !!currentStrategy?.signals_config?.ml_signals_config
   const mlModel: string = currentStrategy?.signals_config?.ml_signals_config?.signals_model ?? "ridge"
-  // No features listed means the backend's default set, so that is what shows as selected.
   const listedMlFeatures: string[] = currentStrategy?.signals_config?.ml_signals_config?.features ?? []
   const selectedMlFeatures: string[] = listedMlFeatures.length ? listedMlFeatures : (mlFeatureCatalog?.default ?? [])
   const hasFundamentalSource = !!strategySet?.market_store_config?.fundamental_data_source

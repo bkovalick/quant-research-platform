@@ -138,6 +138,7 @@ class MarketDataStore:
         result = {}
         for metric in self._raw_fundamental_data["metric"].unique():
             metric_data = self._raw_fundamental_data[self._raw_fundamental_data["metric"] == metric]
+            metric_data = metric_data.sort_values(["filing_date", "period_end", "period_start"])
             metric_data = metric_data.pivot_table(index="filing_date", columns="ticker", values="value", aggfunc="last")
             result[metric] = metric_data
         return result

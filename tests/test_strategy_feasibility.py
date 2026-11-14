@@ -19,6 +19,8 @@ from services.optimizer_factory import OptimizerFactory
 from simulation.market_state import MarketState
 
 TICKERS = ["AAPL", "MSFT", "NVDA", "AMZN"]
+# Market neutral and inside the +/-6% position bounds, so the turnover limit can be met.
+START_WEIGHTS = {"AAPL": 0.05, "MSFT": -0.05, "NVDA": 0.05, "AMZN": -0.05}
 
 
 class DummySignal:
@@ -81,7 +83,7 @@ def test_ls_market_neutral_ml_one_off_date_is_feasible_after_warmup():
             "n_assets": len(TICKERS),
             "optimizer_type": "portfolio_optimizer",
             "strategy_type": "systematic_strategy",
-            "initial_weights": {ticker: 0.25 for ticker in TICKERS},
+            "initial_weights": START_WEIGHTS,
             "cash_allocation": 0.0,
             "rebalance_frequency": "weekly",
             "risk_aversion": 2.5,
@@ -106,8 +108,8 @@ def test_ls_market_neutral_ml_one_off_date_is_feasible_after_warmup():
     rebalance_context = RebalanceContext(
         cursor=market_state.cursor,
         signals={"ml_cross_sectional": DummySignal()},
-        initial_weights={ticker: 0.25 for ticker in TICKERS},
-        current_weights=pd.Series({ticker: 0.25 for ticker in TICKERS}),
+        initial_weights=START_WEIGHTS,
+        current_weights=pd.Series(START_WEIGHTS),
         investment_universe=TICKERS,
         rebalance_problem=rebalance_problem,
         portfolio=None,
@@ -121,8 +123,8 @@ def test_ls_market_neutral_ml_one_off_date_is_feasible_after_warmup():
     assert np.isfinite(weights).all()
     assert np.all(weights >= rebalance_problem.min_position_size - 1e-9)
     assert np.all(weights <= rebalance_problem.max_position_size + 1e-9)
-    assert weights.abs().sum() <= (rebalance_problem.max_long + rebalance_problem.max_short) + 1e-9
-    assert np.abs(np.dot(rebalance_problem.beta_vector, weights)) <= rebalance_problem.max_beta_exposure + 1e-9
+    assert np.abs(weights).sum() <= (rebalance_problem.max_long + rebalance_problem.max_short) + 1e-9
+    assert np.abs(np.dot(DummySignal().beta_vector, weights)) <= rebalance_problem.max_beta_exposure + 1e-9
 
 
 STRATEGY_SCAFFOLD = [
