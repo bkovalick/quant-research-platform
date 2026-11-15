@@ -8,7 +8,8 @@ from simulation.market_state import MarketState
 
 # Built when no feature list is given. Fundamental features are opt-in: they need a data source.
 ALL_FEATURES = ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal", "mom_x_vol_regime",
-                "reversal_x_vol_regime", "max_return", "high_52w", "beta_1m", "beta_1y", "idiosyncratic_vol"]
+                "reversal_x_vol_regime", "max_return", "high_52w", "beta_1m", "beta_1y", 
+                "idiosyncratic_vol"]
 
 # Every supported feature by what it needs: prices only, ^VIX as an exogenous ticker, or a
 # fundamental_data_source. The UI builds its feature checklist from this.
@@ -16,7 +17,7 @@ FEATURE_GROUPS = {
     "price": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal", "max_return", "high_52w",
               "beta_1m", "beta_1y", "idiosyncratic_vol"],
     "regime": ["mom_x_vol_regime", "reversal_x_vol_regime"],
-    "fundamental": ["equity_to_assets"],
+    "fundamental": ["equity_to_assets", "return_on_equity", "accruals", "gross_profit"],
 }
 
 class FeatureBuilder:
@@ -103,6 +104,9 @@ class FeatureBuilder:
             "beta_1y": lambda: self._beta(w["1y"]),
             "idiosyncratic_vol": lambda: self._idiosyncratic_vol(),
             "equity_to_assets": lambda: self._equity_to_assets(),
+            "return_on_equity": lambda: self._return_on_equity(),
+            "accruals": lambda: self._accruals(),
+            "gross_profit": lambda: self._gross_profit()
         }
         if name not in builders:
             raise ValueError(f"Unsupported feature: {name}")
@@ -140,6 +144,25 @@ class FeatureBuilder:
         assets = self._fundamental_metric("assets")
         return equity / assets.where(assets > 0)
 
+    def _return_on_equity(self) -> pd.DataFrame:
+        """ Return on equity: Net Income / Book Equity. """
+        net_income = self._fundamental_metric("net_income")
+        equity = self._fundamental_metric("equity")
+        return net_income / equity.where(equity > 0)
+
+    def _accruals(self) -> pd.DataFrame:
+        """ Accruals: (Net Income - Operating Cash Flow) / Total Assets. """
+        net_income = self._fundamental_metric("net_income")
+        ocf = self._fundamental_metric("ocf")
+        assets = self._fundamental_metric("assets")
+        return (net_income - ocf) / assets.where(assets > 0)
+
+    def  _gross_profit(self) -> pd.DataFrame:
+        """ Gross profit: Revenue - Cost of Goods Sold. """
+        gross_profit = self._fundamental_metric("gross_profit")
+        assets = self._fundamental_metric("assets")
+        return gross_profit / assets.where(assets > 0)
+    
     def _fundamental_metric(self, metric: str) -> pd.DataFrame:
         """ One fundamental metric on the price grid, blank wherever the asset has no price. """
         if metric not in self.fundamental_data:

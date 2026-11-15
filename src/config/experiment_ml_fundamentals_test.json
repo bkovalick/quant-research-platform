@@ -1,5 +1,5 @@
 {
-  "_description": "Fundamentals feature test. Same ridge mean-reversion strategy twice: with the equity_to_assets feature (from EDGAR) and without it as the baseline.",
+  "_description": "Fundamentals feature test. Same ridge mean-reversion strategy twice: with the fundamental features from EDGAR (equity_to_assets, return_on_equity, accruals, gross_profit) and without them as the baseline.",
   "database_name": "research.duckdb",
   "market_store_config": {
     "start_date": "2023-01-01",
@@ -63,7 +63,10 @@
             "max_return",
             "high_52w",
             "idiosyncratic_vol",
-            "equity_to_assets"
+            "equity_to_assets",
+            "return_on_equity",
+            "accruals",
+            "gross_profit"
           ],
           "signals_model": "ridge",
           "training_window": "2y",

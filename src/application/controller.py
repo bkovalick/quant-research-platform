@@ -10,11 +10,12 @@ from fastapi import Response
 from io import BytesIO
 import logging
 import os
+from pathlib import Path
 from utils.logging_config import setup_logging
 
 from application.experiment_runner import ExperimentRunner
 from application.progress import ProgressTracker
-from application.result_export import experiment_ui_payload
+from application.result_export import experiment_ui_payload, save_experiment_files
 from reporting.report_generation import ExcelGenerator
 from models.experiment import Experiment
 from models.backtest_result import BacktestResult
@@ -24,6 +25,9 @@ from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataG
 from domain.machine_learning.feature_builder import ALL_FEATURES, FEATURE_GROUPS
 
 DEFAULT_RESULTS_DB = "research.duckdb"
+# Anchored to the repo root so files land in the same place as run_local.py's,
+# whichever directory the server was started from.
+RESULTS_DIR = Path(__file__).resolve().parents[2] / "backtest_results"
 MAX_PARALLEL_WORKERS = 2
 
 setup_logging()
@@ -87,6 +91,16 @@ def _run_job(job: _Job, config: dict, parallel: bool, max_workers: int, persist:
         logger.exception("Experiment job failed")
         job.tracker.set_status("failed", error=f"{type(exc).__name__}: {exc}")
         return
+
+    # Keep a copy on disk so a page refresh doesn't lose the run (reopen it from the Lab:
+    # Saved Results > open results file). A failed write must not fail the run itself.
+    try:
+        now = datetime.now()
+        json_path, _ = save_experiment_files(
+            experiment, RESULTS_DIR / now.strftime("%Y-%m-%d"), now.strftime("%Y%m%d%H%M%S%f"))
+        logger.info("Experiment %s saved to %s", experiment.experiment_id, json_path)
+    except Exception:
+        logger.exception("Writing result files for experiment %s failed", experiment.experiment_id)
 
     if persist:
         database = _resolve_db(config)
