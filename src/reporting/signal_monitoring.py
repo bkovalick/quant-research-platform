@@ -4,8 +4,7 @@ import numpy as np
 from scipy.stats import spearmanr
 from scipy import stats
 import statsmodels.api as sm
-from pandas_datareader.famafrench import FamaFrenchReader
-from pandas_datareader import data as web
+from infrastructure.factor_data_gateway import FactorDataGateway
 
 from models.monitoring_stats import MonitoringStats
 from models.backtest_run import BacktestRun
@@ -216,24 +215,17 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
 
     @property
     def _get_fama_french_five_factors(self) -> pd.DataFrame:
-        start_date = pd.Timestamp(self._portfolio_returns.index[0]) - pd.DateOffset(months=1)
-        end_date = self._portfolio_returns.index[-1]
-        ff_dataset = FamaFrenchReader('F-F_Research_Data_5_Factors_2x3_daily', start=start_date, end=end_date)
-        if ff_dataset is None:
-            raise ValueError("Fama-French dataset could not be retrieved. "
-                             "Please check your internet connection or the availability of the dataset.")
-
-        ff_factors = ff_dataset.read()[0]
-        if isinstance(ff_factors.index, pd.PeriodIndex):
-            ff_factors.index = ff_factors.index.to_timestamp()
-        return ff_factors
+        return self._factor_window('F-F_Research_Data_5_Factors_2x3_daily')
 
     @property
     def _get_momentum_factor(self) -> pd.DataFrame:
+        return self._factor_window('F-F_Momentum_Factor_daily')
+
+    def _factor_window(self, dataset: str) -> pd.DataFrame:
+        """One factor dataset from a month before the first portfolio return to the last one."""
         start_date = pd.Timestamp(self._portfolio_returns.index[0]) - pd.DateOffset(months=1)
-        end_date = self._portfolio_returns.index[-1]
-        df_daily = web.DataReader('F-F_Momentum_Factor_daily', 'famafrench', start=start_date, end=end_date)
-        return df_daily[0]
+        end_date = pd.Timestamp(self._portfolio_returns.index[-1])
+        return FactorDataGateway.get_fama_french_daily(dataset).loc[start_date:end_date]
 
     def _infer_periods_per_year(self) -> int:
         """Fallback when the caller doesn't pass periods_per_year: median spacing of the return dates."""

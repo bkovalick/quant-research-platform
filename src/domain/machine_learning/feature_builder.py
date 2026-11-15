@@ -17,7 +17,7 @@ FEATURE_GROUPS = {
     "price": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal", "max_return", "high_52w",
               "beta_1m", "beta_1y", "idiosyncratic_vol"],
     "regime": ["mom_x_vol_regime", "reversal_x_vol_regime"],
-    "fundamental": ["equity_to_assets", "return_on_equity", "accruals", "gross_profit"],
+    "fundamental": ["equity_to_assets", "return_on_equity", "accruals", "gross_profit", "asset_growth"],
 }
 
 class FeatureBuilder:
@@ -74,7 +74,7 @@ class FeatureBuilder:
         px = self.prices
         raw = {name: self._build_feature(name).replace([np.inf, -np.inf], np.nan) for name in self.features}
         ranked = {name: frame.rank(axis=1, pct=True) for name, frame in raw.items()}
-        # A name with no features at all on a date hasn't listed yet: it is left out of that date.
+
         listed = pd.DataFrame(False, index=px.index, columns=px.columns)
         for frame in raw.values():
             listed |= frame.notna()
@@ -106,7 +106,8 @@ class FeatureBuilder:
             "equity_to_assets": lambda: self._equity_to_assets(),
             "return_on_equity": lambda: self._return_on_equity(),
             "accruals": lambda: self._accruals(),
-            "gross_profit": lambda: self._gross_profit()
+            "gross_profit": lambda: self._gross_profit(),
+            "asset_growth": lambda: self._asset_growth()
         }
         if name not in builders:
             raise ValueError(f"Unsupported feature: {name}")
@@ -162,6 +163,12 @@ class FeatureBuilder:
         gross_profit = self._fundamental_metric("gross_profit")
         assets = self._fundamental_metric("assets")
         return gross_profit / assets.where(assets > 0)
+
+    def _asset_growth(self) -> pd.DataFrame:
+        """ Asset growth: (Total Assets - Total Assets 1 year ago) / Total Assets 1 year ago. """
+        assets = self._fundamental_metric("assets")
+        assets_lag = assets.shift(self.lookbacks["1y"])
+        return (assets - assets_lag) / assets_lag.where(assets_lag > 0)
     
     def _fundamental_metric(self, metric: str) -> pd.DataFrame:
         """ One fundamental metric on the price grid, blank wherever the asset has no price. """

@@ -66,7 +66,8 @@
             "equity_to_assets",
             "return_on_equity",
             "accruals",
-            "gross_profit"
+            "gross_profit",
+            "asset_growth"
           ],
           "signals_model": "ridge",
           "training_window": "2y",

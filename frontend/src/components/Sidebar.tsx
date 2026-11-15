@@ -6,6 +6,7 @@ import { fetchMlFeatures, runExperimentWithProgress } from "../utils/runExperime
 import type { MlFeatureCatalog, RunProgress, SaveStatus } from "../utils/runExperiment"
 import { mergeStrategySets } from "../utils/mergeStrategySets"
 import type { MergeResult } from "../utils/mergeStrategySets"
+import { starterStrategySet } from "../utils/starterStrategySet"
 
 const PERSIST_PREF_KEY = "qrp.persistRuns"
 
@@ -33,11 +34,6 @@ const SIGNAL_SOURCE_OPTIONS = [
   ["vix_basis", "VIX Basis"],
 ] as const
 
-/**
- * Which signal sources each strategy type can consume. Mirrors the isinstance
- * checks in the backend strategies (src/domain/strategies/): an empty list means
- * the strategy allocates without signals; a single entry means the signal is fixed.
- */
 const STRATEGY_SIGNALS: Record<string, readonly string[]> = {
   systematic_strategy: ["risk_return", "mean_reversion", "moving_average", "volatility_forecast",
                         "momentum", "ml_cross_sectional", "black_litterman"],
@@ -208,6 +204,18 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     if (typeof msc.benchmark === "string") setBenchmark(msc.benchmark)
     if (typeof msc.transaction_cost === "number") setTransactionCost(msc.transaction_cost)
     if (typeof msc.risk_free_rate === "number") setRiskFreeRate(msc.risk_free_rate)
+  }
+
+  /** Start a strategy set from scratch (no JSON) and open it in the Strategy Lab. */
+  const startNewStrategySet = () => {
+    const starter = starterStrategySet()
+    setLoadError(null)
+    setLoadInfo(null)
+    setStrategySet(starter)
+    setEditedStrategies(structuredClone(starter.strategies))
+    setSelectedIdx(0)
+    setJsonMode(false)
+    setTab("lab")
   }
 
   const togglePersist = (value: boolean) => {
@@ -524,6 +532,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                   <button style={changeLinkBtn} onClick={() => document.getElementById("strategy-file-append")?.click()}>add files</button>
                   <button style={changeLinkBtn} onClick={() => document.getElementById("strategy-file-input")?.click()}>replace</button>
                 </div>
+                {!loadInfo && <div style={labelStyle}>Built in the Strategy Lab, not loaded from a file.</div>}
                 {loadInfo && loadInfo.sources.length > 0 && (
                   <ul style={sourceList}>
                     {loadInfo.sources.map((s, i) => (
@@ -545,7 +554,10 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                   </details>
                 )}
               </>
-            : null}
+            : <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button style={changeLinkBtn} onClick={startNewStrategySet}>build a new strategy</button>
+                <button style={changeLinkBtn} onClick={() => document.getElementById("strategy-file-input")?.click()}>load files…</button>
+              </div>}
           {loadError && <div style={inlineError}>{loadError}</div>}
         </Section>
 
@@ -621,7 +633,12 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
       {tab === "lab" && (
         <>
           {!strategySet ? (
-            <div style={emptyState}>Load a strategy set in the Experiment tab first.</div>
+            <div style={emptyState}>
+              <div style={{ marginBottom: 8 }}>
+                Build a strategy from a starter template, or load a strategy set in the Experiment tab.
+              </div>
+              <button style={addStrategyBtn} onClick={startNewStrategySet}>+ New Strategy</button>
+            </div>
           ) : (
             <>
             <div style={strategyNav}>

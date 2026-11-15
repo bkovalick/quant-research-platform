@@ -174,11 +174,15 @@ def _run_strategy(strategy_cfg: dict, market_store_config: MarketStoreConfig, re
         market_state.market_returns,
     )
 
-    stats = [
-        monitor.analyze()
-        for monitor in build_monitors(run, rebalance_problem.monitoring_type,
-                                      market_state_config.annual_trading_days)
-    ]
+    # Diagnostics are extras: one failing (e.g. the factor data download) must not lose the backtest.
+    stats = []
+    for monitor in build_monitors(run, rebalance_problem.monitoring_type,
+                                  market_state_config.annual_trading_days):
+        try:
+            stats.append(monitor.analyze())
+        except Exception:
+            logger.exception("%s failed for strategy %s; its diagnostics are left out",
+                             type(monitor).__name__, strategy_cfg["name"])
 
     monitoring_stats = merge_monitoring_stats(*stats)
     

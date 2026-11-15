@@ -15,7 +15,7 @@ class _State:
         self.market_returns = self.signal_returns.mean(axis=1)
         self.exogenous_universe = pd.DataFrame({"^VIX": 20 + rng.normal(0, 2, 560)}, index=idx)
         self.fundamental_data_by_metric = {
-            m: pd.DataFrame(rng.uniform(1, 9, (560, 4)), index=idx, columns=cols) for m in ("equity", "assets")
+            m: pd.DataFrame(rng.uniform(1, 9, (560, 4)), index=idx, columns=cols) for m in ("equity", "assets", "net_income", "ocf", "gross_profit")
         }
 
 
