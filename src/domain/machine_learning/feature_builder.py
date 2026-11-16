@@ -1,3 +1,4 @@
+from functools import cached_property
 from typing import List, Optional
 
 import pandas as pd
@@ -17,7 +18,7 @@ FEATURE_GROUPS = {
     "price": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal", "max_return", "high_52w",
               "beta_1m", "beta_1y", "idiosyncratic_vol"],
     "regime": ["mom_x_vol_regime", "reversal_x_vol_regime"],
-    "fundamental": ["equity_to_assets", "return_on_equity", "accruals", "gross_profit", "asset_growth"],
+    "fundamental": ["equity_to_assets", "return_on_equity", "accruals", "gross_profit", "asset_growth", "book_to_market", "size"],
 }
 
 class FeatureBuilder:
@@ -107,7 +108,9 @@ class FeatureBuilder:
             "return_on_equity": lambda: self._return_on_equity(),
             "accruals": lambda: self._accruals(),
             "gross_profit": lambda: self._gross_profit(),
-            "asset_growth": lambda: self._asset_growth()
+            "asset_growth": lambda: self._asset_growth(),
+            "book_to_market": lambda: self._book_to_market(),
+            "size": lambda: self._size()
         }
         if name not in builders:
             raise ValueError(f"Unsupported feature: {name}")
@@ -169,6 +172,18 @@ class FeatureBuilder:
         assets = self._fundamental_metric("assets")
         assets_lag = assets.shift(self.lookbacks["1y"])
         return (assets - assets_lag) / assets_lag.where(assets_lag > 0)
+
+    def _book_to_market(self) -> pd.DataFrame:
+        """ Value: Book Equity / Market Equity. """
+        equity = self._fundamental_metric("equity")
+        equity = equity.where(equity > 0)
+        market_cap = self._market_cap.where(self._market_cap > 0)
+        return equity / market_cap
+
+    def _size(self) -> pd.DataFrame:
+        """ Size: Market Equity. """
+        market_cap = self._market_cap.where(self._market_cap > 0)
+        return market_cap
     
     def _fundamental_metric(self, metric: str) -> pd.DataFrame:
         """ One fundamental metric on the price grid, blank wherever the asset has no price. """
@@ -177,3 +192,8 @@ class FeatureBuilder:
                              "set fundamental_data_source in market_store_config.")
         data = self.fundamental_data[metric].reindex(index=self.prices.index, columns=self.prices.columns)
         return data.where(self.prices.notna())
+
+    @cached_property
+    def _market_cap(self) -> pd.DataFrame:
+        """ Market capitalization: Price * Shares Outstanding. """
+        return self.prices * self._fundamental_metric("shares")
