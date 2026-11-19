@@ -6,10 +6,10 @@ import multiprocessing
 import json
 import threading
 from datetime import datetime
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from typing import Optional
 
-from application.progress import ProgressCallback, QueueReporter
+from application.progress import ProgressCallback, QueueReporter, RunCancelled, raise_if_cancelled
 from domain.portfolio.portfolio import Portfolio
 from domain.portfolio.tax_lot_ledger import TaxLotLedger
 from reporting.performance_analyzer import PerformanceAnalyzer
@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 
 _MARKET_STORE_CACHE = {}
 _DRAIN_STOP = ("__stop__", {})
+_CANCEL_POLL_S = 0.5
 
 
 def _drain_progress(queue, progress: ProgressCallback) -> None:
@@ -121,11 +122,23 @@ def build_tax_lot_ledger(rebalance_problem) -> Optional[TaxLotLedger]:
 
 def run_strategy_worker(strategy_cfg: dict,
                         market_store_config: MarketStoreConfig,
-                        progress: Optional[ProgressCallback] = None) -> Optional[StrategyRun]:
+                        progress: Optional[ProgressCallback] = None,
+                        cancel_event=None) -> Optional[StrategyRun]:
+    """cancel_event (a threading.Event, or a Manager Event in worker processes) stops the
+    strategy at its next progress report by raising RunCancelled, which is re-raised."""
     name = strategy_cfg.get("name", "Unnamed Strategy")
-    report = (lambda **fields: progress(name, **fields)) if progress is not None else (lambda **fields: None)
+
+    def report(**fields):
+        raise_if_cancelled(cancel_event, fields.get("phase"))
+        if progress is not None:
+            progress(name, **fields)
+
     try:
         run = _run_strategy(strategy_cfg, market_store_config, report)
+    except RunCancelled:
+        logger.info("Strategy %s stopped", name)
+        report(phase="cancelled")
+        raise
     except Exception as exc:
         logger.exception("Strategy %s failed", name)
         report(phase="failed", error=f"{type(exc).__name__}: {exc}")
@@ -202,13 +215,13 @@ class ExperimentRunner:
         logger.info("ExperimentRunner initialized with %s strategies", len(self.config.get("strategies", [])))
         print(f"ExperimentRunner initialized with {len(self.config.get('strategies', []))} strategies")
 
-    def run(self, progress: Optional[ProgressCallback] = None) -> Experiment:
-        """Run the experiment sequentially."""
+    def run(self, progress: Optional[ProgressCallback] = None, cancel_event=None) -> Experiment:
+        """Run the experiment sequentially. Raises RunCancelled once cancel_event is set."""
         m_cfg = self._get_market_config()
         experiment = self._create_experiment(m_cfg)
         logger.info("Starting sequential experiment run")
         for strategy_cfg in self.config["strategies"]:
-            run = run_strategy_worker(strategy_cfg, m_cfg, progress)
+            run = run_strategy_worker(strategy_cfg, m_cfg, progress, cancel_event)
             if run is not None:
                 experiment.add_run(run)
         if experiment.strategy_runs:
@@ -217,8 +230,11 @@ class ExperimentRunner:
         print("Sequential experiment run complete with %s strategy runs" % len(experiment.strategy_runs))
         return experiment
 
-    def run_parallel(self, progress: Optional[ProgressCallback] = None, max_workers: Optional[int] = None) -> Experiment:
-        """Run the experiment in parallel using the specified number of workers."""
+    def run_parallel(self, progress: Optional[ProgressCallback] = None, max_workers: Optional[int] = None,
+                     cancel_event: Optional[threading.Event] = None) -> Experiment:
+        """Run the experiment in parallel using the specified number of workers.
+        Setting cancel_event drops queued strategies, stops running ones at their next
+        progress report, and raises RunCancelled once they have exited."""
         max_workers = max_workers or self.max_workers
         m_cfg = self._get_market_config()
         experiment = self._create_experiment(m_cfg)
@@ -226,24 +242,40 @@ class ExperimentRunner:
 
         logger.info(f"Running {len(strategies)} strategies in parallel with max_workers={max_workers}")
         self._warm_market_cache(m_cfg)
-        manager = multiprocessing.Manager() if progress is not None else None
+        needs_manager = progress is not None or cancel_event is not None
+        manager = multiprocessing.Manager() if needs_manager else None
         drainer = None
         try:
             worker_progress = None
+            worker_cancel = None
             if manager is not None:
+                worker_cancel = manager.Event()  # the worker processes' view of cancel_event
+            if progress is not None:
                 queue = manager.Queue()
                 worker_progress = QueueReporter(queue)
                 drainer = threading.Thread(target=_drain_progress, args=(queue, progress), daemon=True)
                 drainer.start()
             with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                futures = [
-                    executor.submit(run_strategy_worker, s_cfg, m_cfg, worker_progress)
+                pending = {
+                    executor.submit(run_strategy_worker, s_cfg, m_cfg, worker_progress, worker_cancel)
                     for s_cfg in strategies
-                ]
-                for future in as_completed(futures):
-                    run = future.result()
-                    if run is not None:
-                        experiment.add_run(run)
+                }
+                cancelled = False
+                while pending:
+                    done, pending = wait(pending, timeout=_CANCEL_POLL_S, return_when=FIRST_COMPLETED)
+                    if not cancelled and cancel_event is not None and cancel_event.is_set():
+                        cancelled = True
+                        worker_cancel.set()
+                        for future in pending:
+                            future.cancel()  # only succeeds for strategies not started yet
+                    if cancelled:
+                        continue  # running strategies exit with RunCancelled; nothing to keep
+                    for future in done:
+                        run = future.result()
+                        if run is not None:
+                            experiment.add_run(run)
+                if cancelled:
+                    raise RunCancelled("Run stopped")
         finally:
             if drainer is not None:
                 queue.put(_DRAIN_STOP)

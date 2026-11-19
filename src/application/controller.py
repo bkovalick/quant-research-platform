@@ -1,7 +1,7 @@
 import threading
 import uuid
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 from datetime import datetime
 from fastapi import FastAPI, Body, HTTPException
@@ -14,7 +14,7 @@ from pathlib import Path
 from utils.logging_config import setup_logging
 
 from application.experiment_runner import ExperimentRunner
-from application.progress import ProgressTracker
+from application.progress import ProgressTracker, RunCancelled
 from application.result_export import experiment_ui_payload, save_experiment_files
 from reporting.report_generation import ExcelGenerator
 from models.experiment import Experiment
@@ -76,6 +76,7 @@ def save_experiment_endpoint(experiment: Experiment, config: dict = Body(...)):
 class _Job:
     tracker: ProgressTracker
     result: Optional[dict] = None
+    cancel: threading.Event = field(default_factory=threading.Event)
 
 _JOBS: "OrderedDict[str, _Job]" = OrderedDict()
 _JOBS_LOCK = threading.Lock()
@@ -84,9 +85,14 @@ _MAX_JOBS = 20
 def _run_job(job: _Job, config: dict, parallel: bool, max_workers: int, persist: bool) -> None:
     try:
         runner = ExperimentRunner(config)
-        experiment = runner.run_parallel(job.tracker, max_workers=max_workers) if parallel else runner.run(job.tracker)
+        experiment = (runner.run_parallel(job.tracker, max_workers=max_workers, cancel_event=job.cancel)
+                      if parallel else runner.run(job.tracker, cancel_event=job.cancel))
         job.tracker.set_status("finalizing")
         job.result = experiment_ui_payload(experiment)
+    except RunCancelled:
+        logger.info("Experiment job stopped by request")
+        job.tracker.set_status("cancelled")
+        return
     except Exception as exc:
         logger.exception("Experiment job failed")
         job.tracker.set_status("failed", error=f"{type(exc).__name__}: {exc}")
@@ -129,7 +135,7 @@ def start_experiment(config: dict = Body(...), parallel: bool = False, max_worke
     job = _Job(tracker=ProgressTracker(names))
     with _JOBS_LOCK:
         _JOBS[job_id] = job
-        finished = [k for k, j in _JOBS.items() if j.tracker.status in ("done", "failed")]
+        finished = [k for k, j in _JOBS.items() if j.tracker.status in ("done", "failed", "cancelled")]
         for k in finished[: max(0, len(_JOBS) - _MAX_JOBS)]:
             del _JOBS[k]
     threading.Thread(target=_run_job, args=(job, config, parallel, max_workers, persist), daemon=True).start()
@@ -140,6 +146,17 @@ def start_experiment(config: dict = Body(...), parallel: bool = False, max_worke
 @app.get("/experiments/{job_id}")
 def experiment_progress(job_id: str):
     return {"job_id": job_id, **_get_job(job_id).tracker.snapshot()}
+
+@app.post("/experiments/{job_id}/cancel")
+def cancel_experiment(job_id: str):
+    """Ask a running job to stop. Strategies stop at their next progress report (a data
+    download in progress finishes first); the job then ends as "cancelled". Once results
+    are being finalized or saved the run can no longer be stopped, and this is a no-op."""
+    job = _get_job(job_id)
+    if job.tracker.status == "running":
+        job.cancel.set()
+        job.tracker.set_status("cancelling")
+    return {"job_id": job_id, **job.tracker.snapshot()}
 
 @app.get("/experiments/{job_id}/result")
 def experiment_result(job_id: str):

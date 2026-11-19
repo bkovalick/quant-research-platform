@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import type { CSSProperties } from "react"
 import RunProgressPanel from "./RunProgress"
 import Switch from "./Switch"
-import { fetchMlFeatures, runExperimentWithProgress } from "../utils/runExperiment"
+import { cancelExperiment, fetchMlFeatures, RunCancelledError, runExperimentWithProgress } from "../utils/runExperiment"
 import type { MlFeatureCatalog, RunProgress, SaveStatus } from "../utils/runExperiment"
 import { mergeStrategySets } from "../utils/mergeStrategySets"
 import type { MergeResult } from "../utils/mergeStrategySets"
@@ -66,12 +66,16 @@ const ML_MODEL_PARAMS: Record<string, [string, string, number, string][]> = {
     ["Max Depth", "max_depth", 1, "Maximum depth of each tree; deeper trees capture more feature interactions and overfit more easily"],
     ["Learning Rate", "learning_rate", 0.01, "How much each tree contributes; lower values need more trees but generalize better"],
   ],
+  randomforestclassifier: [
+    ["Trees", "n_estimators", 100, "Number of trees in the forest; more trees improve accuracy but slow down training"],
+  ],
 }
 
 // Backend defaults (MachineLearningConfig.from_dict), used to seed a model's parameters when it is selected.
 const ML_MODEL_DEFAULTS: Record<string, Record<string, number>> = {
   ridge: { alpha: 1.0 },
   gradientboostingregressor: { n_estimators: 100, max_depth: 3, learning_rate: 0.05 },
+  randomforestclassifier: { n_estimators: 100},
 }
 
 // Labels and requirements for the feature groups served by GET /ml-features.
@@ -283,10 +287,21 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
       setLastSave(save)
       setExperiment(result)
     } catch (err: any) {
+      // A stopped run isn't an error: the progress panel stays up showing "Run stopped".
+      if (err instanceof RunCancelledError) return
       const detail = err?.response?.data?.detail ?? err?.message ?? "Unknown error"
       setRunError(detail)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const stopRun = async () => {
+    if (!runProgress) return
+    try {
+      setRunProgress(await cancelExperiment(runProgress.job_id))
+    } catch (err: any) {
+      setRunError(err?.response?.data?.detail ?? err?.message ?? "Could not stop the run")
     }
   }
 
@@ -611,7 +626,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
           >
             {loading ? `Running ${runCount} ${runCount === 1 ? "strategy" : "strategies"}…` : strategySet ? "Run Experiment" : "Load a Strategy Set"}
           </button>
-          {runProgress && <RunProgressPanel progress={runProgress} />}
+          {runProgress && <RunProgressPanel progress={runProgress} onStop={stopRun} />}
           {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}
           <SaveNotice save={lastSave} />
 
@@ -1061,7 +1076,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                                 {["1d", "1w", "2w", "1m"].map(o => <option key={o} value={o}>{o}</option>)}
                               </select>
                             </Row>
-                            <Row label="Model" tooltip="Model that predicts returns: ridge = regularized linear regression, gradient boosting = boosted decision trees">
+                            <Row label="Model" tooltip="Model that predicts returns: ridge = regularized linear regression, gradient boosting = boosted decision trees, random forest = ensemble of decision trees">
                               <select style={inputStyle}
                                 value={mlModel}
                                 onChange={(e) => updateField(["signals_config", "ml_signals_config"], {
@@ -1072,6 +1087,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                                 })}>
                                 <option value="ridge">ridge</option>
                                 <option value="gradientboostingregressor">gradient boosting</option>
+                                <option value="randomforestclassifier">random forest</option>
                               </select>
                             </Row>
                             {(ML_MODEL_PARAMS[mlModel] ?? []).map(([labelText, key, step, tooltip]) => (
@@ -1355,7 +1371,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
           <button style={loading ? loadButton : runButton} disabled={loading} onClick={runExperiment}>
             {loading ? "Running…" : currentExperimentLabel ? `Run ${currentExperimentLabel}` : "Run Experiment"}
           </button>
-          {runProgress && <RunProgressPanel progress={runProgress} />}
+          {runProgress && <RunProgressPanel progress={runProgress} onStop={stopRun} />}
           {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}
           {persistRun && !loading && !lastSave && (
             <div style={savedNotice}>Results will be saved to {baseName(resultsDatabase)}</div>

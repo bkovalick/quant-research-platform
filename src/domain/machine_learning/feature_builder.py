@@ -1,19 +1,15 @@
 from functools import cached_property
 from typing import List, Optional
-
 import pandas as pd
 import numpy as np
 
 from utils.lookback_windows import LOOKBACK_WINDOWS
 from simulation.market_state import MarketState
 
-# Built when no feature list is given. Fundamental features are opt-in: they need a data source.
 ALL_FEATURES = ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal", "mom_x_vol_regime",
                 "reversal_x_vol_regime", "max_return", "high_52w", "beta_1m", "beta_1y", 
                 "idiosyncratic_vol"]
 
-# Every supported feature by what it needs: prices only, ^VIX as an exogenous ticker, or a
-# fundamental_data_source. The UI builds its feature checklist from this.
 FEATURE_GROUPS = {
     "price": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal", "max_return", "high_52w",
               "beta_1m", "beta_1y", "idiosyncratic_vol"],
@@ -43,27 +39,33 @@ class FeatureBuilder:
         self.forward_returns_cache = None
         self.precomputed_horizon = None
 
-    def precompute(self, horizon: int = 21):
+    def precompute(self, 
+                   horizon: int = 21):
         """ Compute features and forward returns for every date once, for fast lookup afterwards. """
         self.precomputed_horizon = horizon
         self.features_cache = self._cache_features()
         self.forward_returns_cache = {date: self._forward_returns(date, horizon)
                                       for date in self.prices.index[:-horizon]}
 
-    def build(self, date: pd.Timestamp) -> pd.DataFrame:
+    def build(self, 
+              date: pd.Timestamp) -> pd.DataFrame:
         """ Ranked feature matrix (assets x features) as of one date; empty during warm-up. """
         if self.features_cache is None:
             raise RuntimeError("FeatureBuilder.precompute() must be called before build()")
         return self.features_cache.get(date, pd.DataFrame(index=self.prices.columns))
 
-    def build_forward_returns(self, as_of_date: pd.Timestamp, horizon: int = 21) -> pd.Series:
+    def build_forward_returns(self, 
+                              as_of_date: pd.Timestamp, 
+                              horizon: int = 21) -> pd.Series:
         """ Return of each asset over the `horizon` periods after as_of_date: the training label.
             Empty when the horizon runs past the end of the data. """
         if self.forward_returns_cache is not None and horizon == self.precomputed_horizon:
             return self.forward_returns_cache.get(as_of_date, pd.Series(dtype=float))
         return self._forward_returns(as_of_date, horizon)
 
-    def _forward_returns(self, as_of_date: pd.Timestamp, horizon: int) -> pd.Series:
+    def _forward_returns(self, 
+                         as_of_date: pd.Timestamp, 
+                         horizon: int) -> pd.Series:
         px = self.prices
         idx = px.index.get_loc(as_of_date)
         if idx + horizon >= len(px):
@@ -176,6 +178,10 @@ class FeatureBuilder:
     def _book_to_market(self) -> pd.DataFrame:
         """ Value: Book Equity / Market Equity. """
         equity = self._fundamental_metric("equity")
+        if equity is None:
+            assets = self._fundamental_metric("assets")
+            equity = assets - self._fundamental_metric("liabilities")
+
         equity = equity.where(equity > 0)
         market_cap = self._market_cap.where(self._market_cap > 0)
         return equity / market_cap

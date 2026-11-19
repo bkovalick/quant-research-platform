@@ -8,12 +8,16 @@ const PHASE_LABEL: Record<StrategyProgress["phase"], string> = {
   analyzing: "Analyzing",
   done: "Done",
   failed: "Failed",
+  cancelled: "Stopped",
 }
 
-export default function RunProgress({ progress }: { progress: Progress }) {
+/** onStop, when given, shows a Stop button while the run can still be stopped. */
+export default function RunProgress({ progress, onStop }: { progress: Progress; onStop?: () => void }) {
   const allStrategiesDone = progress.strategies.every(s => s.phase === "done")
   const headline =
     progress.status === "failed" ? "Run failed"
+    : progress.status === "cancelled" ? "Run stopped"
+    : progress.status === "cancelling" ? "Stopping…"
     : progress.status === "done" ? "Complete"
     : progress.status === "saving" ? "Saving to database…"
     : allStrategiesDone ? "Building benchmark and results…"
@@ -23,7 +27,19 @@ export default function RunProgress({ progress }: { progress: Progress }) {
     <div style={panel} role="status" aria-live="polite">
       <div style={header}>
         <span style={headlineStyle}>{headline}</span>
-        <span style={num}>{Math.round(progress.pct)}% · {formatSeconds(progress.elapsed_s)}</span>
+        <span style={headerRight}>
+          <span style={num}>{Math.round(progress.pct)}% · {formatSeconds(progress.elapsed_s)}</span>
+          {onStop && (progress.status === "running" || progress.status === "cancelling") && (
+            <button
+              style={stopButton}
+              disabled={progress.status === "cancelling"}
+              onClick={onStop}
+              title="Stop the run. Strategies stop at their next progress update; a data download in progress finishes first."
+            >
+              {progress.status === "cancelling" ? "Stopping…" : "Stop"}
+            </button>
+          )}
+        </span>
       </div>
       <Bar pct={progress.pct} failed={progress.status === "failed"} />
 
@@ -66,7 +82,7 @@ function Bar({ pct, failed, thin }: { pct: number; failed?: boolean; thin?: bool
 function phaseColor(phase: StrategyProgress["phase"]) {
   if (phase === "failed") return "#f85149"
   if (phase === "done") return "#3fb950"
-  if (phase === "queued") return "#6e7681"
+  if (phase === "queued" || phase === "cancelled") return "#6e7681"
   return "#c9d1d9"
 }
 
@@ -81,6 +97,11 @@ const panel: CSSProperties = {
   border: "1px solid #21262d", borderRadius: 6,
 }
 const header: CSSProperties = { display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }
+const headerRight: CSSProperties = { display: "flex", alignItems: "baseline", gap: 8 }
+const stopButton: CSSProperties = {
+  padding: "2px 8px", background: "transparent", border: "1px solid #f85149", color: "#f85149",
+  borderRadius: 4, fontSize: 10.5, fontWeight: 600, cursor: "pointer",
+}
 const headlineStyle: CSSProperties = { fontSize: 12, fontWeight: 600, color: "#e6edf3" }
 const num: CSSProperties = { fontSize: 10.5, color: "#8b949e", fontVariantNumeric: "tabular-nums" }
 const track: CSSProperties = { background: "#21262d", borderRadius: 3, overflow: "hidden" }
