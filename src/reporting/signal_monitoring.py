@@ -259,7 +259,7 @@ class FactorRegressionDiagnostics(BaseDiagnostic):
             "n_obs": self._n_obs,
             "r_squared": float(result.rsquared),
             "alpha": {
-                "coef": alpha,                                   # per portfolio period, decimal
+                "coef": alpha, 
                 "annualized": alpha * self._periods_per_year,
                 "t_stat": float(t_statistics["const"]),
                 "p_value": float(p_values["const"]),

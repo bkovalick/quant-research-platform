@@ -25,8 +25,6 @@ from infrastructure.strategy_results_data_gateway import ExperimentMetaDataDataG
 from domain.machine_learning.feature_builder import ALL_FEATURES, FEATURE_GROUPS
 
 DEFAULT_RESULTS_DB = "research.duckdb"
-# Anchored to the repo root so files land in the same place as run_local.py's,
-# whichever directory the server was started from.
 RESULTS_DIR = Path(__file__).resolve().parents[2] / "backtest_results"
 MAX_PARALLEL_WORKERS = 2
 
@@ -98,8 +96,6 @@ def _run_job(job: _Job, config: dict, parallel: bool, max_workers: int, persist:
         job.tracker.set_status("failed", error=f"{type(exc).__name__}: {exc}")
         return
 
-    # Keep a copy on disk so a page refresh doesn't lose the run (reopen it from the Lab:
-    # Saved Results > open results file). A failed write must not fail the run itself.
     try:
         now = datetime.now()
         json_path, _ = save_experiment_files(

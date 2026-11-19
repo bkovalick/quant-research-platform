@@ -4,7 +4,7 @@ from scipy.stats import rankdata
 
 from domain.machine_learning.return_predictor import ReturnPredictor
 from models.machine_learning_config import MachineLearningConfig
-from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestClassifier
+from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
 
@@ -37,19 +37,11 @@ class CrossSectionalModel(ReturnPredictor):
         if self.scaler is not None:
             X_arr = self.scaler.fit_transform(X_arr)
 
-        if self.model_type == "ridge":
-            self.model = Ridge(alpha=self.alpha)
-        elif self.model_type == "randomforest":
-            self.model = RandomForestClassifier(
-                n_estimators=self.n_estimators, random_state = 42
-            )
-        elif self.model_type == "gradientboostingregressor":
-            self.model = HistGradientBoostingRegressor(
-                max_iter=self.n_estimators, max_depth=self.max_depth, learning_rate=self.learning_rate
-            )
+        self.model = self._build_model()
         self.model.fit(X_arr, y_arr)
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
+        """Predict on a row-aligned DataFrame, returning ranks between 0 and 1."""
         if self.model is None:
             raise RuntimeError("Model must be fit before predicting.")
 
@@ -58,3 +50,18 @@ class CrossSectionalModel(ReturnPredictor):
         raw_scores = self.model.predict(X_scaled)
         ranked = rankdata(raw_scores, method='average', nan_policy='omit') / np.isfinite(raw_scores).sum()
         return ranked
+
+    def _build_model(self):
+        """Build and return the appropriate model based on the configuration."""
+        if self.model_type == "ridge":
+            return Ridge(alpha=self.alpha)
+        elif self.model_type == "randomforestregressor":
+            return RandomForestRegressor(
+                n_estimators=self.n_estimators, max_depth=self.max_depth, random_state=42
+            )
+        elif self.model_type == "gradientboostingregressor":
+            return HistGradientBoostingRegressor(
+                max_iter=self.n_estimators, max_depth=self.max_depth, learning_rate=self.learning_rate
+            )
+        else:
+            raise ValueError(f"Unknown model type '{self.model_type}'!")

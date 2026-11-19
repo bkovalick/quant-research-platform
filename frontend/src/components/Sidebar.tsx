@@ -66,8 +66,9 @@ const ML_MODEL_PARAMS: Record<string, [string, string, number, string][]> = {
     ["Max Depth", "max_depth", 1, "Maximum depth of each tree; deeper trees capture more feature interactions and overfit more easily"],
     ["Learning Rate", "learning_rate", 0.01, "How much each tree contributes; lower values need more trees but generalize better"],
   ],
-  randomforestclassifier: [
+  randomforestregressor: [
     ["Trees", "n_estimators", 100, "Number of trees in the forest; more trees improve accuracy but slow down training"],
+    ["Max Depth", "max_depth", 1, "Maximum depth of each tree; deeper trees capture more feature interactions and overfit more easily"],
   ],
 }
 
@@ -75,7 +76,7 @@ const ML_MODEL_PARAMS: Record<string, [string, string, number, string][]> = {
 const ML_MODEL_DEFAULTS: Record<string, Record<string, number>> = {
   ridge: { alpha: 1.0 },
   gradientboostingregressor: { n_estimators: 100, max_depth: 3, learning_rate: 0.05 },
-  randomforestclassifier: { n_estimators: 100},
+  randomforestregressor: { n_estimators: 100, max_depth: 3 },
 }
 
 // Labels and requirements for the feature groups served by GET /ml-features.
@@ -1087,7 +1088,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                                 })}>
                                 <option value="ridge">ridge</option>
                                 <option value="gradientboostingregressor">gradient boosting</option>
-                                <option value="randomforestclassifier">random forest</option>
+                                <option value="randomforestregressor">random forest</option>
                               </select>
                             </Row>
                             {(ML_MODEL_PARAMS[mlModel] ?? []).map(([labelText, key, step, tooltip]) => (
