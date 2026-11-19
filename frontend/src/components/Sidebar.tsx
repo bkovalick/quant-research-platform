@@ -1,11 +1,12 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { CSSProperties } from "react"
 import RunProgressPanel from "./RunProgress"
 import Switch from "./Switch"
-import { runExperimentWithProgress } from "../utils/runExperiment"
-import type { RunProgress, SaveStatus } from "../utils/runExperiment"
+import { cancelExperiment, fetchMlFeatures, RunCancelledError, runExperimentWithProgress } from "../utils/runExperiment"
+import type { MlFeatureCatalog, RunProgress, SaveStatus } from "../utils/runExperiment"
 import { mergeStrategySets } from "../utils/mergeStrategySets"
 import type { MergeResult } from "../utils/mergeStrategySets"
+import { starterStrategySet } from "../utils/starterStrategySet"
 
 const PERSIST_PREF_KEY = "qrp.persistRuns"
 
@@ -33,11 +34,6 @@ const SIGNAL_SOURCE_OPTIONS = [
   ["vix_basis", "VIX Basis"],
 ] as const
 
-/**
- * Which signal sources each strategy type can consume. Mirrors the isinstance
- * checks in the backend strategies (src/domain/strategies/): an empty list means
- * the strategy allocates without signals; a single entry means the signal is fixed.
- */
 const STRATEGY_SIGNALS: Record<string, readonly string[]> = {
   systematic_strategy: ["risk_return", "mean_reversion", "moving_average", "volatility_forecast",
                         "momentum", "ml_cross_sectional", "black_litterman"],
@@ -70,12 +66,24 @@ const ML_MODEL_PARAMS: Record<string, [string, string, number, string][]> = {
     ["Max Depth", "max_depth", 1, "Maximum depth of each tree; deeper trees capture more feature interactions and overfit more easily"],
     ["Learning Rate", "learning_rate", 0.01, "How much each tree contributes; lower values need more trees but generalize better"],
   ],
+  randomforestregressor: [
+    ["Trees", "n_estimators", 100, "Number of trees in the forest; more trees improve accuracy but slow down training"],
+    ["Max Depth", "max_depth", 1, "Maximum depth of each tree; deeper trees capture more feature interactions and overfit more easily"],
+  ],
 }
 
 // Backend defaults (MachineLearningConfig.from_dict), used to seed a model's parameters when it is selected.
 const ML_MODEL_DEFAULTS: Record<string, Record<string, number>> = {
   ridge: { alpha: 1.0 },
   gradientboostingregressor: { n_estimators: 100, max_depth: 3, learning_rate: 0.05 },
+  randomforestregressor: { n_estimators: 100, max_depth: 3 },
+}
+
+// Labels and requirements for the feature groups served by GET /ml-features.
+const ML_FEATURE_GROUP_LABELS: Record<string, string> = {
+  price: "Price",
+  regime: "Regime",
+  fundamental: "Fundamental",
 }
 
 function signalLabel(source: string) {
@@ -130,6 +138,15 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
   const [jsonError, setJsonError] = useState<string | null>(null)
   const [newUniverseTicker, setNewUniverseTicker] = useState("")
   const [newUniverseTickerError, setNewUniverseTickerError] = useState<string | null>(null)
+  const [mlFeatureCatalog, setMlFeatureCatalog] = useState<MlFeatureCatalog | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchMlFeatures()
+      .then(catalog => { if (!cancelled) setMlFeatureCatalog(catalog) })
+      .catch(() => { /* backend not running: the checklist shows a note instead */ })
+    return () => { cancelled = true }
+  }, [])
 
   function getPreviousBusinessDay(date: Date = new Date()): Date {
     const dayOfWeek = date.getDay();
@@ -192,6 +209,18 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
     if (typeof msc.benchmark === "string") setBenchmark(msc.benchmark)
     if (typeof msc.transaction_cost === "number") setTransactionCost(msc.transaction_cost)
     if (typeof msc.risk_free_rate === "number") setRiskFreeRate(msc.risk_free_rate)
+  }
+
+  /** Start a strategy set from scratch (no JSON) and open it in the Strategy Lab. */
+  const startNewStrategySet = () => {
+    const starter = starterStrategySet()
+    setLoadError(null)
+    setLoadInfo(null)
+    setStrategySet(starter)
+    setEditedStrategies(structuredClone(starter.strategies))
+    setSelectedIdx(0)
+    setJsonMode(false)
+    setTab("lab")
   }
 
   const togglePersist = (value: boolean) => {
@@ -259,10 +288,21 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
       setLastSave(save)
       setExperiment(result)
     } catch (err: any) {
+      // A stopped run isn't an error: the progress panel stays up showing "Run stopped".
+      if (err instanceof RunCancelledError) return
       const detail = err?.response?.data?.detail ?? err?.message ?? "Unknown error"
       setRunError(detail)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const stopRun = async () => {
+    if (!runProgress) return
+    try {
+      setRunProgress(await cancelExperiment(runProgress.job_id))
+    } catch (err: any) {
+      setRunError(err?.response?.data?.detail ?? err?.message ?? "Could not stop the run")
     }
   }
 
@@ -444,6 +484,25 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
 
   const hasMlSignals = !!currentStrategy?.signals_config?.ml_signals_config
   const mlModel: string = currentStrategy?.signals_config?.ml_signals_config?.signals_model ?? "ridge"
+  const listedMlFeatures: string[] = currentStrategy?.signals_config?.ml_signals_config?.features ?? []
+  const selectedMlFeatures: string[] = listedMlFeatures.length ? listedMlFeatures : (mlFeatureCatalog?.default ?? [])
+  const hasFundamentalSource = !!strategySet?.market_store_config?.fundamental_data_source
+  const hasVix = (currentStrategy?.market_state_config?.exogenous_tickers ?? []).includes("^VIX")
+  const mlFeatureGroupNote: Record<string, string | null> = {
+    regime: hasVix ? null : "needs ^VIX in Exogenous",
+    fundamental: hasFundamentalSource ? null : "needs fundamental_data_source in the market config",
+  }
+  const toggleMlFeature = (feature: string) => {
+    if (!mlFeatureCatalog) return
+    const next = selectedMlFeatures.includes(feature)
+      ? selectedMlFeatures.filter(f => f !== feature)
+      : [...selectedMlFeatures, feature]
+    if (!next.length) return   // an empty list would mean "all defaults" to the backend
+    // Keep the backend's order so the same selection always gives the same feature matrix.
+    const order = [...mlFeatureCatalog.default, ...Object.values(mlFeatureCatalog.groups).flat()]
+    next.sort((a, b) => order.indexOf(a) - order.indexOf(b))
+    updateField(["signals_config", "ml_signals_config", "features"], next)
+  }
   const hasBlackLitterman = !!currentStrategy?.signals_config?.black_litterman
   const hasPairsTrading = !!currentStrategy?.signals_config?.pairs_trading
   const hasMeanReversionSignals = currentStrategy?.signals_config?.mean_reversion_window !== undefined
@@ -489,6 +548,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                   <button style={changeLinkBtn} onClick={() => document.getElementById("strategy-file-append")?.click()}>add files</button>
                   <button style={changeLinkBtn} onClick={() => document.getElementById("strategy-file-input")?.click()}>replace</button>
                 </div>
+                {!loadInfo && <div style={labelStyle}>Built in the Strategy Lab, not loaded from a file.</div>}
                 {loadInfo && loadInfo.sources.length > 0 && (
                   <ul style={sourceList}>
                     {loadInfo.sources.map((s, i) => (
@@ -510,7 +570,10 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                   </details>
                 )}
               </>
-            : null}
+            : <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button style={changeLinkBtn} onClick={startNewStrategySet}>build a new strategy</button>
+                <button style={changeLinkBtn} onClick={() => document.getElementById("strategy-file-input")?.click()}>load files…</button>
+              </div>}
           {loadError && <div style={inlineError}>{loadError}</div>}
         </Section>
 
@@ -564,7 +627,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
           >
             {loading ? `Running ${runCount} ${runCount === 1 ? "strategy" : "strategies"}…` : strategySet ? "Run Experiment" : "Load a Strategy Set"}
           </button>
-          {runProgress && <RunProgressPanel progress={runProgress} />}
+          {runProgress && <RunProgressPanel progress={runProgress} onStop={stopRun} />}
           {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}
           <SaveNotice save={lastSave} />
 
@@ -586,7 +649,12 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
       {tab === "lab" && (
         <>
           {!strategySet ? (
-            <div style={emptyState}>Load a strategy set in the Experiment tab first.</div>
+            <div style={emptyState}>
+              <div style={{ marginBottom: 8 }}>
+                Build a strategy from a starter template, or load a strategy set in the Experiment tab.
+              </div>
+              <button style={addStrategyBtn} onClick={startNewStrategySet}>+ New Strategy</button>
+            </div>
           ) : (
             <>
             <div style={strategyNav}>
@@ -1009,7 +1077,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                                 {["1d", "1w", "2w", "1m"].map(o => <option key={o} value={o}>{o}</option>)}
                               </select>
                             </Row>
-                            <Row label="Model" tooltip="Model that predicts returns: ridge = regularized linear regression, gradient boosting = boosted decision trees">
+                            <Row label="Model" tooltip="Model that predicts returns: ridge = regularized linear regression, gradient boosting = boosted decision trees, random forest = ensemble of decision trees">
                               <select style={inputStyle}
                                 value={mlModel}
                                 onChange={(e) => updateField(["signals_config", "ml_signals_config"], {
@@ -1020,6 +1088,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                                 })}>
                                 <option value="ridge">ridge</option>
                                 <option value="gradientboostingregressor">gradient boosting</option>
+                                <option value="randomforestregressor">random forest</option>
                               </select>
                             </Row>
                             {(ML_MODEL_PARAMS[mlModel] ?? []).map(([labelText, key, step, tooltip]) => (
@@ -1029,6 +1098,42 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
                                   onChange={(e) => updateField(["signals_config", "ml_signals_config", key], Number(e.target.value))} />
                               </Row>
                             ))}
+                            <span style={labelStyle}>Features ({selectedMlFeatures.length})</span>
+                            {!mlFeatureCatalog && (
+                              <span style={labelStyle}>
+                                Feature list unavailable: start the backend to edit.
+                                {listedMlFeatures.length ? ` Selected: ${listedMlFeatures.join(", ")}` : " Using the default set."}
+                              </span>
+                            )}
+                            {mlFeatureCatalog && Object.entries(mlFeatureCatalog.groups).map(([group, features]) => {
+                              const note = mlFeatureGroupNote[group] ?? null
+                              const blocked = group === "fundamental" && !hasFundamentalSource
+                              return (
+                                <Row key={group} label={ML_FEATURE_GROUP_LABELS[group] ?? group} tooltip={note ?? undefined}>
+                                  <div style={tickerGrid}>
+                                    {features.map(feature => {
+                                      const selected = selectedMlFeatures.includes(feature)
+                                      return (
+                                        <button
+                                          key={feature}
+                                          // A feature that is already selected can always be removed.
+                                          disabled={blocked && !selected}
+                                          title={note ?? undefined}
+                                          style={{
+                                            ...(selected ? tickerChipActive : tickerChip),
+                                            ...(blocked && !selected ? { opacity: 0.45, cursor: "not-allowed" } : {}),
+                                          }}
+                                          onClick={() => toggleMlFeature(feature)}
+                                        >{feature}</button>
+                                      )
+                                    })}
+                                  </div>
+                                  {note && features.some(f => selectedMlFeatures.includes(f)) && (
+                                    <div style={errorMsg}>{note}</div>
+                                  )}
+                                </Row>
+                              )
+                            })}
                           </div>
                         )}
                       </>
@@ -1267,7 +1372,7 @@ export default function Sidebar({ setExperiment, experiment, pinnedNames }: any)
           <button style={loading ? loadButton : runButton} disabled={loading} onClick={runExperiment}>
             {loading ? "Running…" : currentExperimentLabel ? `Run ${currentExperimentLabel}` : "Run Experiment"}
           </button>
-          {runProgress && <RunProgressPanel progress={runProgress} />}
+          {runProgress && <RunProgressPanel progress={runProgress} onStop={stopRun} />}
           {runError && <div style={{ marginTop: 6, padding: "6px 10px", background: "#2d1215", border: "1px solid #f85149", borderRadius: 6, color: "#f85149", fontSize: 11 }}>{runError}</div>}
           {persistRun && !loading && !lastSave && (
             <div style={savedNotice}>Results will be saved to {baseName(resultsDatabase)}</div>

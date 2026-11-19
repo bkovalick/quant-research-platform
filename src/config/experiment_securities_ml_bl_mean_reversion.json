@@ -12,6 +12,9 @@
     "transaction_cost": 0.003,
     "apply_market_caps": false,
     "historical_sp500_tickers_path": "data/S&P 500 Historical Components & Changes.csv",
+    "fundamental_data_source": {
+      "edgar": null
+    },
     "tickers": [
       "AGG",
       "LQD",

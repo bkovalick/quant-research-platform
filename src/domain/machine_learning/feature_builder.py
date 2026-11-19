@@ -1,216 +1,205 @@
+from functools import cached_property
 from typing import List, Optional
-
 import pandas as pd
 import numpy as np
-import warnings
 
 from utils.lookback_windows import LOOKBACK_WINDOWS
 from simulation.market_state import MarketState
 
+ALL_FEATURES = ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal", "mom_x_vol_regime",
+                "reversal_x_vol_regime", "max_return", "high_52w", "beta_1m", "beta_1y", 
+                "idiosyncratic_vol"]
+
+FEATURE_GROUPS = {
+    "price": ["mom_1m", "mom_12m", "vol_1m", "vol_3m", "reversal", "max_return", "high_52w",
+              "beta_1m", "beta_1y", "idiosyncratic_vol"],
+    "regime": ["mom_x_vol_regime", "reversal_x_vol_regime"],
+    "fundamental": ["equity_to_assets", "return_on_equity", "accruals", "gross_profit", "asset_growth", "book_to_market", "size"],
+}
+
 class FeatureBuilder:
-    """
-    Responsible for constructing features and forward returns for ML model training and inference.
-    """
-    def __init__(self, 
+    """ Cross-sectionally ranked features and forward returns for ML training and inference. """
+
+    def __init__(self,
                  market_state: MarketState,
                  market_frequency: str = "d",
                  features: Optional[List[str]] = None):
-        features = features or []
-        self.features = features
-        self.prices = market_state.signal_prices.copy()
-        self.returns = market_state.signal_returns.copy()
-        self.exogenous_universe = market_state.exogenous_universe.copy()
         if market_state.market_returns is None:
             raise ValueError("Benchmark returns are required to build market features")
-        self.market_returns = market_state.market_returns.copy()
+
+        self.features = features or ALL_FEATURES
+        self.prices = market_state.signal_prices
+        self.returns = market_state.signal_returns
+        self.market_returns = market_state.market_returns.reindex(self.returns.index).fillna(0)
+        self.fundamental_data = market_state.fundamental_data_by_metric or {}
+        self.exogenous_universe = market_state.exogenous_universe
         self.lookbacks = LOOKBACK_WINDOWS.get(market_frequency, LOOKBACK_WINDOWS["d"])
         self.reversal_window = self.lookbacks.get("1w", 1)
         self.features_cache = None
         self.forward_returns_cache = None
         self.precomputed_horizon = None
 
-    def precompute(self, horizon: int = 21):
-        """
-        Precompute features for all dates and cache them in memory for fast retrieval during training/inference.
-        """
+    def precompute(self, 
+                   horizon: int = 21):
+        """ Compute features and forward returns for every date once, for fast lookup afterwards. """
         self.precomputed_horizon = horizon
-        w = self.lookbacks
-        px = self.prices
-        rets = self.returns
-        mret = self.market_returns.reindex(rets.index).fillna(0)
-        mom_1m = px / px.shift(w["1m"]) - 1
-        mom_12m = px.shift(w["1m"]) / px.shift(w["1y"]) - 1
-        vol_1m = rets.rolling(w["1m"]).std()
-        vol_3m = rets.rolling(w["3m"]).std()
-        reversal = -(px / px.shift(self.reversal_window) - 1)
-        max_ret = rets.rolling(w["1m"]).max()
-        high_52w = px / px.rolling(w["1y"]).max()
-        market_var_1m = mret.rolling(w["1m"]).var()
-        market_var_1y = mret.rolling(w["1y"]).var()
-        beta_1m = rets.rolling(w["1m"]).cov(mret).div(market_var_1m.replace(0, np.nan), axis=0)
-        beta_1y = rets.rolling(w["1y"]).cov(mret).div(market_var_1y.replace(0, np.nan), axis=0)
-        idiosyncratic_vol = (rets - beta_1y.multiply(mret, axis=0)).rolling(w["1y"]).std()
+        self.features_cache = self._cache_features()
+        self.forward_returns_cache = {date: self._forward_returns(date, horizon)
+                                      for date in self.prices.index[:-horizon]}
 
-        if "^VIX" in self.exogenous_universe.columns:
-            vix = self.exogenous_universe["^VIX"].reindex(px.index).ffill()
-            high_vol_series = (vix > vix.rolling(w["1y"]).median()).astype(float)
-        else:
-            high_vol_series = pd.Series(0.0, index=px.index)
-
-        self.features_cache = self._cache_features(px, w, high_vol_series, 
-                                                   mom_1m, mom_12m, vol_1m, vol_3m,
-                                                   reversal, max_ret, high_52w,
-                                                   beta_1m, beta_1y, idiosyncratic_vol)
-        self.forward_returns_cache = self._cache_forward_returns(px, self.precomputed_horizon)
-
-    def build(self, date: pd.Timestamp) -> pd.DataFrame:
-        """
-        Build feature matrix for all assets as of a single date, using cached values if available.
-        """
+    def build(self, 
+              date: pd.Timestamp) -> pd.DataFrame:
+        """ Ranked feature matrix (assets x features) as of one date; empty during warm-up. """
         if self.features_cache is None:
-            warnings.warn("FeatureBuilder.precompute() has not been called. Falling back to _build_single_date() which is significantly slower.")
-        if self.features_cache is not None:
-            return self.features_cache.get(date, pd.DataFrame(index=self.prices.columns))
-        return self._build_single_date(date)    
+            raise RuntimeError("FeatureBuilder.precompute() must be called before build()")
+        return self.features_cache.get(date, pd.DataFrame(index=self.prices.columns))
 
-    def _build_single_date(self, date: pd.Timestamp) -> pd.DataFrame:
-        """
-        Build feature matrix for all assets as of a single date.
-        Returns DataFrame of shape (n_assets, n_features), index=tickers.
-        No future data is used — all lookbacks are strictly backward-looking.
-        """
-        px   = self.prices.loc[:date]
-        rets = self.returns.loc[:date]
-        market_rets = self.market_returns.reindex(rets.index).fillna(0)
-        vix_prices = self.exogenous_universe["^VIX"].loc[:date] \
-            if "^VIX" in self.exogenous_universe else pd.Series(dtype=float)
-        high_vol = self._compute_high_vol(vix_prices)
-
-        if len(px) < self.lookbacks["1y"]:
-            return pd.DataFrame(index=self.prices.columns)
-
-        features = pd.DataFrame(index=self.prices.columns)
-        features["mom_1m"] = px.iloc[-1] / px.iloc[-self.lookbacks["1m"]] - 1
-        features["mom_12m"] = px.iloc[-self.lookbacks["1m"]] / px.iloc[-self.lookbacks["1y"]] - 1
-        features["vol_1m"] = rets.iloc[-self.lookbacks["1m"]:].std()
-        features["vol_3m"] = rets.iloc[-self.lookbacks["3m"]:].std()
-        features["reversal"] = -(px.iloc[-1] / px.iloc[-(self.reversal_window + 1)] - 1)
-        features["mom_x_vol_regime"] = features["mom_12m"] * (1 - high_vol)
-        features["reversal_x_vol_regime"] = features["reversal"] * high_vol
-        features["max_return"] = rets.iloc[-self.lookbacks["1m"]:].max()
-        features["high_52w"] = px.iloc[-1] / px.iloc[-self.lookbacks["1y"]:].max()
-        features["beta_1m"] = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1m"])
-        beta_1y = self._compute_rolling_beta(rets, market_rets, self.lookbacks["1y"])
-        features["beta_1y"] = beta_1y
-        predicted = beta_1y.values * market_rets.iloc[-self.lookbacks["1y"]:].values[:, None]
-        residuals = rets.iloc[-self.lookbacks["1y"]:].values - predicted
-        features["idiosyncratic_vol"] = pd.Series(residuals.std(axis=0), index=rets.columns)
-        # Same treatment as the precomputed path: drop names with no features at all (not listed
-        # yet), rank the rest, and give a partially missing feature the neutral rank 0.5.
-        features = features.replace([np.inf, -np.inf], np.nan).dropna(how="all")
-        features = features.rank(axis=0, pct=True)
-        if self.features:
-            features = features[self.features]
-        return features.fillna(0.5)
-    
-    def build_forward_returns(self,
-                              as_of_date: pd.Timestamp,
+    def build_forward_returns(self, 
+                              as_of_date: pd.Timestamp, 
                               horizon: int = 21) -> pd.Series:
-        """
-        Build forward returns for all assets starting from as_of_date 
-        over `horizon` days, using cached values if available.
-        """
+        """ Return of each asset over the `horizon` periods after as_of_date: the training label.
+            Empty when the horizon runs past the end of the data. """
         if self.forward_returns_cache is not None and horizon == self.precomputed_horizon:
             return self.forward_returns_cache.get(as_of_date, pd.Series(dtype=float))
-        return self._build_forward_returns_single(as_of_date, horizon)
+        return self._forward_returns(as_of_date, horizon)
 
-    def _build_forward_returns_single(self,
-                              as_of_date: pd.Timestamp,
-                              horizon: int = 21) -> pd.Series:
-        """
-        Forward returns starting from as_of_date over `horizon` days.
-        Used as the label (y) during training.
-        """
+    def _forward_returns(self, 
+                         as_of_date: pd.Timestamp, 
+                         horizon: int) -> pd.Series:
         px = self.prices
         idx = px.index.get_loc(as_of_date)
         if idx + horizon >= len(px):
             return pd.Series(dtype=float)
-        fwd = px.iloc[idx + horizon] / px.iloc[idx] - 1
-        return fwd
+        return px.iloc[idx + horizon] / px.iloc[idx] - 1
 
-    def _cache_features(self,
-                        px: pd.DataFrame,
-                        w: dict,
-                        high_vol_series: pd.Series,
-                        mom_1m: pd.Series,
-                        mom_12m: pd.Series,
-                        vol_1m: pd.Series,
-                        vol_3m: pd.Series,
-                        reversal: pd.Series,
-                        max_ret: pd.Series,
-                        high_52w: pd.Series,
-                        beta_1m: pd.Series,
-                        beta_1y: pd.Series,
-                        idiosyncratic_vol: pd.Series) -> dict:
-        features_cache = {}
-        for date in px.index[w["1y"]:]:
-            hv = float(high_vol_series.get(date, 0.0))
-            feat = pd.DataFrame({
-                "mom_1m": mom_1m.loc[date],
-                "mom_12m": mom_12m.loc[date],
-                "vol_1m":  vol_1m.loc[date],
-                "vol_3m":  vol_3m.loc[date],
-                "reversal": reversal.loc[date],
-                "mom_x_vol_regime": mom_12m.loc[date] * (1 - hv),
-                "reversal_x_vol_regime": reversal.loc[date] * hv,
-                "max_return": max_ret.loc[date],
-                "high_52w": high_52w.loc[date],
-                "beta_1m": beta_1m.loc[date],
-                "beta_1y": beta_1y.loc[date],
-                "idiosyncratic_vol": idiosyncratic_vol.loc[date]
-            })
+    def _cache_features(self) -> dict:
+        """ Per date: each feature ranked across assets (0-1), missing values at the neutral 0.5. """
+        px = self.prices
+        raw = {name: self._build_feature(name).replace([np.inf, -np.inf], np.nan) for name in self.features}
+        ranked = {name: frame.rank(axis=1, pct=True) for name, frame in raw.items()}
 
-            # A name with no features at all hasn't listed yet: leave it out rather than give it
-            # a fake neutral row, which would get a score and shift every real name's rank.
-            feat = feat.replace([np.inf, -np.inf], np.nan).dropna(how="all")
-            feat = feat.rank(axis=0, pct=True)
-            feat = feat.fillna(0.5)
-            if self.features:
-                feat = feat[self.features]
+        listed = pd.DataFrame(False, index=px.index, columns=px.columns)
+        for frame in raw.values():
+            listed |= frame.notna()
 
-            if not feat.empty:
-                features_cache[date] = feat
-        return features_cache
+        cache = {}
+        for date in px.index[self.lookbacks["1y"]:]:
+            keep = listed.loc[date]
+            if keep.any():
+                feat = pd.DataFrame({name: frame.loc[date] for name, frame in ranked.items()})
+                cache[date] = feat[keep].fillna(0.5)
+        return cache
 
-    def _cache_forward_returns(self,
-                              px: pd.DataFrame,
-                              horizon: int) -> dict:
-        fwd_returns_cache = {}
-        for i in range(len(px) - horizon):
-            fwd = px.iloc[i + horizon] / px.iloc[i] - 1
-            if not fwd.empty:
-                fwd_returns_cache[px.index[i]] = fwd
-        return fwd_returns_cache
+    def _build_feature(self, name: str) -> pd.DataFrame:
+        """ One raw feature for every date and asset (dates x tickers). """
+        px, rets, w = self.prices, self.returns, self.lookbacks
+        builders = {
+            "mom_1m": lambda: px / px.shift(w["1m"]) - 1,
+            "mom_12m": lambda: self._mom_12m(),
+            "vol_1m": lambda: rets.rolling(w["1m"]).std(),
+            "vol_3m": lambda: rets.rolling(w["3m"]).std(),
+            "reversal": lambda: self._reversal(),
+            "mom_x_vol_regime": lambda: self._mom_12m().mul(1 - self._high_vol(), axis=0),
+            "reversal_x_vol_regime": lambda: self._reversal().mul(self._high_vol(), axis=0),
+            "max_return": lambda: rets.rolling(w["1m"]).max(),
+            "high_52w": lambda: px / px.rolling(w["1y"]).max(),
+            "beta_1m": lambda: self._beta(w["1m"]),
+            "beta_1y": lambda: self._beta(w["1y"]),
+            "idiosyncratic_vol": lambda: self._idiosyncratic_vol(),
+            "equity_to_assets": lambda: self._equity_to_assets(),
+            "return_on_equity": lambda: self._return_on_equity(),
+            "accruals": lambda: self._accruals(),
+            "gross_profit": lambda: self._gross_profit(),
+            "asset_growth": lambda: self._asset_growth(),
+            "book_to_market": lambda: self._book_to_market(),
+            "size": lambda: self._size()
+        }
+        if name not in builders:
+            raise ValueError(f"Unsupported feature: {name}")
+        return builders[name]()
+
+    def _mom_12m(self) -> pd.DataFrame:
+        """ 12-month momentum that skips the most recent month. """
+        return self.prices.shift(self.lookbacks["1m"]) / self.prices.shift(self.lookbacks["1y"]) - 1
+
+    def _reversal(self) -> pd.DataFrame:
+        """ Negative of the short-term return: recent losers score high. """
+        return -(self.prices / self.prices.shift(self.reversal_window) - 1)
+
+    def _high_vol(self) -> pd.Series:
+        """ 1.0 on dates when VIX is above its 1-year median, else 0.0 (all 0.0 without VIX). """
+        if "^VIX" not in self.exogenous_universe.columns:
+            return pd.Series(0.0, index=self.prices.index)
+        vix = self.exogenous_universe["^VIX"].reindex(self.prices.index).ffill()
+        return (vix > vix.rolling(self.lookbacks["1y"]).median()).astype(float)
+
+    def _beta(self, window: int) -> pd.DataFrame:
+        """ Rolling beta of each asset to the market. """
+        market_variance = self.market_returns.rolling(window).var().replace(0, np.nan)
+        return self.returns.rolling(window).cov(self.market_returns).div(market_variance, axis=0)
+
+    def _idiosyncratic_vol(self) -> pd.DataFrame:
+        """ Volatility of the return left over after removing the 1-year market beta. """
+        window = self.lookbacks["1y"]
+        residuals = self.returns - self._beta(window).multiply(self.market_returns, axis=0)
+        return residuals.rolling(window).std()
+
+    def _equity_to_assets(self) -> pd.DataFrame:
+        """ Book equity over total assets as last filed. Higher means less leverage. """
+        equity = self._fundamental_metric("equity")
+        assets = self._fundamental_metric("assets")
+        return equity / assets.where(assets > 0)
+
+    def _return_on_equity(self) -> pd.DataFrame:
+        """ Return on equity: Net Income / Book Equity. """
+        net_income = self._fundamental_metric("net_income")
+        equity = self._fundamental_metric("equity")
+        return net_income / equity.where(equity > 0)
+
+    def _accruals(self) -> pd.DataFrame:
+        """ Accruals: (Net Income - Operating Cash Flow) / Total Assets. """
+        net_income = self._fundamental_metric("net_income")
+        ocf = self._fundamental_metric("ocf")
+        assets = self._fundamental_metric("assets")
+        return (net_income - ocf) / assets.where(assets > 0)
+
+    def  _gross_profit(self) -> pd.DataFrame:
+        """ Gross profit: Revenue - Cost of Goods Sold. """
+        gross_profit = self._fundamental_metric("gross_profit")
+        assets = self._fundamental_metric("assets")
+        return gross_profit / assets.where(assets > 0)
+
+    def _asset_growth(self) -> pd.DataFrame:
+        """ Asset growth: (Total Assets - Total Assets 1 year ago) / Total Assets 1 year ago. """
+        assets = self._fundamental_metric("assets")
+        assets_lag = assets.shift(self.lookbacks["1y"])
+        return (assets - assets_lag) / assets_lag.where(assets_lag > 0)
+
+    def _book_to_market(self) -> pd.DataFrame:
+        """ Value: Book Equity / Market Equity. """
+        equity = self._fundamental_metric("equity")
+        if equity is None:
+            assets = self._fundamental_metric("assets")
+            equity = assets - self._fundamental_metric("liabilities")
+
+        equity = equity.where(equity > 0)
+        market_cap = self._market_cap.where(self._market_cap > 0)
+        return equity / market_cap
+
+    def _size(self) -> pd.DataFrame:
+        """ Size: Market Equity. """
+        market_cap = self._market_cap.where(self._market_cap > 0)
+        return market_cap
     
-    def _compute_high_vol(self, vix_prices: pd.Series) -> float:
-        if vix_prices.empty:
-            return 0.0
-        vix_now = vix_prices.iloc[-1]
-        vix_median = vix_prices.iloc[-self.lookbacks["1y"]:].median()
-        high_vol = (vix_now > vix_median).astype(float)
-        return high_vol
+    def _fundamental_metric(self, metric: str) -> pd.DataFrame:
+        """ One fundamental metric on the price grid, blank wherever the asset has no price. """
+        if metric not in self.fundamental_data:
+            raise ValueError(f"Fundamental metric '{metric}' is not loaded; "
+                             "set fundamental_data_source in market_store_config.")
+        data = self.fundamental_data[metric].reindex(index=self.prices.index, columns=self.prices.columns)
+        return data.where(self.prices.notna())
 
-    def _compute_rolling_beta(self, 
-                              stock_returns: pd.DataFrame, 
-                              market_returns: pd.Series, 
-                              window: int = 21) -> pd.Series:
-        """ Compute rolling beta of each stock to the market over the specified window. """
-        cov_with_market = stock_returns.iloc[-window:].apply(
-            lambda col: col.cov(market_returns.iloc[-window:])
-        )
-
-        market_variance = market_returns.iloc[-window:].var()
-        if market_variance == 0:
-            return pd.Series(np.nan, index=stock_returns.columns)
-        
-        return cov_with_market / market_variance
+    @cached_property
+    def _market_cap(self) -> pd.DataFrame:
+        """ Market capitalization: Price * Shares Outstanding. """
+        return self.prices * self._fundamental_metric("shares")

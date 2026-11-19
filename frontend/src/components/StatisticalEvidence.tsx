@@ -85,7 +85,7 @@ export default function StatisticalEvidence({ run, dateWindow }: Props) {
       <Tier n={2} name="Attribution" question="why">
         {stats.factor_regression
           ? <FactorRegression reg={stats.factor_regression} />
-          : <EmptyState line="Factor regression not computed for this run — POST /statistics/{run_id} with the FF5+MOM decomposition to populate." />}
+          : <EmptyState line="Factor regression not available for this run. It needs the Fama-French factor data, which could not be loaded when the run finished (see the backend log). Run the strategy again once the data source is reachable." />}
       </Tier>
 
       {/* ---- Tier 3: Robustness — whether to believe it ---- */}
